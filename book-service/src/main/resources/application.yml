@@ -1,0 +1,36 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: book-service
+  datasource:
+    url: jdbc:mariadb://localhost:3306/book_db
+    username: library
+    password: library
+    driver-class-name: org.mariadb.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: book
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+app:
+  kafka:
+    topics:
+      rental-rent: rental_rent
+      rental-return: rental_return
+      rental-result: rental_result
+  failure:
+    force-rent-fail: false
+    force-return-fail: false

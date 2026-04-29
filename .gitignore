@@ -1,0 +1,17 @@
+.gradle/
+build/
+**/build/
+
+.idea/
+.vscode/
+
+*.class
+*.log
+*.tmp
+*.swp
+
+out/
+target/
+
+.DS_Store
+Thumbs.db
