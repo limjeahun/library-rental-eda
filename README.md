@@ -1,14 +1,33 @@
 # 사내 도서관 도서 대여 시스템
 
+![Java](https://img.shields.io/badge/Java-21-007396?style=flat&logo=openjdk&logoColor=white)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3.7-6DB33F?style=flat&logo=spring-boot&logoColor=white)
+![Gradle](https://img.shields.io/badge/Gradle-8.5-02303A?style=flat&logo=gradle&logoColor=white)
+![Apache Kafka](https://img.shields.io/badge/Apache%20Kafka-3.9.0-231F20?style=flat&logo=apache-kafka&logoColor=white)
+![Redis](https://img.shields.io/badge/Redis-7.4-DC382D?style=flat&logo=redis&logoColor=white)
+![MariaDB](https://img.shields.io/badge/MariaDB-11.4-003545?style=flat&logo=mariadb&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat&logo=docker&logoColor=white)
+![Architecture](https://img.shields.io/badge/Architecture-DDD%20%2B%20Hexagonal-5B5FC7?style=flat)
+
 Java 21, Spring Boot 3.3.7, Gradle Kotlin DSL 기반의 멀티 모듈 마이크로서비스 예제입니다. 회원, 도서, 대여, 베스트도서 서비스를 DDD + 헥사고널 아키텍처로 분리하고, 서비스 간 직접 HTTP 호출 없이 Kafka 이벤트와 커맨드로만 연동합니다.
+
+## 프로젝트 하이라이트
+
+- 서비스 간 직접 HTTP 호출 없이 Kafka 이벤트/커맨드 메시징으로만 협력합니다.
+- 도메인 모델을 중심으로 usecase, input port, output port, framework adapter를 분리했습니다.
+- Redis 기반 Idempotent Consumer로 Kafka 중복 소비를 방어합니다.
+- MariaDB, Redis, Kafka KRaft는 Docker Compose로 한 번에 실행합니다.
+- Outbox, DLQ, 분산 추적, 커스텀 Kafka retry/backoff, SAGA Orchestration은 의도적으로 제외했습니다.
 
 ## 모듈 구성
 
-- `common-events`: Kafka 메시지 계약 전용 모듈
-- `rental-service`: 대여카드, 대여, 반납, 연체, 연체해제, SAGA 보상 트랜잭션
-- `book-service`: 도서 등록/조회, 대여 시 이용불가, 반납 시 이용가능, `rental_result` 응답
-- `member-service`: 회원 등록/조회, 포인트 적립/사용, 연체해제 결과 응답, 보상 포인트 차감
-- `bestbook-service`: 대여 이벤트 기반 베스트도서 카운트 증가
+| 모듈 | 포트 | 역할 |
+| --- | --- | --- |
+| `common-events` | - | Kafka 메시지 계약 전용 모듈 |
+| `rental-service` | `8080` | 대여카드, 대여, 반납, 연체, 연체해제, 보상 트랜잭션 |
+| `book-service` | `8081` | 도서 등록/조회, 대여 시 이용불가, 반납 시 이용가능, `rental_result` 응답 |
+| `member-service` | `8082` | 회원 등록/조회, 포인트 적립/사용, 연체해제 결과 응답, 보상 포인트 차감 |
+| `bestbook-service` | `8084` | 대여 이벤트 기반 베스트도서 카운트 증가 |
 
 ## 기술 스택
 
