@@ -43,10 +43,10 @@
 | 모듈 | Java 파일 수 | 현재 역할 |
 |------|-------------:|-----------|
 | `common-events` | 8 | 서비스 간 공유 이벤트/VO |
-| `book-service` | 29 | 도서 등록, 조회, 대여 가능/불가 상태 변경 |
-| `member-service` | 30 | 회원 등록, 조회, 포인트 적립/사용 |
-| `rental-service` | 41 | 대여카드, 대여/반납/연체/보상 흐름 |
-| `bestbook-service` | 14 | 대여 이벤트 기반 베스트 도서 read model |
+| `book-service` | 31 | 도서 등록, 조회, 대여 가능/불가 상태 변경 |
+| `member-service` | 33 | 회원 등록, 조회, 포인트 적립/사용 |
+| `rental-service` | 39 | 대여카드, 대여/반납/연체/보상 흐름 |
+| `bestbook-service` | 20 | 대여 이벤트 기반 베스트 도서 read model |
 
 ### 3-2. 기준선
 
@@ -58,6 +58,19 @@ BUILD SUCCESSFUL
 ```
 
 리팩토링은 이 기준선을 유지하면서 단계별로 진행한다.
+
+### 3-3. 보완 작업 반영 현황
+
+현재 보완 작업으로 다음 항목을 반영했다.
+
+- `AGENTS.md`와 이 계획안에 `infrastructure` 목표 구조와 경계 규칙 추가
+- `application/port/out` outbound port 보강
+- `adapter/out/persistence` JPA Entity, Mapper, Spring Data Repository, Persistence Adapter 보강
+- `adapter/out/messaging` Kafka Producer Adapter 보강
+- Kafka Consumer의 처리 분기를 `application/service` UseCase 구현체로 이동
+- `adapter/out` 경로가 Git에서 무시되지 않도록 `.gitignore` 패턴 보정
+
+확인 결과 `domain/model`에는 JPA 어노테이션이 남아 있지 않다.
 
 ## 4. 주요 차이점
 
@@ -94,21 +107,20 @@ adapter/
 └── out/
     ├── messaging/
     └── persistence/
+
+infrastructure/
+├── messaging/
+├── security/
+└── common/
+
+config/
 ```
 
-### 4-2. Domain과 JPA 결합
+### 4-2. Domain과 JPA 분리
 
-현재 `domain/model`의 Aggregate 또는 VO가 JPA 어노테이션을 직접 가진다.
+초기 분석 기준으로는 `domain/model`의 Aggregate 또는 VO가 JPA 어노테이션을 직접 가지고 있었지만, 보완 작업에서 JPA Entity를 `adapter/out/persistence/entity`로 분리했다.
 
-대표 예:
-
-- `Book`에 `@Entity`
-- `Member`에 `@Entity`
-- `RentalCard`에 `@Entity`, `@ElementCollection`
-- `BestBook`에 `@Entity`
-- `BookDesc`, `LateFee`, `RentItem`, `ReturnItem`, `IDName`, `Item` 등에 `@Embeddable`, `@Column`
-
-목표:
+유지 목표:
 
 - `domain/model`은 순수 Java 모델로 유지
 - JPA Entity는 `adapter/out/persistence/entity`로 이동
@@ -198,11 +210,15 @@ com.example.library.{domain}/
 │   │   └── out/
 │   └── service/
 ├── config/
-└── domain/
-    ├── event/
-    ├── exception/
-    ├── model/
-    └── policy/
+├── domain/
+│   ├── event/
+│   ├── exception/
+│   ├── model/
+│   └── policy/
+└── infrastructure/
+    ├── messaging/
+    ├── security/
+    └── common/
 ```
 
 ### 5-2. 현재 구조에서 목표 구조로의 매핑
@@ -218,6 +234,36 @@ com.example.library.{domain}/
 | `framework/kafkaadapter/*Producer` | `adapter/out/messaging` |
 | `framework/jpaadapter` | `adapter/out/persistence` |
 | `domain/model`의 JPA 어노테이션 | `adapter/out/persistence/entity`로 분리 |
+| Kafka Serializer/Deserializer, 메시징 기술 지원 | `infrastructure/messaging` |
+| Security Filter, 인증/인가 기술 지원 | `infrastructure/security` |
+| 공통 기술 유틸리티 | `infrastructure/common` |
+| Spring Bean 조립용 `@Configuration` | `config` |
+
+### 5-3. Infrastructure 영역 목표와 경계
+
+`Infrastructure`는 도메인 로직이나 유스케이스가 아니라 프레임워크 사용을 돕는 기술 지원 영역이다.
+
+포함 대상:
+
+- Kafka serializer/deserializer, 메시징 설정 보조 클래스, 공통 메시징 유틸리티
+- Spring Security filter/provider 등 보안 기술 지원 코드
+- Redis, ObjectMapper, clock/id generator 등 여러 adapter가 공유하는 기술 유틸리티
+- 프레임워크 통합을 위한 공통 helper
+
+제외 대상:
+
+- Kafka Consumer: `adapter/in/messaging/consumer`
+- Kafka Producer: `adapter/out/messaging`
+- JPA Entity, Mapper, Spring Data Repository: `adapter/out/persistence`
+- Application Service, Command Handler, 보상 흐름 분기: `application/service`
+- Domain Model, Domain Event 생성 규칙: `domain`
+
+`config`와의 경계:
+
+- `config`는 Spring `@Configuration`과 Bean wiring을 담당한다.
+- `infrastructure`는 Bean으로 조립될 기술 지원 클래스를 담는다.
+- 단순한 `KafkaConfig`, `SecurityConfig`, `QueryDslConfig`는 `config`에 남길 수 있다.
+- Serializer, Deserializer, Security Filter, 공통 Kafka/Redis helper처럼 재사용 가능한 기술 구현은 `infrastructure`로 분리한다.
 
 ## 6. 단계별 리팩토링 계획
 
@@ -286,6 +332,35 @@ com.example.library.{domain}/
 
 - Adapter가 Application Service 구현체에 직접 의존하지 않음
 - Application Service가 Adapter 구현체를 직접 참조하지 않음
+- 전체 테스트 성공
+
+### Phase 2-1. Infrastructure 영역 정리
+
+목표:
+
+- `adapter`, `application`, `domain`, `config`에 섞인 기술 지원 코드를 `infrastructure` 영역으로 분리한다.
+- Producer/Consumer/JPA Adapter와 Infrastructure의 책임을 혼동하지 않도록 경계를 명확히 한다.
+
+작업:
+
+- 각 서비스에 필요한 경우 `infrastructure/messaging`, `infrastructure/security`, `infrastructure/common` 패키지를 추가한다.
+- Kafka serializer/deserializer, 공통 메시징 helper, 공통 Redis/Kafka 기술 유틸리티는 `infrastructure/messaging`으로 분리한다.
+- Security filter/provider 등 보안 기술 구현은 `infrastructure/security`로 분리한다.
+- 여러 adapter에서 공유하는 순수 기술 유틸리티는 `infrastructure/common`으로 분리한다.
+- `KafkaConfig`, `SecurityConfig`, `QueryDslConfig`처럼 Bean wiring 중심의 `@Configuration`은 `config`에 남기되, 내부 구현이 커지면 infrastructure support 클래스로 추출한다.
+- Kafka Consumer/Producer/JPA Repository 구현은 infrastructure로 이동하지 않고 각각 `adapter/in/messaging/consumer`, `adapter/out/messaging`, `adapter/out/persistence`에 유지한다.
+
+주의:
+
+- Infrastructure에 비즈니스 규칙, 보상 분기, use case orchestration을 넣지 않는다.
+- Domain/Application은 Infrastructure를 import하지 않는다.
+- Outbox, DLQ/DLT, custom retry/backoff, distributed tracing은 도입하지 않는다.
+
+완료 기준:
+
+- `infrastructure`에는 기술 지원 코드만 존재
+- `config`는 Bean 조립 책임 중심
+- Kafka Consumer/Producer와 JPA Adapter가 올바른 adapter 패키지에 남아 있음
 - 전체 테스트 성공
 
 ### Phase 3. DTO 분리
@@ -574,6 +649,8 @@ Web Request DTO
 - Controller와 Consumer는 Inbound Port만 의존
 - Application Service는 Outbound Port만 의존
 - Kafka Producer는 Outbound Messaging Adapter에서만 `KafkaTemplate` 사용
+- Infrastructure에는 메시징/보안/공통 기술 지원 코드만 위치하고 비즈니스 로직이 없음
+- `config`는 Spring Bean wiring 중심으로 유지
 - Command/Event/Result 메시지 이름과 목적이 분리됨
 - Outbox, DLQ/DLT, custom retry/backoff, distributed tracing, Saga Orchestrator 미도입
 

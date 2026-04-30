@@ -5,7 +5,7 @@
 1. Follow this `AGENTS.md` first.
 2. Use `docs/architecture-rule-eda.md` as a reference for DDD, Hexagonal Architecture, DTO separation, ports/adapters, and EDA naming patterns.
 3. If `docs/architecture-rule-eda.md` conflicts with this file, this file wins.
-4. Preserve the existing project structure and naming unless the user explicitly asks for a refactor.
+4. Preserve the target project structure and naming in this file unless the user explicitly asks for a refactor.
 
 ## Project Stack
 
@@ -46,45 +46,40 @@ Use normal Spring Boot, Spring Kafka, JPA, Redis, and Gradle patterns already pr
 - Use DDD and Hexagonal Architecture as the default design style.
 - Domain code should contain business rules and stay independent from Spring, JPA, Kafka, Redis, and web frameworks.
 - Application code should orchestrate use cases and depend on domain abstractions.
-- Framework adapters should handle web, Kafka, persistence, Redis, and other infrastructure concerns.
+- Adapters should handle web, Kafka, persistence, Redis, and other infrastructure concerns.
 - Do not expose domain entities directly from controllers.
 - Do not put persistence annotations on pure domain models unless the existing code already uses that pattern and the task is explicitly scoped to preserve it.
-- Keep inbound ports, outbound ports, use cases, domain models, and framework adapters separated.
+- Keep inbound ports, outbound ports, use cases, domain models, and adapters separated.
 - Prefer Java `record` for DTOs, commands, events, and simple immutable message payloads when compatible with the existing code.
 
-## Current Package Structure
+## Target Package Structure
 
-For `book-service`, `member-service`, and `rental-service`, follow the existing structure:
+For `book-service`, `member-service`, `rental-service`, and `bestbook-service`, follow the Architecture Rule target structure:
 
 ```text
 com.example.library.{service}/
 ├── application/
-│   ├── inputport/
-│   ├── outputport/
-│   └── usecase/
+│   ├── dto/
+│   ├── port/
+│   │   ├── in/
+│   │   └── out/
+│   └── service/
 ├── config/
 ├── domain/
 │   └── model/
-└── framework/
-    ├── jpaadapter/
-    ├── kafkaadapter/
-    └── web/
-        └── dto/
-```
-
-For `bestbook-service`, preserve its existing structure unless a refactor is requested:
-
-```text
-com.example.library.bestbook/
-├── config/
-├── domain/
-│   └── model/
-├── framework/
-│   ├── jpaadapter/
-│   ├── kafkaadapter/
-│   └── web/
-│       └── dto/
-└── service/
+├── adapter/
+│   ├── in/
+│   │   ├── web/
+│   │   │   └── dto/
+│   │   └── messaging/
+│   │       └── consumer/
+│   └── out/
+│       ├── messaging/
+│       └── persistence/
+└── infrastructure/
+    ├── messaging/
+    ├── security/
+    └── common/
 ```
 
 For `common-events`, keep shared contracts under:
@@ -102,9 +97,21 @@ com.example.library.common/
 - Domain events express facts that already happened.
 - Result events express command processing outcomes.
 - Include correlation identifiers such as `commandId` where asynchronous command tracking is needed.
-- Kafka producers and consumers should live in framework Kafka adapters.
+- Kafka consumers should live in `adapter/in/messaging/consumer`.
+- Kafka producers should live in `adapter/out/messaging` and implement outbound event ports from `application/port/out`.
+- Persistence adapters should live in `adapter/out/persistence` and implement repository/output ports from `application/port/out`.
 - Consumers should deserialize, validate minimally, and delegate to application use cases.
 - Business decisions should not live in Kafka consumer classes.
+
+## Infrastructure Rules
+
+- `infrastructure` contains technical support code only: Kafka serializers/deserializers and messaging support, security support, common technical utilities, and other framework helpers.
+- `config` contains Spring `@Configuration` classes and bean wiring. Configuration classes may wire infrastructure support, adapters, and framework beans.
+- Kafka consumers are not infrastructure; keep them in `adapter/in/messaging/consumer`.
+- Kafka producers are not infrastructure; keep them in `adapter/out/messaging`.
+- JPA entities, persistence mappers, and Spring Data repositories are not infrastructure; keep them in `adapter/out/persistence`.
+- Domain and application code must not depend on `infrastructure`.
+- Do not put business rules, compensation decisions, use case orchestration, or service-to-service workflow logic in `infrastructure`.
 
 ## Validation
 

@@ -10,8 +10,8 @@ build/
 *.tmp
 *.swp
 
-out/
-target/
+/out/
+/target/
 
 .DS_Store
 Thumbs.db

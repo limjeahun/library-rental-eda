@@ -1,7 +1,7 @@
 package com.example.library.rental.adapter.in.messaging.consumer;
 
 import com.example.library.common.event.EventResult;
-import com.example.library.rental.application.port.in.CompensationUseCase;
+import com.example.library.rental.application.port.in.HandleRentalResultUseCase;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -18,12 +18,12 @@ public class RentalEventConsumer {
 
     private final ObjectMapper objectMapper;
     private final StringRedisTemplate redisTemplate;
-    private final CompensationUseCase compensationUseCase;
+    private final HandleRentalResultUseCase handleRentalResultUseCase;
 
-    public RentalEventConsumer(ObjectMapper objectMapper, StringRedisTemplate redisTemplate, CompensationUseCase compensationUseCase) {
+    public RentalEventConsumer(ObjectMapper objectMapper, StringRedisTemplate redisTemplate, HandleRentalResultUseCase handleRentalResultUseCase) {
         this.objectMapper = objectMapper;
         this.redisTemplate = redisTemplate;
-        this.compensationUseCase = compensationUseCase;
+        this.handleRentalResultUseCase = handleRentalResultUseCase;
     }
 
     @KafkaListener(topics = "${app.kafka.topics.rental-result}", groupId = "${spring.kafka.consumer.group-id}")
@@ -33,16 +33,7 @@ public class RentalEventConsumer {
             log.info("skip already processed rental_result eventId={}", result.getEventId());
             return;
         }
-        if (result.isSuccessed()) {
-            log.info("participant success eventType={} eventId={}", result.getEventType(), result.getEventId());
-            return;
-        }
-        switch (result.getEventType()) {
-            case RENT -> compensationUseCase.cancelRentItem(result.getIdName(), result.getItem());
-            case RETURN -> compensationUseCase.cancelReturnItem(result.getIdName(), result.getItem(), result.getPoint());
-            case OVERDUE -> compensationUseCase.cancelMakeAvailableRental(result.getIdName(), result.getPoint());
-            default -> log.warn("unsupported eventType={}", result.getEventType());
-        }
+        handleRentalResultUseCase.handle(result);
     }
 
     private boolean markProcessed(String eventId) {
