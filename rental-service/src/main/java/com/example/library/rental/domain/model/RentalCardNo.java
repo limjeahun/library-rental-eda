@@ -1,10 +1,8 @@
 package com.example.library.rental.domain.model;
 
-import jakarta.persistence.Embeddable;
 import java.time.Year;
 import java.util.UUID;
 
-@Embeddable
 public class RentalCardNo {
     private String no;
 

@@ -15,10 +15,10 @@ class BestBookTest {
     }
 
     @Test
-    void increseBestBookCount() {
+    void increaseBestBookCount() {
         BestBook bestBook = BestBook.registerBestBook(new Item(1L, "도서"));
 
-        bestBook.increseBestBookCount();
+        bestBook.increaseBestBookCount();
 
         assertThat(bestBook.getRentCount()).isEqualTo(2L);
     }

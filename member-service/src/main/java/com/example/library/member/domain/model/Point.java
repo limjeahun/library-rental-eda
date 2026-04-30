@@ -1,15 +1,7 @@
 package com.example.library.member.domain.model;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Embeddable;
-
-@Embeddable
 public class Point {
-    @Column(name = "point")
     private long point;
-
-    public Point() {
-    }
 
     public Point(long point) {
         if (point < 0) {
@@ -41,9 +33,5 @@ public class Point {
 
     public long getPoint() {
         return point;
-    }
-
-    public void setPoint(long point) {
-        this.point = point;
     }
 }

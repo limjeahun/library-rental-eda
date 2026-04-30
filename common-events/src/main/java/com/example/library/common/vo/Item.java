@@ -1,15 +1,9 @@
 package com.example.library.common.vo;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Embeddable;
 import java.util.Objects;
 
-@Embeddable
 public class Item {
-    @Column(name = "no")
     private Long no;
-
-    @Column(name = "title")
     private String title;
 
     public Item() {

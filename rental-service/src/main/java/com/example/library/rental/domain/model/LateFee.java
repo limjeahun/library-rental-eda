@@ -1,8 +1,5 @@
 package com.example.library.rental.domain.model;
 
-import jakarta.persistence.Embeddable;
-
-@Embeddable
 public class LateFee {
     private long point;
 

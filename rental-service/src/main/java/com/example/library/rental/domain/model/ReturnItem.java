@@ -1,22 +1,8 @@
 package com.example.library.rental.domain.model;
 
-import jakarta.persistence.AttributeOverride;
-import jakarta.persistence.AttributeOverrides;
-import jakarta.persistence.Column;
-import jakarta.persistence.Embeddable;
-import jakarta.persistence.Embedded;
 import java.time.LocalDate;
 
-@Embeddable
 public class ReturnItem {
-    @Embedded
-    @AttributeOverrides({
-        @AttributeOverride(name = "item.no", column = @Column(name = "rent_item_no")),
-        @AttributeOverride(name = "item.title", column = @Column(name = "rent_item_title")),
-        @AttributeOverride(name = "rentDate", column = @Column(name = "rent_date")),
-        @AttributeOverride(name = "overdued", column = @Column(name = "overdued")),
-        @AttributeOverride(name = "overdueDate", column = @Column(name = "overdue_date"))
-    })
     private RentItem item;
 
     private LocalDate returnDate;

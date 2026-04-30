@@ -1,23 +1,12 @@
 package com.example.library.rental.domain.model;
 
 import com.example.library.common.vo.Item;
-import jakarta.persistence.AttributeOverride;
-import jakarta.persistence.AttributeOverrides;
-import jakarta.persistence.Column;
-import jakarta.persistence.Embeddable;
-import jakarta.persistence.Embedded;
 import java.time.LocalDate;
 import java.util.Objects;
 
-@Embeddable
 public class RentItem {
     private static final int RENTAL_DAYS = 14;
 
-    @Embedded
-    @AttributeOverrides({
-        @AttributeOverride(name = "no", column = @Column(name = "item_no")),
-        @AttributeOverride(name = "title", column = @Column(name = "item_title"))
-    })
     private Item item;
 
     private LocalDate rentDate;

@@ -5,54 +5,21 @@ import com.example.library.common.event.ItemReturned;
 import com.example.library.common.event.OverdueCleared;
 import com.example.library.common.vo.IDName;
 import com.example.library.common.vo.Item;
-import jakarta.persistence.AttributeOverride;
-import jakarta.persistence.AttributeOverrides;
-import jakarta.persistence.CollectionTable;
-import jakarta.persistence.Column;
-import jakarta.persistence.ElementCollection;
-import jakarta.persistence.Embedded;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.Table;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 
-@Entity
-@Table(name = "rental_card")
 public class RentalCard {
     private static final int MAX_RENTAL_COUNT = 5;
 
-    @Id
     private String rentalCardNo;
-
-    @Embedded
-    @AttributeOverrides({
-        @AttributeOverride(name = "id", column = @Column(name = "member_id")),
-        @AttributeOverride(name = "name", column = @Column(name = "member_name"))
-    })
     private IDName member;
-
-    @Enumerated(EnumType.STRING)
     private RentStatus rentStatus;
-
-    @Embedded
     private LateFee lateFee;
-
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "rental_card_rent_item", joinColumns = @JoinColumn(name = "rental_card_no"))
     private List<RentItem> rentItemList = new ArrayList<>();
-
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "rental_card_return_item", joinColumns = @JoinColumn(name = "rental_card_no"))
     private List<ReturnItem> returnItemList = new ArrayList<>();
 
     public RentalCard() {
