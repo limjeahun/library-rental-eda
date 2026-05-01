@@ -44,6 +44,13 @@ subprojects {
         layout.buildDirectory.dir("generated/sources/annotationProcessor/java/main")
     )
 
+    dependencies {
+        "compileOnly"("org.projectlombok:lombok")
+        "annotationProcessor"("org.projectlombok:lombok")
+        "testCompileOnly"("org.projectlombok:lombok")
+        "testAnnotationProcessor"("org.projectlombok:lombok")
+    }
+
     tasks.withType<Test>().configureEach {
         useJUnitPlatform()
     }
@@ -63,30 +70,56 @@ project(":common-events") {
     }
 }
 
-val serviceProjects = listOf(
+project(":common-core") {
+    apply(plugin = "java-library")
+
+    dependencies {
+        "implementation"("org.springframework.boot:spring-boot-autoconfigure")
+        "implementation"("org.springframework.boot:spring-boot-starter-validation")
+        "implementation"("org.springframework.boot:spring-boot-starter-web")
+        "implementation"("org.springframework.security:spring-security-core")
+        "implementation"("org.springframework:spring-tx")
+        "testImplementation"("org.springframework.boot:spring-boot-starter-test")
+    }
+}
+
+val relationalServiceProjects = listOf(
     project(":rental-service"),
     project(":book-service"),
-    project(":member-service"),
-    project(":bestbook-service")
+    project(":member-service")
 )
+val bestbookServiceProject = project(":bestbook-service")
+val serviceProjects = relationalServiceProjects + bestbookServiceProject
 
 configure(serviceProjects) {
     apply(plugin = "org.springframework.boot")
 
     dependencies {
+        "implementation"(project(":common-core"))
         "implementation"(project(":common-events"))
         "implementation"("org.springframework.boot:spring-boot-starter-web")
         "implementation"("org.springframework.boot:spring-boot-starter-validation")
         "implementation"("org.springframework.boot:spring-boot-starter-security")
-        "implementation"("org.springframework.boot:spring-boot-starter-data-jpa")
         "implementation"("org.springframework.boot:spring-boot-starter-data-redis")
         "implementation"("org.springframework.kafka:spring-kafka")
+        "testImplementation"("org.springframework.boot:spring-boot-starter-test")
+        "testImplementation"("org.springframework.kafka:spring-kafka-test")
+    }
+}
+
+configure(relationalServiceProjects) {
+    dependencies {
+        "implementation"("org.springframework.boot:spring-boot-starter-data-jpa")
         "implementation"("com.querydsl:querydsl-jpa:$queryDslVersion:jakarta")
         "runtimeOnly"("org.mariadb.jdbc:mariadb-java-client")
         "annotationProcessor"("com.querydsl:querydsl-apt:$queryDslVersion:jakarta")
         "annotationProcessor"("jakarta.persistence:jakarta.persistence-api")
         "annotationProcessor"("jakarta.annotation:jakarta.annotation-api")
-        "testImplementation"("org.springframework.boot:spring-boot-starter-test")
-        "testImplementation"("org.springframework.kafka:spring-kafka-test")
+    }
+}
+
+project(":bestbook-service") {
+    dependencies {
+        "implementation"("org.springframework.boot:spring-boot-starter-data-mongodb")
     }
 }

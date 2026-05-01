@@ -11,8 +11,17 @@ import com.example.library.member.domain.model.UserRole;
 import java.util.List;
 import org.springframework.stereotype.Component;
 
+/**
+ * 회원 도메인 모델과 JPA 엔티티 사이의 변환을 담당합니다.
+ */
 @Component
 public class MemberPersistenceMapper {
+    /**
+     * 회원 도메인 모델을 JPA 저장용 엔티티로 변환합니다.
+     *
+     * @param member 저장하거나 응답으로 변환할 회원 도메인 모델입니다.
+     * @return 저장소 계층에서 사용할 JPA 모델을 반환합니다.
+     */
     public MemberJpaEntity toJpaEntity(Member member) {
         List<UserRole> roles = member.getAuthorites().stream()
             .map(Authority::getRole)
@@ -29,6 +38,12 @@ public class MemberPersistenceMapper {
         );
     }
 
+    /**
+     * JPA 엔티티를 회원 도메인 모델로 복원합니다.
+     *
+     * @param entity 도메인 모델로 변환할 저장소 엔티티입니다.
+     * @return 영속성 모델에서 복원한 도메인 모델을 반환합니다.
+     */
     public Member toDomain(MemberJpaEntity entity) {
         List<Authority> authorities = entity.getRoles().stream()
             .map(Authority::create)

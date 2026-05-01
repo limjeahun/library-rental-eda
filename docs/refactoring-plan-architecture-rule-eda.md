@@ -65,7 +65,8 @@ BUILD SUCCESSFUL
 
 - `AGENTS.md`와 이 계획안에 `infrastructure` 목표 구조와 경계 규칙 추가
 - `application/port/out` outbound port 보강
-- `adapter/out/persistence` JPA Entity, Mapper, Spring Data Repository, Persistence Adapter 보강
+- `book/member/rental-service`의 `adapter/out/persistence` JPA Entity, Mapper, Spring Data Repository, Persistence Adapter 보강
+- `bestbook-service`의 `adapter/out/persistence` MongoDB Document, MongoRepository, Mapper, Persistence Adapter 보강
 - `adapter/out/messaging` Kafka Producer Adapter 보강
 - Kafka Consumer의 처리 분기를 `application/service` UseCase 구현체로 이동
 - `adapter/out` 경로가 Git에서 무시되지 않도록 `.gitignore` 패턴 보정
@@ -116,15 +117,16 @@ infrastructure/
 config/
 ```
 
-### 4-2. Domain과 JPA 분리
+### 4-2. Domain과 Persistence 분리
 
-초기 분석 기준으로는 `domain/model`의 Aggregate 또는 VO가 JPA 어노테이션을 직접 가지고 있었지만, 보완 작업에서 JPA Entity를 `adapter/out/persistence/entity`로 분리했다.
+초기 분석 기준으로는 `domain/model`의 Aggregate 또는 VO가 JPA 어노테이션을 직접 가지고 있었지만, 보완 작업에서 persistence model을 adapter 영역으로 분리했다.
 
 유지 목표:
 
 - `domain/model`은 순수 Java 모델로 유지
-- JPA Entity는 `adapter/out/persistence/entity`로 이동
-- Domain Entity와 Jpa Entity 사이 Mapper 추가
+- `book/member/rental-service`의 JPA Entity는 `adapter/out/persistence/entity`에 위치
+- `bestbook-service`의 MongoDB Document는 `adapter/out/persistence/document`에 위치
+- Domain Model과 persistence model 사이 Mapper 유지
 
 ### 4-3. DTO와 메시지의 mutable class 사용
 
@@ -248,13 +250,14 @@ com.example.library.{domain}/
 - Kafka serializer/deserializer, 메시징 설정 보조 클래스, 공통 메시징 유틸리티
 - Spring Security filter/provider 등 보안 기술 지원 코드
 - Redis, ObjectMapper, clock/id generator 등 여러 adapter가 공유하는 기술 유틸리티
+- MongoDB client/custom converter 등 여러 adapter가 공유하는 기술 유틸리티
 - 프레임워크 통합을 위한 공통 helper
 
 제외 대상:
 
 - Kafka Consumer: `adapter/in/messaging/consumer`
 - Kafka Producer: `adapter/out/messaging`
-- JPA Entity, Mapper, Spring Data Repository: `adapter/out/persistence`
+- JPA Entity, MongoDB Document, Mapper, Spring Data Repository: `adapter/out/persistence`
 - Application Service, Command Handler, 보상 흐름 분기: `application/service`
 - Domain Model, Domain Event 생성 규칙: `domain`
 
@@ -348,7 +351,7 @@ com.example.library.{domain}/
 - Security filter/provider 등 보안 기술 구현은 `infrastructure/security`로 분리한다.
 - 여러 adapter에서 공유하는 순수 기술 유틸리티는 `infrastructure/common`으로 분리한다.
 - `KafkaConfig`, `SecurityConfig`, `QueryDslConfig`처럼 Bean wiring 중심의 `@Configuration`은 `config`에 남기되, 내부 구현이 커지면 infrastructure support 클래스로 추출한다.
-- Kafka Consumer/Producer/JPA Repository 구현은 infrastructure로 이동하지 않고 각각 `adapter/in/messaging/consumer`, `adapter/out/messaging`, `adapter/out/persistence`에 유지한다.
+- Kafka Consumer/Producer/JPA Repository/MongoRepository 구현은 infrastructure로 이동하지 않고 각각 `adapter/in/messaging/consumer`, `adapter/out/messaging`, `adapter/out/persistence`에 유지한다.
 
 주의:
 
@@ -403,9 +406,10 @@ Web Request DTO
 작업:
 
 - `domain/model`의 `@Entity`, `@Embeddable`, `@Column`, `@Id`, `@ElementCollection` 제거
-- `adapter/out/persistence/entity`에 JPA Entity 생성
-- `adapter/out/persistence/mapper`에 Domain/JPA Mapper 생성
-- Spring Data Repository는 JPA Entity만 다루도록 변경
+- `book/member/rental-service`는 `adapter/out/persistence/entity`에 JPA Entity 생성
+- `bestbook-service`는 `adapter/out/persistence/document`에 MongoDB `@Document` 생성
+- `adapter/out/persistence/mapper`에 Domain/Persistence Mapper 생성
+- Spring Data Repository는 JPA Entity 또는 MongoDB Document만 다루도록 변경
 - Outbound Port는 Domain Model을 반환/저장하도록 유지
 
 모듈별 난이도:
@@ -477,7 +481,7 @@ Web Request DTO
 완료 기준:
 
 - Consumer에 핵심 비즈니스 규칙 없음
-- Consumer가 JPA Repository를 직접 사용하지 않음
+- Consumer가 Spring Data Repository를 직접 사용하지 않음
 - Consumer가 KafkaTemplate을 직접 사용하지 않음
 
 ### Phase 7. API 응답 정책 정리
@@ -530,7 +534,7 @@ Web Request DTO
 현재 문제:
 
 - `service/BestBookService`가 repository 구현체에 직접 의존
-- `domain/model/BestBook`이 JPA Entity
+- `domain/model/BestBook`이 persistence model과 결합될 위험
 - Controller가 Service를 직접 사용
 
 계획:
@@ -538,7 +542,9 @@ Web Request DTO
 - `application/port/in/BestBookQueryUseCase`, `RecordBestBookRentUseCase` 생성
 - `application/port/out/BestBookPort` 생성
 - `application/service/BestBookService`로 이동
-- `adapter/out/persistence`에 JPA Entity, Repository, Mapper 구성
+- `adapter/out/persistence/document`에 MongoDB `@Document` 구성
+- `adapter/out/persistence/repository`에 `MongoRepository` 구성
+- `spring.data.mongodb` 설정과 로컬 MongoDB compose 서비스 구성
 - `adapter/in/messaging/consumer`에서 `RecordBestBookRentUseCase`만 호출
 - DTO를 record로 전환
 
@@ -632,6 +638,7 @@ Web Request DTO
 | 리스크 | 영향 | 대응 |
 |--------|------|------|
 | JPA Entity 분리로 QueryDSL Q-class 변경 | 컴파일 오류 | 모듈별로 작게 분리하고 즉시 테스트 |
+| bestbook-service MongoDB 전환 | 실행 환경 누락 | `spring.data.mongodb`와 compose MongoDB 서비스를 함께 유지 |
 | shared event record 전환 | 모든 서비스 직렬화 영향 | 기존 class 유지 후 단계적 전환 |
 | package rename 대량 발생 | import 충돌 | 서비스 단위로 적용 |
 | API DTO record 전환 | Jackson binding 영향 | 요청 DTO부터 테스트와 함께 전환 |
@@ -645,7 +652,7 @@ Web Request DTO
 - 전체 테스트 `.\gradlew.bat test` 성공
 - 서비스 간 직접 HTTP client 없음
 - Domain Layer에서 Spring/JPA/Kafka import 제거
-- JPA Entity는 persistence adapter 하위에만 위치
+- JPA Entity와 MongoDB Document는 persistence adapter 하위에만 위치
 - Controller와 Consumer는 Inbound Port만 의존
 - Application Service는 Outbound Port만 의존
 - Kafka Producer는 Outbound Messaging Adapter에서만 `KafkaTemplate` 사용

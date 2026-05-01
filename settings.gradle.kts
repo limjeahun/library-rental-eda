@@ -19,6 +19,7 @@ dependencyResolutionManagement {
 rootProject.name = "library-rental-eda"
 
 include(
+    "common-core",
     "common-events",
     "rental-service",
     "book-service",

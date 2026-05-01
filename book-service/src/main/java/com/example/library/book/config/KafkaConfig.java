@@ -21,6 +21,9 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.support.serializer.JsonSerializer;
 
+/**
+ * Kafka producer/consumer 팩토리와 메시지 JSON 처리를 위한 Spring Bean 설정입니다.
+ */
 @EnableKafka
 @Configuration
 public class KafkaConfig {
@@ -30,6 +33,11 @@ public class KafkaConfig {
     @Value("${spring.kafka.consumer.group-id}")
     private String groupId;
 
+    /**
+     * 공통 이벤트를 JSON 값으로 발행하기 위한 producer factory를 생성합니다.
+     *
+     * @return Kafka producer 생성을 위한 factory를 반환합니다.
+     */
     @Bean
     public ProducerFactory<String, Object> producerFactory() {
         Map<String, Object> props = new HashMap<>();
@@ -40,11 +48,21 @@ public class KafkaConfig {
         return new DefaultKafkaProducerFactory<>(props);
     }
 
+    /**
+     * Kafka 발행 컴포넌트가 사용할 KafkaTemplate을 제공합니다.
+     *
+     * @return Kafka 메시지 발행에 사용할 KafkaTemplate을 반환합니다.
+     */
     @Bean
     public KafkaTemplate<String, Object> kafkaTemplate() {
         return new KafkaTemplate<>(producerFactory());
     }
 
+    /**
+     * 문자열 본문를 수신하는 Kafka consumer factory를 생성합니다.
+     *
+     * @return Kafka consumer 생성을 위한 factory를 반환합니다.
+     */
     @Bean
     public ConsumerFactory<String, String> consumerFactory() {
         Map<String, Object> props = new HashMap<>();
@@ -56,6 +74,13 @@ public class KafkaConfig {
         return new DefaultKafkaConsumerFactory<>(props);
     }
 
+    /**
+     *
+     *
+     * @KafkaListener가 사용할 listener container factory를 제공합니다.
+     *
+     * @return Kafka listener container factory를 반환합니다.
+     */
     @Bean
     public ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory() {
         ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory<>();
@@ -63,6 +88,11 @@ public class KafkaConfig {
         return factory;
     }
 
+    /**
+     * Kafka consumer가 공통 이벤트 JSON을 Java 객체로 변환할 때 사용할 ObjectMapper를 제공합니다.
+     *
+     * @return Java Time 모듈과 역직렬화 옵션이 적용된 ObjectMapper를 반환합니다.
+     */
     @Bean
     public ObjectMapper objectMapper() {
         return new ObjectMapper()

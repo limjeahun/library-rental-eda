@@ -10,7 +10,9 @@
 ## Project Stack
 
 - Java application code is written in Java, not Kotlin.
-- The project uses Java 21, Gradle Wrapper 8.5, Spring Boot 3.3.7, MariaDB, Redis, and Kafka KRaft.
+- The project uses Java 21, Gradle Wrapper 8.5, Spring Boot 3.3.7, MariaDB, MongoDB, Redis, and Kafka KRaft.
+- `book-service`, `member-service`, and `rental-service` use MariaDB with Spring Data JPA.
+- `bestbook-service` is an event-maintained read model and uses MongoDB with Spring Data MongoDB.
 - The Gradle root project is `library-rental-eda`.
 - Current modules are:
   - `common-events`
@@ -30,7 +32,7 @@ Do not implement the following, even if the reference architecture document ment
 - SAGA orchestration code
 - Direct service-to-service HTTP calls
 
-Use normal Spring Boot, Spring Kafka, JPA, Redis, and Gradle patterns already present in the project.
+Use normal Spring Boot, Spring Kafka, JPA, MongoDB, Redis, and Gradle patterns already present in the project.
 
 ## Service Boundary Rules
 
@@ -44,7 +46,7 @@ Use normal Spring Boot, Spring Kafka, JPA, Redis, and Gradle patterns already pr
 ## Architecture Principles
 
 - Use DDD and Hexagonal Architecture as the default design style.
-- Domain code should contain business rules and stay independent from Spring, JPA, Kafka, Redis, and web frameworks.
+- Domain code should contain business rules and stay independent from Spring, JPA, MongoDB, Kafka, Redis, and web frameworks.
 - Application code should orchestrate use cases and depend on domain abstractions.
 - Adapters should handle web, Kafka, persistence, Redis, and other infrastructure concerns.
 - Do not expose domain entities directly from controllers.
@@ -100,6 +102,7 @@ com.example.library.common/
 - Kafka consumers should live in `adapter/in/messaging/consumer`.
 - Kafka producers should live in `adapter/out/messaging` and implement outbound event ports from `application/port/out`.
 - Persistence adapters should live in `adapter/out/persistence` and implement repository/output ports from `application/port/out`.
+- In `bestbook-service`, persistence adapters should use MongoDB `@Document` models and `MongoRepository`, not JPA entities or `JpaRepository`.
 - Consumers should deserialize, validate minimally, and delegate to application use cases.
 - Business decisions should not live in Kafka consumer classes.
 
@@ -109,7 +112,7 @@ com.example.library.common/
 - `config` contains Spring `@Configuration` classes and bean wiring. Configuration classes may wire infrastructure support, adapters, and framework beans.
 - Kafka consumers are not infrastructure; keep them in `adapter/in/messaging/consumer`.
 - Kafka producers are not infrastructure; keep them in `adapter/out/messaging`.
-- JPA entities, persistence mappers, and Spring Data repositories are not infrastructure; keep them in `adapter/out/persistence`.
+- JPA entities, MongoDB documents, persistence mappers, and Spring Data repositories are not infrastructure; keep them in `adapter/out/persistence`.
 - Domain and application code must not depend on `infrastructure`.
 - Do not put business rules, compensation decisions, use case orchestration, or service-to-service workflow logic in `infrastructure`.
 

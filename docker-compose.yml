@@ -22,6 +22,12 @@ services:
     ports:
       - "6379:6379"
 
+  mongodb:
+    image: mongo:7.0
+    container_name: library-mongodb
+    ports:
+      - "27017:27017"
+
   kafka:
     image: apache/kafka:3.9.0
     container_name: library-kafka

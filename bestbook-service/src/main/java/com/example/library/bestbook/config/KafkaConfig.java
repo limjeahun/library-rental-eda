@@ -15,6 +15,9 @@ import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 
+/**
+ * 인기 도서 read model 갱신용 Kafka consumer와 JSON 메시지 변환을 위한 Spring Bean 설정입니다.
+ */
 @EnableKafka
 @Configuration
 public class KafkaConfig {
@@ -24,6 +27,11 @@ public class KafkaConfig {
     @Value("${spring.kafka.consumer.group-id}")
     private String groupId;
 
+    /**
+     * 문자열 본문를 수신하는 Kafka consumer factory를 생성합니다.
+     *
+     * @return Kafka consumer 생성을 위한 factory를 반환합니다.
+     */
     @Bean
     public ConsumerFactory<String, String> consumerFactory() {
         Map<String, Object> props = new HashMap<>();
@@ -35,6 +43,13 @@ public class KafkaConfig {
         return new DefaultKafkaConsumerFactory<>(props);
     }
 
+    /**
+     *
+     *
+     * @KafkaListener가 사용할 listener container factory를 제공합니다.
+     *
+     * @return Kafka listener container factory를 반환합니다.
+     */
     @Bean
     public ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory() {
         ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory<>();
@@ -42,6 +57,11 @@ public class KafkaConfig {
         return factory;
     }
 
+    /**
+     * Kafka consumer가 대여 이벤트 JSON을 Java 객체로 변환할 때 사용할 ObjectMapper를 제공합니다.
+     *
+     * @return Java Time 모듈과 역직렬화 옵션이 적용된 ObjectMapper를 반환합니다.
+     */
     @Bean
     public ObjectMapper objectMapper() {
         return new ObjectMapper()
