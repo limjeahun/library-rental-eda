@@ -10,9 +10,8 @@ import com.example.library.member.application.dto.ChangePointCommand;
 import com.example.library.member.application.port.in.HandleMemberEventUseCase;
 import com.example.library.member.application.port.in.SavePointUseCase;
 import com.example.library.member.application.port.in.UsePointUseCase;
-import com.example.library.member.application.port.out.MemberEventOutputPort;
+import com.example.library.member.application.port.out.PublishMemberEventResultPort;
 import java.time.Instant;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -22,13 +21,23 @@ import org.springframework.stereotype.Service;
  */
 @Service
 @Slf4j
-@RequiredArgsConstructor
 public class MemberEventService implements HandleMemberEventUseCase {
     private final SavePointUseCase savePointUseCase;
     private final UsePointUseCase usePointUseCase;
-    private final MemberEventOutputPort memberEventOutputPort;
-    @Value("${app.failure.force-overdue-clear-fail:false}")
+    private final PublishMemberEventResultPort publishMemberEventResultPort;
     private final boolean forceOverdueClearFail;
+
+    public MemberEventService(
+        SavePointUseCase savePointUseCase,
+        UsePointUseCase usePointUseCase,
+        PublishMemberEventResultPort publishMemberEventResultPort,
+        @Value("${app.failure.force-overdue-clear-fail:false}") boolean forceOverdueClearFail
+    ) {
+        this.savePointUseCase = savePointUseCase;
+        this.usePointUseCase = usePointUseCase;
+        this.publishMemberEventResultPort = publishMemberEventResultPort;
+        this.forceOverdueClearFail = forceOverdueClearFail;
+    }
 
     /**
      * 대여 완료 이벤트를 처리해 회원에게 대여 포인트를 적립합니다.
@@ -70,10 +79,10 @@ public class MemberEventService implements HandleMemberEventUseCase {
                 throw new IllegalArgumentException("forced overdue_clear failure");
             }
             usePointUseCase.usePoint(new ChangePointCommand(event.getIdName(), event.getPoint()));
-            memberEventOutputPort.publish(result(event, true, null));
+            publishMemberEventResultPort.publish(result(event, true, null));
         } catch (Exception ex) {
             log.error("overdue clear failed eventId={}", event.getEventId(), ex);
-            memberEventOutputPort.publish(result(event, false, ex.getMessage()));
+            publishMemberEventResultPort.publish(result(event, false, ex.getMessage()));
         }
     }
 

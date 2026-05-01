@@ -3,7 +3,8 @@ package com.example.library.book.application.service;
 import com.example.library.book.application.port.in.HandleBookRentalEventUseCase;
 import com.example.library.book.application.port.in.MakeAvailableBookUseCase;
 import com.example.library.book.application.port.in.MakeUnavailableBookUseCase;
-import com.example.library.book.application.port.out.BookEventOutputPort;
+import com.example.library.book.application.port.out.PublishBookRentalResultPort;
+import com.example.library.book.config.BookFailureProperties;
 import com.example.library.common.event.EventResult;
 import com.example.library.common.event.EventType;
 import com.example.library.common.event.ItemRented;
@@ -11,7 +12,6 @@ import com.example.library.common.event.ItemReturned;
 import java.time.Instant;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 /**
@@ -23,11 +23,8 @@ import org.springframework.stereotype.Service;
 public class BookRentalEventService implements HandleBookRentalEventUseCase {
     private final MakeAvailableBookUseCase makeAvailableBookUseCase;
     private final MakeUnavailableBookUseCase makeUnavailableBookUseCase;
-    private final BookEventOutputPort bookEventOutputPort;
-    @Value("${app.failure.force-rent-fail:false}")
-    private final boolean forceRentFail;
-    @Value("${app.failure.force-return-fail:false}")
-    private final boolean forceReturnFail;
+    private final PublishBookRentalResultPort publishBookRentalResultPort;
+    private final BookFailureProperties failureProperties;
 
     /**
      * 도서 대여 이벤트를 처리해 도서를 대여 불가능 상태로 바꾸고 결과 이벤트를 발행합니다.
@@ -37,14 +34,14 @@ public class BookRentalEventService implements HandleBookRentalEventUseCase {
     @Override
     public void handleRent(ItemRented event) {
         try {
-            if (forceRentFail) {
+            if (failureProperties.forceRentFail()) {
                 throw new IllegalArgumentException("forced rental_rent failure");
             }
             makeUnavailableBookUseCase.makeUnavailable(event.getItem().getNo());
-            bookEventOutputPort.publish(result(event, EventType.RENT, true, null));
+            publishBookRentalResultPort.publish(result(event, EventType.RENT, true, null));
         } catch (Exception ex) {
             log.error("Book rent event failed eventId={}", event.getEventId(), ex);
-            bookEventOutputPort.publish(result(event, EventType.RENT, false, ex.getMessage()));
+            publishBookRentalResultPort.publish(result(event, EventType.RENT, false, ex.getMessage()));
         }
     }
 
@@ -56,14 +53,14 @@ public class BookRentalEventService implements HandleBookRentalEventUseCase {
     @Override
     public void handleReturn(ItemReturned event) {
         try {
-            if (forceReturnFail) {
+            if (failureProperties.forceReturnFail()) {
                 throw new IllegalArgumentException("forced rental_return failure");
             }
             makeAvailableBookUseCase.makeAvailable(event.getItem().getNo());
-            bookEventOutputPort.publish(result(event, EventType.RETURN, true, null));
+            publishBookRentalResultPort.publish(result(event, EventType.RETURN, true, null));
         } catch (Exception ex) {
             log.error("Book return event failed eventId={}", event.getEventId(), ex);
-            bookEventOutputPort.publish(result(event, EventType.RETURN, false, ex.getMessage()));
+            publishBookRentalResultPort.publish(result(event, EventType.RETURN, false, ex.getMessage()));
         }
     }
 

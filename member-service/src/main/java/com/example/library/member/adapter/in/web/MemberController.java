@@ -40,8 +40,11 @@ public class MemberController {
      */
     @PostMapping("/")
     public ResponseEntity<BaseResponse<MemberResponse>> addMember(@Valid @RequestBody MemberRequest request) {
-        return BaseResponse.created(MemberResponse.from(addMemberUseCase.addMember(request.toCommand())))
-            .toResponseEntity();
+        return BaseResponse.created(
+                MemberResponse.from(
+                        addMemberUseCase.addMember(request.toCommand())
+                )
+        ).toResponseEntity();
     }
 
     /**
@@ -78,7 +81,9 @@ public class MemberController {
     @PostMapping("/{id}/points/save")
     public ResponseEntity<BaseResponse<MemberResponse>> savePoint(@PathVariable String id, @Valid @RequestBody PointRequest request) {
         return BaseResponse.ok(
-            MemberResponse.from(savePointUseCase.savePoint(new ChangePointCommand(new IDName(id, null), request.point())))
+            MemberResponse.from(
+                    savePointUseCase.savePoint(request.toCommand(id))
+            )
         ).toResponseEntity();
     }
 

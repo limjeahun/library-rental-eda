@@ -2,7 +2,8 @@ package com.example.library.book.adapter.out.persistence;
 
 import com.example.library.book.adapter.out.persistence.mapper.BookPersistenceMapper;
 import com.example.library.book.adapter.out.persistence.repository.BookJpaRepository;
-import com.example.library.book.application.port.out.BookOutputPort;
+import com.example.library.book.application.port.out.LoadBookPort;
+import com.example.library.book.application.port.out.SaveBookPort;
 import com.example.library.book.domain.model.Book;
 import java.util.NoSuchElementException;
 import lombok.RequiredArgsConstructor;
@@ -13,7 +14,7 @@ import org.springframework.stereotype.Repository;
  */
 @Repository
 @RequiredArgsConstructor
-public class BookPersistenceAdapter implements BookOutputPort {
+public class BookPersistenceAdapter implements LoadBookPort, SaveBookPort {
     private final BookJpaRepository repository;
     private final BookPersistenceMapper mapper;
 

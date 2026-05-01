@@ -102,6 +102,7 @@ configure(serviceProjects) {
         "implementation"("org.springframework.boot:spring-boot-starter-security")
         "implementation"("org.springframework.boot:spring-boot-starter-data-redis")
         "implementation"("org.springframework.kafka:spring-kafka")
+        "annotationProcessor"("org.springframework.boot:spring-boot-configuration-processor")
         "testImplementation"("org.springframework.boot:spring-boot-starter-test")
         "testImplementation"("org.springframework.kafka:spring-kafka-test")
     }

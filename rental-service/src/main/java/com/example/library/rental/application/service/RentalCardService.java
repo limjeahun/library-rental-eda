@@ -13,8 +13,12 @@ import com.example.library.rental.application.port.in.OverdueItemUseCase;
 import com.example.library.rental.application.port.in.RentItemUseCase;
 import com.example.library.rental.application.port.in.RentalCardQueryUseCase;
 import com.example.library.rental.application.port.in.ReturnItemUseCase;
-import com.example.library.rental.application.port.out.RentalCardOutputPort;
-import com.example.library.rental.application.port.out.RentalEventOutputPort;
+import com.example.library.rental.application.port.out.LoadRentalCardPort;
+import com.example.library.rental.application.port.out.PublishItemRentedPort;
+import com.example.library.rental.application.port.out.PublishItemReturnedPort;
+import com.example.library.rental.application.port.out.PublishOverdueClearedPort;
+import com.example.library.rental.application.port.out.PublishPointUseCommandPort;
+import com.example.library.rental.application.port.out.SaveRentalCardPort;
 import com.example.library.rental.domain.model.RentItem;
 import com.example.library.rental.domain.model.RentalCard;
 import com.example.library.rental.domain.model.ReturnItem;
@@ -38,8 +42,12 @@ public class RentalCardService implements CreateRentalCardUseCase, RentItemUseCa
     private static final long RENT_POINT = 10L;
     private static final long RETURN_POINT = 10L;
 
-    private final RentalCardOutputPort rentalCardOutputPort;
-    private final RentalEventOutputPort rentalEventOutputPort;
+    private final LoadRentalCardPort loadRentalCardPort;
+    private final SaveRentalCardPort saveRentalCardPort;
+    private final PublishItemRentedPort publishItemRentedPort;
+    private final PublishItemReturnedPort publishItemReturnedPort;
+    private final PublishOverdueClearedPort publishOverdueClearedPort;
+    private final PublishPointUseCommandPort publishPointUseCommandPort;
 
     /**
      * 회원에게 기존 대여카드가 있으면 반환하고 없으면 새 대여카드를 생성합니다.
@@ -49,8 +57,8 @@ public class RentalCardService implements CreateRentalCardUseCase, RentItemUseCa
      */
     @Override
     public RentalCard createRentalCard(IDName creator) {
-        return rentalCardOutputPort.loadRentalCard(creator.getId())
-            .orElseGet(() -> rentalCardOutputPort.save(RentalCard.createRentalCard(creator)));
+        return loadRentalCardPort.loadRentalCard(creator.getId())
+            .orElseGet(() -> saveRentalCardPort.save(RentalCard.createRentalCard(creator)));
     }
 
     /**
@@ -62,12 +70,12 @@ public class RentalCardService implements CreateRentalCardUseCase, RentItemUseCa
      */
     @Override
     public RentalCard rentItem(IDName idName, Item item) {
-        RentalCard rentalCard = rentalCardOutputPort.loadRentalCard(idName.getId())
+        RentalCard rentalCard = loadRentalCardPort.loadRentalCard(idName.getId())
             .orElseGet(() -> RentalCard.createRentalCard(idName));
         rentalCard.rentItem(item);
-        RentalCard saved = rentalCardOutputPort.save(rentalCard);
+        RentalCard saved = saveRentalCardPort.save(rentalCard);
         ItemRented itemRented = RentalCard.createItemRentedEvent(idName, item, RENT_POINT);
-        rentalEventOutputPort.publishRentalEvent(itemRented);
+        publishItemRentedPort.publishRentalEvent(itemRented);
         return saved;
     }
 
@@ -83,9 +91,9 @@ public class RentalCardService implements CreateRentalCardUseCase, RentItemUseCa
     public RentalCard returnItem(IDName idName, Item item, LocalDate returnDate) {
         RentalCard rentalCard = load(idName);
         rentalCard.returnItem(item, returnDate);
-        RentalCard saved = rentalCardOutputPort.save(rentalCard);
+        RentalCard saved = saveRentalCardPort.save(rentalCard);
         ItemReturned itemReturned = RentalCard.createItemReturnEvent(idName, item, RETURN_POINT);
-        rentalEventOutputPort.publishReturnEvent(itemReturned);
+        publishItemReturnedPort.publishReturnEvent(itemReturned);
         return saved;
     }
 
@@ -100,7 +108,7 @@ public class RentalCardService implements CreateRentalCardUseCase, RentItemUseCa
     public RentalCard overdueItem(IDName idName, Item item) {
         RentalCard rentalCard = load(idName);
         rentalCard.overdueItem(item);
-        return rentalCardOutputPort.save(rentalCard);
+        return saveRentalCardPort.save(rentalCard);
     }
 
     /**
@@ -114,9 +122,9 @@ public class RentalCardService implements CreateRentalCardUseCase, RentItemUseCa
     public RentalCard clearOverdue(IDName idName, long point) {
         RentalCard rentalCard = load(idName);
         long usedPoint = rentalCard.makeAvailableRental(point);
-        RentalCard saved = rentalCardOutputPort.save(rentalCard);
+        RentalCard saved = saveRentalCardPort.save(rentalCard);
         OverdueCleared overdueCleared = RentalCard.createOverdueClearedEvent(idName, usedPoint);
-        rentalEventOutputPort.publishOverdueClearEvent(overdueCleared);
+        publishOverdueClearedPort.publishOverdueClearEvent(overdueCleared);
         return saved;
     }
 
@@ -129,7 +137,7 @@ public class RentalCardService implements CreateRentalCardUseCase, RentItemUseCa
     @Override
     @Transactional(readOnly = true)
     public RentalCard getRentalCard(String userId) {
-        return rentalCardOutputPort.loadRentalCard(userId)
+        return loadRentalCardPort.loadRentalCard(userId)
             .orElseThrow(() -> new NoSuchElementException("대여카드를 찾을 수 없습니다."));
     }
 
@@ -167,8 +175,8 @@ public class RentalCardService implements CreateRentalCardUseCase, RentItemUseCa
     public void cancelRentItem(IDName idName, Item item) {
         RentalCard rentalCard = load(idName);
         rentalCard.cancelRentItem(item);
-        rentalCardOutputPort.save(rentalCard);
-        rentalEventOutputPort.publishPointUseCommand(createPointUseCommand(idName, RENT_POINT, "RENT_COMPENSATION"));
+        saveRentalCardPort.save(rentalCard);
+        publishPointUseCommandPort.publishPointUseCommand(createPointUseCommand(idName, RENT_POINT, "RENT_COMPENSATION"));
     }
 
     /**
@@ -182,8 +190,8 @@ public class RentalCardService implements CreateRentalCardUseCase, RentItemUseCa
     public void cancelReturnItem(IDName idName, Item item, long point) {
         RentalCard rentalCard = load(idName);
         rentalCard.cancelReturnItem(item, point);
-        rentalCardOutputPort.save(rentalCard);
-        rentalEventOutputPort.publishPointUseCommand(createPointUseCommand(idName, point, "RETURN_COMPENSATION"));
+        saveRentalCardPort.save(rentalCard);
+        publishPointUseCommandPort.publishPointUseCommand(createPointUseCommand(idName, point, "RETURN_COMPENSATION"));
     }
 
     /**
@@ -196,7 +204,7 @@ public class RentalCardService implements CreateRentalCardUseCase, RentItemUseCa
     public void cancelMakeAvailableRental(IDName idName, long point) {
         RentalCard rentalCard = load(idName);
         rentalCard.cancelMakeAvailableRental(point);
-        rentalCardOutputPort.save(rentalCard);
+        saveRentalCardPort.save(rentalCard);
     }
 
     /**
@@ -206,7 +214,7 @@ public class RentalCardService implements CreateRentalCardUseCase, RentItemUseCa
      * @return 보상 또는 상태 변경 대상 대여카드를 반환합니다.
      */
     private RentalCard load(IDName idName) {
-        return rentalCardOutputPort.loadRentalCard(idName.getId())
+        return loadRentalCardPort.loadRentalCard(idName.getId())
             .orElseThrow(() -> new IllegalArgumentException("대여카드가 없습니다."));
     }
 

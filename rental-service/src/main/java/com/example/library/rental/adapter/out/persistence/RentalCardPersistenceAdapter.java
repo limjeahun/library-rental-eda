@@ -2,7 +2,8 @@ package com.example.library.rental.adapter.out.persistence;
 
 import com.example.library.rental.adapter.out.persistence.mapper.RentalCardPersistenceMapper;
 import com.example.library.rental.adapter.out.persistence.repository.RentalCardJpaRepository;
-import com.example.library.rental.application.port.out.RentalCardOutputPort;
+import com.example.library.rental.application.port.out.LoadRentalCardPort;
+import com.example.library.rental.application.port.out.SaveRentalCardPort;
 import com.example.library.rental.domain.model.RentalCard;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
@@ -13,7 +14,7 @@ import org.springframework.stereotype.Repository;
  */
 @Repository
 @RequiredArgsConstructor
-public class RentalCardPersistenceAdapter implements RentalCardOutputPort {
+public class RentalCardPersistenceAdapter implements LoadRentalCardPort, SaveRentalCardPort {
     private final RentalCardJpaRepository repository;
     private final RentalCardPersistenceMapper mapper;
 

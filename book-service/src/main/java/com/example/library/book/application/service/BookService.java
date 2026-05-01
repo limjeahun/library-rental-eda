@@ -6,7 +6,8 @@ import com.example.library.book.application.port.in.AddBookUseCase;
 import com.example.library.book.application.port.in.BookQueryUseCase;
 import com.example.library.book.application.port.in.MakeAvailableBookUseCase;
 import com.example.library.book.application.port.in.MakeUnavailableBookUseCase;
-import com.example.library.book.application.port.out.BookOutputPort;
+import com.example.library.book.application.port.out.LoadBookPort;
+import com.example.library.book.application.port.out.SaveBookPort;
 import com.example.library.book.domain.model.Book;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -19,7 +20,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 @RequiredArgsConstructor
 public class BookService implements AddBookUseCase, BookQueryUseCase, MakeAvailableBookUseCase, MakeUnavailableBookUseCase {
-    private final BookOutputPort bookOutputPort;
+    private final LoadBookPort loadBookPort;
+    private final SaveBookPort saveBookPort;
 
     /**
      * 새 도서를 입고 상태로 등록하고 저장 결과를 반환합니다.
@@ -30,7 +32,7 @@ public class BookService implements AddBookUseCase, BookQueryUseCase, MakeAvaila
     @Override
     public BookResult addBook(AddBookCommand command) {
         Book book = Book.enterBook(command.title(), command.desc(), command.classfication(), command.location());
-        return BookResult.from(bookOutputPort.save(book));
+        return BookResult.from(saveBookPort.save(book));
     }
 
     /**
@@ -42,7 +44,7 @@ public class BookService implements AddBookUseCase, BookQueryUseCase, MakeAvaila
     @Override
     @Transactional(readOnly = true)
     public BookResult getBook(long bookNo) {
-        return BookResult.from(bookOutputPort.loadBook(bookNo));
+        return BookResult.from(loadBookPort.loadBook(bookNo));
     }
 
     /**
@@ -53,9 +55,9 @@ public class BookService implements AddBookUseCase, BookQueryUseCase, MakeAvaila
      */
     @Override
     public BookResult makeAvailable(long bookNo) {
-        Book book = bookOutputPort.loadBook(bookNo);
+        Book book = loadBookPort.loadBook(bookNo);
         book.makeAvailable();
-        return BookResult.from(bookOutputPort.save(book));
+        return BookResult.from(saveBookPort.save(book));
     }
 
     /**
@@ -66,8 +68,8 @@ public class BookService implements AddBookUseCase, BookQueryUseCase, MakeAvaila
      */
     @Override
     public BookResult makeUnavailable(long bookNo) {
-        Book book = bookOutputPort.loadBook(bookNo);
+        Book book = loadBookPort.loadBook(bookNo);
         book.makeUnAvailable();
-        return BookResult.from(bookOutputPort.save(book));
+        return BookResult.from(saveBookPort.save(book));
     }
 }

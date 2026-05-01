@@ -3,7 +3,9 @@ package com.example.library.member.adapter.out.persistence;
 import com.example.library.common.vo.IDName;
 import com.example.library.member.adapter.out.persistence.mapper.MemberPersistenceMapper;
 import com.example.library.member.adapter.out.persistence.repository.MemberJpaRepository;
-import com.example.library.member.application.port.out.MemberOutputPort;
+import com.example.library.member.application.port.out.LoadMemberByIdNamePort;
+import com.example.library.member.application.port.out.LoadMemberPort;
+import com.example.library.member.application.port.out.SaveMemberPort;
 import com.example.library.member.domain.model.Member;
 import java.util.NoSuchElementException;
 import lombok.RequiredArgsConstructor;
@@ -14,7 +16,7 @@ import org.springframework.stereotype.Repository;
  */
 @Repository
 @RequiredArgsConstructor
-public class MemberPersistenceAdapter implements MemberOutputPort {
+public class MemberPersistenceAdapter implements LoadMemberByIdNamePort, LoadMemberPort, SaveMemberPort {
     private final MemberJpaRepository repository;
     private final MemberPersistenceMapper mapper;
 

@@ -2,7 +2,10 @@ package com.example.library.bestbook.adapter.out.persistence;
 
 import com.example.library.bestbook.adapter.out.persistence.mapper.BestBookPersistenceMapper;
 import com.example.library.bestbook.adapter.out.persistence.repository.BestBookMongoRepository;
-import com.example.library.bestbook.application.port.out.BestBookPort;
+import com.example.library.bestbook.application.port.out.FindAllBestBooksPort;
+import com.example.library.bestbook.application.port.out.FindBestBookByIdPort;
+import com.example.library.bestbook.application.port.out.FindBestBookByItemNoPort;
+import com.example.library.bestbook.application.port.out.SaveBestBookPort;
 import com.example.library.bestbook.domain.model.BestBook;
 import java.util.List;
 import java.util.Optional;
@@ -14,7 +17,8 @@ import org.springframework.stereotype.Repository;
  */
 @Repository
 @RequiredArgsConstructor
-public class BestBookPersistenceAdapter implements BestBookPort {
+public class BestBookPersistenceAdapter implements FindAllBestBooksPort, FindBestBookByIdPort,
+    FindBestBookByItemNoPort, SaveBestBookPort {
     private final BestBookMongoRepository repository;
     private final BestBookPersistenceMapper mapper;
 

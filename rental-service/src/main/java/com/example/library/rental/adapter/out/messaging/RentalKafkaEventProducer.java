@@ -4,9 +4,12 @@ import com.example.library.common.event.ItemRented;
 import com.example.library.common.event.ItemReturned;
 import com.example.library.common.event.OverdueCleared;
 import com.example.library.common.event.PointUseCommand;
-import com.example.library.rental.application.port.out.RentalEventOutputPort;
+import com.example.library.rental.application.port.out.PublishItemRentedPort;
+import com.example.library.rental.application.port.out.PublishItemReturnedPort;
+import com.example.library.rental.application.port.out.PublishOverdueClearedPort;
+import com.example.library.rental.application.port.out.PublishPointUseCommandPort;
+import com.example.library.rental.config.RentalKafkaTopicProperties;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
@@ -15,16 +18,10 @@ import org.springframework.stereotype.Component;
  */
 @Component
 @RequiredArgsConstructor
-public class RentalKafkaEventProducer implements RentalEventOutputPort {
+public class RentalKafkaEventProducer implements PublishItemRentedPort, PublishItemReturnedPort,
+    PublishOverdueClearedPort, PublishPointUseCommandPort {
     private final KafkaTemplate<String, Object> kafkaTemplate;
-    @Value("${app.kafka.topics.rental-rent}")
-    private final String rentalRentTopic;
-    @Value("${app.kafka.topics.rental-return}")
-    private final String rentalReturnTopic;
-    @Value("${app.kafka.topics.overdue-clear}")
-    private final String overdueClearTopic;
-    @Value("${app.kafka.topics.point-use}")
-    private final String pointUseTopic;
+    private final RentalKafkaTopicProperties topicProperties;
 
     /**
      * 도서 대여 완료 이벤트를 대여 토픽으로 발행합니다.
@@ -33,7 +30,7 @@ public class RentalKafkaEventProducer implements RentalEventOutputPort {
      */
     @Override
     public void publishRentalEvent(ItemRented event) {
-        kafkaTemplate.send(rentalRentTopic, event.getCorrelationId(), event);
+        kafkaTemplate.send(topicProperties.rentalRent(), event.getCorrelationId(), event);
     }
 
     /**
@@ -43,7 +40,7 @@ public class RentalKafkaEventProducer implements RentalEventOutputPort {
      */
     @Override
     public void publishReturnEvent(ItemReturned event) {
-        kafkaTemplate.send(rentalReturnTopic, event.getCorrelationId(), event);
+        kafkaTemplate.send(topicProperties.rentalReturn(), event.getCorrelationId(), event);
     }
 
     /**
@@ -53,7 +50,7 @@ public class RentalKafkaEventProducer implements RentalEventOutputPort {
      */
     @Override
     public void publishOverdueClearEvent(OverdueCleared event) {
-        kafkaTemplate.send(overdueClearTopic, event.getCorrelationId(), event);
+        kafkaTemplate.send(topicProperties.overdueClear(), event.getCorrelationId(), event);
     }
 
     /**
@@ -63,6 +60,6 @@ public class RentalKafkaEventProducer implements RentalEventOutputPort {
      */
     @Override
     public void publishPointUseCommand(PointUseCommand command) {
-        kafkaTemplate.send(pointUseTopic, command.getCorrelationId(), command);
+        kafkaTemplate.send(topicProperties.pointUse(), command.getCorrelationId(), command);
     }
 }
