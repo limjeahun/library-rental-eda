@@ -1,10 +1,8 @@
 CREATE DATABASE IF NOT EXISTS rental_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE DATABASE IF NOT EXISTS book_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE DATABASE IF NOT EXISTS member_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE DATABASE IF NOT EXISTS bestbook_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 GRANT ALL PRIVILEGES ON rental_db.* TO 'library'@'%';
 GRANT ALL PRIVILEGES ON book_db.* TO 'library'@'%';
 GRANT ALL PRIVILEGES ON member_db.* TO 'library'@'%';
-GRANT ALL PRIVILEGES ON bestbook_db.* TO 'library'@'%';
 FLUSH PRIVILEGES;

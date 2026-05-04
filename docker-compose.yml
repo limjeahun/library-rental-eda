@@ -27,6 +27,8 @@ services:
     container_name: library-mongodb
     ports:
       - "27017:27017"
+    volumes:
+      - ./docker/mongodb/init:/docker-entrypoint-initdb.d
 
   kafka:
     image: apache/kafka:3.9.0

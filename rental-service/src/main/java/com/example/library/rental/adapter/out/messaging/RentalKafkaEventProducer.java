@@ -24,13 +24,17 @@ public class RentalKafkaEventProducer implements PublishItemRentedPort, PublishI
     private final RentalKafkaTopicProperties topicProperties;
 
     /**
-     * 도서 대여 완료 이벤트를 대여 토픽으로 발행합니다.
+     * 도서 대여 완료 이벤트를 대여 토픽으로 발행.
      *
-     * @param event 처리하거나 발행할 도메인 이벤트 메시지입니다.
+     * @param event 처리하거나 발행할 도메인 이벤트 메시지.
      */
     @Override
     public void publishRentalEvent(ItemRented event) {
-        kafkaTemplate.send(topicProperties.rentalRent(), event.correlationId(), event);
+        kafkaTemplate.send(
+                topicProperties.rentalRent(),
+                event.correlationId(),
+                event
+        );
     }
 
     /**
