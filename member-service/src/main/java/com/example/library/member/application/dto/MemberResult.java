@@ -24,11 +24,11 @@ public record MemberResult(Long memberNo, String id, String name, String email, 
     public static MemberResult from(Member member) {
         return new MemberResult(
             member.getMemberNo(),
-            member.getIdName().getId(),
-            member.getIdName().getName(),
-            member.getEmail().getValue(),
-            member.getAuthorites().stream().map(authority -> authority.getRole()).toList(),
-            member.getPoint().getPoint()
+            member.getIdName().id(),
+            member.getIdName().name(),
+            member.getEmail().value(),
+            member.getAuthorites().stream().map(authority -> authority.role()).toList(),
+            member.getPoint().point()
         );
     }
 }

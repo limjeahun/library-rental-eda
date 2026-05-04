@@ -1,8 +1,8 @@
 package com.example.library.book.application.dto;
 
-import com.example.library.book.domain.model.BookDesc;
 import com.example.library.book.domain.model.Classfication;
 import com.example.library.book.domain.model.Location;
+import com.example.library.book.domain.vo.BookDesc;
 
 /**
  * 도서 등록 업무에 필요한 제목, 설명, 분류, 위치를 담은 application command입니다.

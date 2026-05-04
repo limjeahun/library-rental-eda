@@ -37,8 +37,8 @@ public class MemberEventConsumer {
     @KafkaListener(topics = "${app.kafka.topics.rental-rent}", groupId = "${spring.kafka.consumer.group-id}")
     public void consumeRent(ConsumerRecord<String, String> record) throws Exception {
         ItemRented event = objectMapper.readValue(record.value(), ItemRented.class);
-        if (!markProcessed(event.getEventId())) {
-            log.info("skip already processed member rent eventId={}", event.getEventId());
+        if (!markProcessed(event.eventId())) {
+            log.info("skip already processed member rent eventId={}", event.eventId());
             return;
         }
         handleMemberEventUseCase.handleRent(event);
@@ -53,8 +53,8 @@ public class MemberEventConsumer {
     @KafkaListener(topics = "${app.kafka.topics.rental-return}", groupId = "${spring.kafka.consumer.group-id}")
     public void consumeReturn(ConsumerRecord<String, String> record) throws Exception {
         ItemReturned event = objectMapper.readValue(record.value(), ItemReturned.class);
-        if (!markProcessed(event.getEventId())) {
-            log.info("skip already processed member return eventId={}", event.getEventId());
+        if (!markProcessed(event.eventId())) {
+            log.info("skip already processed member return eventId={}", event.eventId());
             return;
         }
         handleMemberEventUseCase.handleReturn(event);
@@ -69,8 +69,8 @@ public class MemberEventConsumer {
     @KafkaListener(topics = "${app.kafka.topics.overdue-clear}", groupId = "${spring.kafka.consumer.group-id}")
     public void consumeClear(ConsumerRecord<String, String> record) throws Exception {
         OverdueCleared event = objectMapper.readValue(record.value(), OverdueCleared.class);
-        if (!markProcessed(event.getEventId())) {
-            log.info("skip already processed overdue clear eventId={}", event.getEventId());
+        if (!markProcessed(event.eventId())) {
+            log.info("skip already processed overdue clear eventId={}", event.eventId());
             return;
         }
         handleMemberEventUseCase.handleOverdueClear(event);
@@ -85,8 +85,8 @@ public class MemberEventConsumer {
     @KafkaListener(topics = "${app.kafka.topics.point-use}", groupId = "${spring.kafka.consumer.group-id}")
     public void consumeUsePoint(ConsumerRecord<String, String> record) throws Exception {
         PointUseCommand command = objectMapper.readValue(record.value(), PointUseCommand.class);
-        if (!markProcessed(command.getEventId())) {
-            log.info("skip already processed point_use eventId={}", command.getEventId());
+        if (!markProcessed(command.eventId())) {
+            log.info("skip already processed point_use eventId={}", command.eventId());
             return;
         }
         handleMemberEventUseCase.handlePointUse(command);

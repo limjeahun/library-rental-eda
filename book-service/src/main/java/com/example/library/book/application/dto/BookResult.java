@@ -43,11 +43,11 @@ public record BookResult(
         return new BookResult(
             book.getNo(),
             book.getTitle(),
-            book.getDesc().getDescription(),
-            book.getDesc().getAuthor(),
-            book.getDesc().getIsbn(),
-            book.getDesc().getPublicationDate(),
-            book.getDesc().getSource(),
+            book.getDesc().description(),
+            book.getDesc().author(),
+            book.getDesc().isbn(),
+            book.getDesc().publicationDate(),
+            book.getDesc().source(),
             book.getClassfication(),
             book.getBookStatus(),
             book.getLocation()

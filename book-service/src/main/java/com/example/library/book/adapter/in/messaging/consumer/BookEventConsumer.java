@@ -34,8 +34,8 @@ public class BookEventConsumer {
     @KafkaListener(topics = "${app.kafka.topics.rental-rent}", groupId = "${spring.kafka.consumer.group-id}")
     public void consumeRent(ConsumerRecord<String, String> record) throws Exception {
         ItemRented event = objectMapper.readValue(record.value(), ItemRented.class);
-        if (!markProcessed(event.getEventId())) {
-            log.info("skip already processed book rent eventId={}", event.getEventId());
+        if (!markProcessed(event.eventId())) {
+            log.info("skip already processed book rent eventId={}", event.eventId());
             return;
         }
         handleBookRentalEventUseCase.handleRent(event);
@@ -50,8 +50,8 @@ public class BookEventConsumer {
     @KafkaListener(topics = "${app.kafka.topics.rental-return}", groupId = "${spring.kafka.consumer.group-id}")
     public void consumeReturn(ConsumerRecord<String, String> record) throws Exception {
         ItemReturned event = objectMapper.readValue(record.value(), ItemReturned.class);
-        if (!markProcessed(event.getEventId())) {
-            log.info("skip already processed book return eventId={}", event.getEventId());
+        if (!markProcessed(event.eventId())) {
+            log.info("skip already processed book return eventId={}", event.eventId());
             return;
         }
         handleBookRentalEventUseCase.handleReturn(event);

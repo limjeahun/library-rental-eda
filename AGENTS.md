@@ -15,6 +15,7 @@
 - `bestbook-service` is an event-maintained read model and uses MongoDB with Spring Data MongoDB.
 - The Gradle root project is `library-rental-eda`.
 - Current modules are:
+  - `common-core`
   - `common-events`
   - `book-service`
   - `member-service`
@@ -48,11 +49,17 @@ Use normal Spring Boot, Spring Kafka, JPA, MongoDB, Redis, and Gradle patterns a
 - Use DDD and Hexagonal Architecture as the default design style.
 - Domain code should contain business rules and stay independent from Spring, JPA, MongoDB, Kafka, Redis, and web frameworks.
 - Application code should orchestrate use cases and depend on domain abstractions.
-- Adapters should handle web, Kafka, persistence, Redis, and other infrastructure concerns.
+- Adapters should handle web, Kafka, persistence, Redis, and other technical integration concerns.
 - Do not expose domain entities directly from controllers.
 - Do not put persistence annotations on pure domain models unless the existing code already uses that pattern and the task is explicitly scoped to preserve it.
 - Keep inbound ports, outbound ports, use cases, domain models, and adapters separated.
 - Prefer Java `record` for DTOs, commands, events, and simple immutable message payloads when compatible with the existing code.
+- Keep simple immutable domain value objects under `domain/vo` and prefer Java `record` for them.
+- Keep child domain models that participate in aggregate state transitions under `domain/model`, even when they are implemented as Java records.
+- Domain enums that express business state or business classification belong in `domain/model`.
+- Shared message/protocol enums used across services belong in `common-events`, and adapter-only or persistence-only enums should stay in the relevant adapter package.
+- Use record canonical accessors such as `id()`, `item()`, and `correlationId()` for records. Do not add JavaBean compatibility getters or setters to records.
+- Existing aggregate/domain model getters such as `RentalCard.getRentItemList()` and persistence entity getters may remain when they are part of the current API or framework mapping style.
 
 ## Target Package Structure
 
@@ -68,7 +75,8 @@ com.example.library.{service}/
 │   └── service/
 ├── config/
 ├── domain/
-│   └── model/
+│   ├── model/
+│   └── vo/
 ├── adapter/
 │   ├── in/
 │   │   ├── web/
@@ -78,10 +86,6 @@ com.example.library.{service}/
 │   └── out/
 │       ├── messaging/
 │       └── persistence/
-└── infrastructure/
-    ├── messaging/
-    ├── security/
-    └── common/
 ```
 
 For `common-events`, keep shared contracts under:
@@ -98,7 +102,10 @@ com.example.library.common/
 - Command messages express requested actions.
 - Domain events express facts that already happened.
 - Result events express command processing outcomes.
-- Include correlation identifiers such as `commandId` where asynchronous command tracking is needed.
+- Shared event, command, result, and common value contracts in `common-events` should be Java records and should be accessed with record accessors.
+- Use `eventId` as the unique message identifier for idempotent consumer checks.
+- Use `correlationId` to tie one asynchronous business flow together across domain events, result events, and compensation commands.
+- When publishing a compensation command from a failed result event, create a new `eventId` for the command and preserve the original `correlationId`.
 - Kafka consumers should live in `adapter/in/messaging/consumer`.
 - Kafka producers should live in `adapter/out/messaging` and implement outbound event ports from `application/port/out`.
 - Persistence adapters should live in `adapter/out/persistence` and implement repository/output ports from `application/port/out`.
@@ -106,15 +113,17 @@ com.example.library.common/
 - Consumers should deserialize, validate minimally, and delegate to application use cases.
 - Business decisions should not live in Kafka consumer classes.
 
-## Infrastructure Rules
+## Config and Technical Support Rules
 
-- `infrastructure` contains technical support code only: Kafka serializers/deserializers and messaging support, security support, common technical utilities, and other framework helpers.
-- `config` contains Spring `@Configuration` classes and bean wiring. Configuration classes may wire infrastructure support, adapters, and framework beans.
-- Kafka consumers are not infrastructure; keep them in `adapter/in/messaging/consumer`.
-- Kafka producers are not infrastructure; keep them in `adapter/out/messaging`.
-- JPA entities, MongoDB documents, persistence mappers, and Spring Data repositories are not infrastructure; keep them in `adapter/out/persistence`.
-- Domain and application code must not depend on `infrastructure`.
-- Do not put business rules, compensation decisions, use case orchestration, or service-to-service workflow logic in `infrastructure`.
+- This project does not use a dedicated `infrastructure` package by default.
+- Spring `@Configuration`, configuration properties, and technical bean wiring belong in `config`.
+- Small technical support classes that exist only to support configuration may live under `config` or a clear `config` subpackage.
+- Do not introduce `infrastructure/messaging` unless the project structure is explicitly redesigned.
+- Kafka consumers live in `adapter/in/messaging/consumer`.
+- Kafka producers live in `adapter/out/messaging`.
+- JPA entities, MongoDB documents, persistence mappers, and Spring Data repositories live in `adapter/out/persistence`.
+- Domain and application code must not depend on `config` or adapter packages.
+- Do not put business rules, compensation decisions, use case orchestration, or service-to-service workflow logic in `config`.
 
 ## Validation
 

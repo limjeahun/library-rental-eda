@@ -1010,7 +1010,7 @@ SAGA는 **로컬 트랜잭션의 연쇄와 보상**으로 결과적 일관성을
 
 ### 13-4. Aggregate Root의 보상 메서드 정의 규칙
 
-★ **자료의 `cancleRentItem`, `cancleReturnItem`, `cancleMakeAvailableRental` 패턴을 일반화한 규칙**
+★ **자료의 `cancelRentItem`, `cancelReturnItem`, `cancelMakeAvailableRental` 패턴을 일반화한 규칙**
 
 | 정상 메서드 | 보상 메서드 명명 | 책임 |
 |-----------|----------------|------|

@@ -1,7 +1,12 @@
 package com.example.library.member.domain.model;
 
 import com.example.library.common.vo.IDName;
+import com.example.library.member.domain.vo.Authority;
+import com.example.library.member.domain.vo.Email;
+import com.example.library.member.domain.vo.PassWord;
+import com.example.library.member.domain.vo.Point;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -55,7 +60,8 @@ public class Member {
      * @return 적립 후 회원의 보유 포인트 잔액을 반환합니다.
      */
     public long savePoint(long point) {
-        return this.point.savePoint(point);
+        this.point = this.point.savePoint(point);
+        return this.point.point();
     }
 
     /**
@@ -65,7 +71,8 @@ public class Member {
      * @return 차감 후 회원의 보유 포인트 잔액을 반환합니다.
      */
     public long usePoint(long point) {
-        return this.point.usePoint(point);
+        this.point = this.point.usePoint(point);
+        return this.point.point();
     }
 
     /**
@@ -119,7 +126,7 @@ public class Member {
      * @return 회원에게 부여된 권한 값 목록을 반환합니다.
      */
     public List<Authority> getAuthorites() {
-        return authorites;
+        return Collections.unmodifiableList(authorites);
     }
 
     /**

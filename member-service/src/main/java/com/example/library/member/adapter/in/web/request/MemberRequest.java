@@ -2,8 +2,8 @@ package com.example.library.member.adapter.in.web.request;
 
 import com.example.library.common.vo.IDName;
 import com.example.library.member.application.dto.AddMemberCommand;
-import com.example.library.member.domain.model.Email;
-import com.example.library.member.domain.model.PassWord;
+import com.example.library.member.domain.vo.Email;
+import com.example.library.member.domain.vo.PassWord;
 import jakarta.validation.constraints.NotBlank;
 
 /**

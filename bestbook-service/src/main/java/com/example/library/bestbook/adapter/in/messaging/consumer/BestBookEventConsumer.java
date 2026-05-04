@@ -34,13 +34,13 @@ public class BestBookEventConsumer {
     @KafkaListener(topics = "${app.kafka.topics.rental-rent}", groupId = "${spring.kafka.consumer.group-id}")
     public void consumeRent(ConsumerRecord<String, String> record) throws Exception {
         ItemRented event = objectMapper.readValue(record.value(), ItemRented.class);
-        if (!markProcessed(event.getEventId())) {
-            log.info("skip already processed bestbook eventId={}", event.getEventId());
+        if (!markProcessed(event.eventId())) {
+            log.info("skip already processed bestbook eventId={}", event.eventId());
             return;
         }
         recordBestBookRentUseCase.recordRent(new RecordBestBookRentCommand(
-            event.getItem().getNo(),
-            event.getItem().getTitle()
+            event.item().no(),
+            event.item().title()
         ));
     }
 

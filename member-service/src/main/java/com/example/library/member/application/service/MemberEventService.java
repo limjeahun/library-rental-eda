@@ -47,9 +47,9 @@ public class MemberEventService implements HandleMemberEventUseCase {
     @Override
     public void handleRent(ItemRented event) {
         try {
-            savePointUseCase.savePoint(new ChangePointCommand(event.getIdName(), event.getPoint()));
+            savePointUseCase.savePoint(new ChangePointCommand(event.idName(), event.point()));
         } catch (Exception ex) {
-            log.error("member rent point save failed eventId={}", event.getEventId(), ex);
+            log.error("member rent point save failed eventId={}", event.eventId(), ex);
         }
     }
 
@@ -61,9 +61,9 @@ public class MemberEventService implements HandleMemberEventUseCase {
     @Override
     public void handleReturn(ItemReturned event) {
         try {
-            savePointUseCase.savePoint(new ChangePointCommand(event.getIdName(), event.getPoint()));
+            savePointUseCase.savePoint(new ChangePointCommand(event.idName(), event.point()));
         } catch (Exception ex) {
-            log.error("member return point save failed eventId={}", event.getEventId(), ex);
+            log.error("member return point save failed eventId={}", event.eventId(), ex);
         }
     }
 
@@ -78,10 +78,10 @@ public class MemberEventService implements HandleMemberEventUseCase {
             if (forceOverdueClearFail) {
                 throw new IllegalArgumentException("forced overdue_clear failure");
             }
-            usePointUseCase.usePoint(new ChangePointCommand(event.getIdName(), event.getPoint()));
+            usePointUseCase.usePoint(new ChangePointCommand(event.idName(), event.point()));
             publishMemberEventResultPort.publish(result(event, true, null));
         } catch (Exception ex) {
-            log.error("overdue clear failed eventId={}", event.getEventId(), ex);
+            log.error("overdue clear failed eventId={}", event.eventId(), ex);
             publishMemberEventResultPort.publish(result(event, false, ex.getMessage()));
         }
     }
@@ -94,9 +94,9 @@ public class MemberEventService implements HandleMemberEventUseCase {
     @Override
     public void handlePointUse(PointUseCommand command) {
         try {
-            usePointUseCase.usePoint(new ChangePointCommand(command.getIdName(), command.getPoint()));
+            usePointUseCase.usePoint(new ChangePointCommand(command.idName(), command.point()));
         } catch (Exception ex) {
-            log.error("point_use command failed eventId={} reason={}", command.getEventId(), command.getReason(), ex);
+            log.error("point_use command failed eventId={} reason={}", command.eventId(), command.reason(), ex);
         }
     }
 
@@ -110,14 +110,14 @@ public class MemberEventService implements HandleMemberEventUseCase {
      */
     private EventResult result(OverdueCleared event, boolean successed, String reason) {
         return new EventResult(
-            event.getEventId(),
-            event.getCorrelationId(),
+            event.eventId(),
+            event.correlationId(),
             Instant.now(),
             EventType.OVERDUE,
             successed,
-            event.getIdName(),
+            event.idName(),
             null,
-            event.getPoint(),
+            event.point(),
             reason
         );
     }

@@ -33,8 +33,8 @@ public class RentalEventConsumer {
     @KafkaListener(topics = "${app.kafka.topics.rental-result}", groupId = "${spring.kafka.consumer.group-id}")
     public void consumeRentalResult(ConsumerRecord<String, String> record) throws Exception {
         EventResult result = objectMapper.readValue(record.value(), EventResult.class);
-        if (!markProcessed(result.getEventId())) {
-            log.info("skip already processed rental_result eventId={}", result.getEventId());
+        if (!markProcessed(result.eventId())) {
+            log.info("skip already processed rental_result eventId={}", result.eventId());
             return;
         }
         handleRentalResultUseCase.handle(result);

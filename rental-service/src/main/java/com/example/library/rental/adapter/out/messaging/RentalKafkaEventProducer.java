@@ -30,7 +30,7 @@ public class RentalKafkaEventProducer implements PublishItemRentedPort, PublishI
      */
     @Override
     public void publishRentalEvent(ItemRented event) {
-        kafkaTemplate.send(topicProperties.rentalRent(), event.getCorrelationId(), event);
+        kafkaTemplate.send(topicProperties.rentalRent(), event.correlationId(), event);
     }
 
     /**
@@ -40,7 +40,7 @@ public class RentalKafkaEventProducer implements PublishItemRentedPort, PublishI
      */
     @Override
     public void publishReturnEvent(ItemReturned event) {
-        kafkaTemplate.send(topicProperties.rentalReturn(), event.getCorrelationId(), event);
+        kafkaTemplate.send(topicProperties.rentalReturn(), event.correlationId(), event);
     }
 
     /**
@@ -50,7 +50,7 @@ public class RentalKafkaEventProducer implements PublishItemRentedPort, PublishI
      */
     @Override
     public void publishOverdueClearEvent(OverdueCleared event) {
-        kafkaTemplate.send(topicProperties.overdueClear(), event.getCorrelationId(), event);
+        kafkaTemplate.send(topicProperties.overdueClear(), event.correlationId(), event);
     }
 
     /**
@@ -60,6 +60,6 @@ public class RentalKafkaEventProducer implements PublishItemRentedPort, PublishI
      */
     @Override
     public void publishPointUseCommand(PointUseCommand command) {
-        kafkaTemplate.send(topicProperties.pointUse(), command.getCorrelationId(), command);
+        kafkaTemplate.send(topicProperties.pointUse(), command.correlationId(), command);
     }
 }

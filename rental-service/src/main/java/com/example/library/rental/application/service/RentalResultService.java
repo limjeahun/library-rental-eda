@@ -23,16 +23,16 @@ public class RentalResultService implements HandleRentalResultUseCase {
      */
     @Override
     public void handle(EventResult result) {
-        if (result.isSuccessed()) {
-            log.info("participant success eventType={} eventId={}", result.getEventType(), result.getEventId());
+        if (result.successed()) {
+            log.info("participant success eventType={} eventId={}", result.eventType(), result.eventId());
             return;
         }
 
-        switch (result.getEventType()) {
-            case RENT -> compensationUseCase.cancelRentItem(result.getIdName(), result.getItem());
-            case RETURN -> compensationUseCase.cancelReturnItem(result.getIdName(), result.getItem(), result.getPoint());
-            case OVERDUE -> compensationUseCase.cancelMakeAvailableRental(result.getIdName(), result.getPoint());
-            default -> log.warn("unsupported eventType={}", result.getEventType());
+        switch (result.eventType()) {
+            case RENT -> compensationUseCase.cancelRentItem(result.idName(), result.item(), result.correlationId());
+            case RETURN -> compensationUseCase.cancelReturnItem(result.idName(), result.item(), result.point(), result.correlationId());
+            case OVERDUE -> compensationUseCase.cancelMakeAvailableRental(result.idName(), result.point(), result.correlationId());
+            default -> log.warn("unsupported eventType={}", result.eventType());
         }
     }
 }

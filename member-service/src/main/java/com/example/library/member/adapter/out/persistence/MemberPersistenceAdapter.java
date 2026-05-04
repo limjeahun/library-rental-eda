@@ -52,8 +52,8 @@ public class MemberPersistenceAdapter implements LoadMemberByIdNamePort, LoadMem
      */
     @Override
     public Member loadMemberByIdName(IDName idName) {
-        return repository.findByMemberId(idName.getId())
+        return repository.findByMemberId(idName.id())
             .map(mapper::toDomain)
-            .orElseThrow(() -> new NoSuchElementException("회원을 찾을 수 없습니다: " + idName.getId()));
+            .orElseThrow(() -> new NoSuchElementException("회원을 찾을 수 없습니다: " + idName.id()));
     }
 }

@@ -37,10 +37,10 @@ public class BookRentalEventService implements HandleBookRentalEventUseCase {
             if (failureProperties.forceRentFail()) {
                 throw new IllegalArgumentException("forced rental_rent failure");
             }
-            makeUnavailableBookUseCase.makeUnavailable(event.getItem().getNo());
+            makeUnavailableBookUseCase.makeUnavailable(event.item().no());
             publishBookRentalResultPort.publish(result(event, EventType.RENT, true, null));
         } catch (Exception ex) {
-            log.error("Book rent event failed eventId={}", event.getEventId(), ex);
+            log.error("Book rent event failed eventId={}", event.eventId(), ex);
             publishBookRentalResultPort.publish(result(event, EventType.RENT, false, ex.getMessage()));
         }
     }
@@ -56,11 +56,29 @@ public class BookRentalEventService implements HandleBookRentalEventUseCase {
             if (failureProperties.forceReturnFail()) {
                 throw new IllegalArgumentException("forced rental_return failure");
             }
-            makeAvailableBookUseCase.makeAvailable(event.getItem().getNo());
-            publishBookRentalResultPort.publish(result(event, EventType.RETURN, true, null));
+            makeAvailableBookUseCase.makeAvailable(event.item().no());
+            publishBookRentalResultPort.publish(result(
+                event.eventId(),
+                event.correlationId(),
+                event.idName(),
+                event.item(),
+                event.point(),
+                EventType.RETURN,
+                true,
+                null
+            ));
         } catch (Exception ex) {
-            log.error("Book return event failed eventId={}", event.getEventId(), ex);
-            publishBookRentalResultPort.publish(result(event, EventType.RETURN, false, ex.getMessage()));
+            log.error("Book return event failed eventId={}", event.eventId(), ex);
+            publishBookRentalResultPort.publish(result(
+                event.eventId(),
+                event.correlationId(),
+                event.idName(),
+                event.item(),
+                event.point(),
+                EventType.RETURN,
+                false,
+                ex.getMessage()
+            ));
         }
     }
 
@@ -74,15 +92,37 @@ public class BookRentalEventService implements HandleBookRentalEventUseCase {
      * @return 도서 상태 변경 성공/실패, 회원, 도서, 포인트, 사유를 담은 EventResult를 반환합니다.
      */
     private EventResult result(ItemRented event, EventType eventType, boolean successed, String reason) {
+        return result(
+            event.eventId(),
+            event.correlationId(),
+            event.idName(),
+            event.item(),
+            event.point(),
+            eventType,
+            successed,
+            reason
+        );
+    }
+
+    private EventResult result(
+        String eventId,
+        String correlationId,
+        com.example.library.common.vo.IDName idName,
+        com.example.library.common.vo.Item item,
+        long point,
+        EventType eventType,
+        boolean successed,
+        String reason
+    ) {
         return new EventResult(
-            event.getEventId(),
-            event.getCorrelationId(),
+            eventId,
+            correlationId,
             Instant.now(),
             eventType,
             successed,
-            event.getIdName(),
-            event.getItem(),
-            event.getPoint(),
+            idName,
+            item,
+            point,
             reason
         );
     }

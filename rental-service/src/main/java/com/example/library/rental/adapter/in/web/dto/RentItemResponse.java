@@ -21,11 +21,11 @@ public record RentItemResponse(Long itemId, String itemTitle, LocalDate rentDate
      */
     public static RentItemResponse from(RentItem rentItem) {
         return new RentItemResponse(
-            rentItem.getItem().getNo(),
-            rentItem.getItem().getTitle(),
-            rentItem.getRentDate(),
-            rentItem.isOverdued(),
-            rentItem.getOverdueDate()
+            rentItem.item().no(),
+            rentItem.item().title(),
+            rentItem.rentDate(),
+            rentItem.overdued(),
+            rentItem.overdueDate()
         );
     }
 }

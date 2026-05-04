@@ -1,10 +1,10 @@
 package com.example.library.book.adapter.in.web.dto;
 
 import com.example.library.book.application.dto.AddBookCommand;
-import com.example.library.book.domain.model.BookDesc;
 import com.example.library.book.domain.model.Classfication;
 import com.example.library.book.domain.model.Location;
 import com.example.library.book.domain.model.Source;
+import com.example.library.book.domain.vo.BookDesc;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.time.LocalDate;

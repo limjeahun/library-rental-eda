@@ -27,79 +27,99 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 대여카드 생성, 도서 대여/반납, 연체 표시, 연체료 정산, 대여카드 조회 HTTP 요청을 처리하는 REST 컨트롤러입니다.
+ * 대여카드 생성, 도서 대여/반납, 연체 표시, 연체료 정산, 대여카드 조회 요청을 처리.
  */
 @RestController
-@RequestMapping("/api/RentalCard")
+@RequestMapping("/api/rental-cards")
 @RequiredArgsConstructor
 public class RentalCardController {
-    private final CreateRentalCardUseCase createRentalCardUseCase;
-    private final RentItemUseCase rentItemUseCase;
-    private final ReturnItemUseCase returnItemUseCase;
-    private final OverdueItemUseCase overdueItemUseCase;
-    private final ClearOverdueItemUseCase clearOverdueItemUseCase;
-    private final RentalCardQueryUseCase rentalCardQueryUseCase;
+    private final CreateRentalCardUseCase   createRentalCardUseCase;
+    private final RentItemUseCase           rentItemUseCase;
+    private final ReturnItemUseCase         returnItemUseCase;
+    private final OverdueItemUseCase        overdueItemUseCase;
+    private final ClearOverdueItemUseCase   clearOverdueItemUseCase;
+    private final RentalCardQueryUseCase    rentalCardQueryUseCase;
 
     /**
-     * 회원 요청으로 대여카드를 생성하거나 기존 카드를 반환합니다.
+     * 회원 요청으로 대여카드를 생성하거나 기존 카드를 반환.
      *
-     * @param request 대여카드를 만들 회원 ID와 이름을 담은 요청 본문 DTO입니다.
-     * @return 클라이언트에 반환할 HTTP 응답 DTO를 반환합니다.
+     * @param request 대여카드를 만들 회원 ID와 이름을 담은 요청 본문 DTO.
+     * @return 클라이언트에 반환할 HTTP 응답 DTO 를 반환.
      */
-    @PostMapping("/")
+    @PostMapping
     public ResponseEntity<BaseResponse<RentalCardResponse>> createRentalCard(@Valid @RequestBody UserRequest request) {
-        return BaseResponse.ok(RentalCardResponse.from(createRentalCardUseCase.createRentalCard(request.toIdName())))
+        return BaseResponse.ok(
+                    RentalCardResponse.from(
+                        createRentalCardUseCase.createRentalCard(request.toIdName())
+                    )
+                )
             .toResponseEntity();
     }
 
     /**
-     * 회원 ID로 대여카드를 조회합니다.
+     * 회원 ID로 대여카드를 조회.
      *
-     * @param id 조회 대상 식별자입니다.
-     * @return 클라이언트에 반환할 HTTP 응답 DTO를 반환합니다.
+     * @param memberId 조회 대상 회원 ID.
+     * @return 클라이언트에 반환할 HTTP 응답 DTO 를 반환.
      */
-    @GetMapping("/{id}")
-    public ResponseEntity<BaseResponse<RentalCardResponse>> getRentalCard(@PathVariable String id) {
-        return BaseResponse.ok(RentalCardResponse.from(rentalCardQueryUseCase.getRentalCard(id)))
+    @GetMapping("/{memberId}")
+    public ResponseEntity<BaseResponse<RentalCardResponse>> getRentalCard(@PathVariable String memberId) {
+        return BaseResponse.ok(
+                    RentalCardResponse.from(
+                            rentalCardQueryUseCase.getRentalCard(memberId)
+                    )
+                )
             .toResponseEntity();
     }
 
     /**
-     * 회원 ID로 현재 대여 중인 도서 목록을 조회합니다.
+     * 회원 ID로 현재 대여 중인 도서 목록을 조회.
      *
-     * @param id 조회 대상 식별자입니다.
-     * @return 조회 결과를 HTTP 응답 DTO 목록으로 변환해 반환합니다.
+     * @param memberId 조회 대상 회원 ID.
+     * @return 조회 결과를 HTTP 응답 DTO 목록으로 변환해 반환.
      */
-    @GetMapping("/{id}/rentbook")
-    public ResponseEntity<BaseResponse<List<RentItemResponse>>> getRentBooks(@PathVariable String id) {
-        return BaseResponse.ok(rentalCardQueryUseCase.getRentItems(id).stream().map(RentItemResponse::from).toList())
+    @GetMapping("/{memberId}/rent-items")
+    public ResponseEntity<BaseResponse<List<RentItemResponse>>> getRentItems(@PathVariable String memberId) {
+        return BaseResponse.ok(
+                    rentalCardQueryUseCase.getRentItems(memberId).stream()
+                            .map(RentItemResponse::from)
+                            .toList()
+                )
             .toResponseEntity();
     }
 
     /**
-     * 회원 ID로 반납 완료된 도서 목록을 조회합니다.
+     * 회원 ID로 반납 완료된 도서 목록을 조회.
      *
-     * @param id 조회 대상 식별자입니다.
-     * @return 조회 결과를 HTTP 응답 DTO 목록으로 변환해 반환합니다.
+     * @param memberId 조회 대상 회원 ID.
+     * @return 조회 결과를 HTTP 응답 DTO 목록으로 변환해 반환.
      */
-    @GetMapping("/{id}/returnbook")
-    public ResponseEntity<BaseResponse<List<ReturnItemResponse>>> getReturnBooks(@PathVariable String id) {
-        return BaseResponse.ok(rentalCardQueryUseCase.getReturnItems(id).stream().map(ReturnItemResponse::from).toList())
+    @GetMapping("/{memberId}/return-items")
+    public ResponseEntity<BaseResponse<List<ReturnItemResponse>>> getReturnItems(@PathVariable String memberId) {
+        return BaseResponse.ok(
+                    rentalCardQueryUseCase.getReturnItems(memberId).stream()
+                            .map(ReturnItemResponse::from)
+                            .toList()
+                )
             .toResponseEntity();
     }
 
     /**
-     * 도서 대여를 처리하고 후속 Kafka 이벤트 발행 결과 메시지를 반환합니다.
+     * 도서 대여를 처리하고 후속 Kafka 이벤트 발행 결과 메시지를 반환.
      *
-     * @param request 대여할 회원 ID/이름과 도서 번호/제목을 담은 요청 본문 DTO입니다.
-     * @return 클라이언트에 반환할 HTTP 응답 DTO를 반환합니다.
+     * @param request 대여할 회원 ID/이름과 도서 번호/제목을 담은 요청 본문 DTO.
+     * @return 클라이언트에 반환할 HTTP 응답 DTO 를 반환.
      */
     @PostMapping("/rent")
     public ResponseEntity<BaseResponse<RentalResultResponse>> rent(@Valid @RequestBody UserItemRequest request) {
-        return BaseResponse.accepted(RentalResultResponse.of(
-            "도서 대여 이벤트를 발행했습니다.",
-            RentalCardResponse.from(rentItemUseCase.rentItem(request.toIdName(), request.toItem()))
-        )).toResponseEntity();
+        return BaseResponse.accepted(
+                RentalResultResponse.of(
+                        "도서 대여 이벤트를 발행했습니다.",
+                        RentalCardResponse.from(
+                                rentItemUseCase.rentItem(request.toIdName(), request.toItem())
+                        )
+                )
+        ).toResponseEntity();
     }
 
     /**
@@ -134,7 +154,7 @@ public class RentalCardController {
      * @param request 연체료 정산에 사용할 회원 ID/이름과 포인트를 담은 요청 본문 DTO입니다.
      * @return 클라이언트에 반환할 HTTP 응답 DTO를 반환합니다.
      */
-    @PostMapping("/clearoverdue")
+    @PostMapping("/clear-overdue")
     public ResponseEntity<BaseResponse<RentalResultResponse>> clearOverdue(@Valid @RequestBody ClearOverdueRequest request) {
         return BaseResponse.accepted(RentalResultResponse.of(
             "연체해제 이벤트를 발행했습니다.",

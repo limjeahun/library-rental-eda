@@ -2,12 +2,12 @@ package com.example.library.member.adapter.out.persistence.mapper;
 
 import com.example.library.common.vo.IDName;
 import com.example.library.member.adapter.out.persistence.entity.MemberJpaEntity;
-import com.example.library.member.domain.model.Authority;
-import com.example.library.member.domain.model.Email;
 import com.example.library.member.domain.model.Member;
-import com.example.library.member.domain.model.PassWord;
-import com.example.library.member.domain.model.Point;
 import com.example.library.member.domain.model.UserRole;
+import com.example.library.member.domain.vo.Authority;
+import com.example.library.member.domain.vo.Email;
+import com.example.library.member.domain.vo.PassWord;
+import com.example.library.member.domain.vo.Point;
 import java.util.List;
 import org.springframework.stereotype.Component;
 
@@ -24,17 +24,17 @@ public class MemberPersistenceMapper {
      */
     public MemberJpaEntity toJpaEntity(Member member) {
         List<UserRole> roles = member.getAuthorites().stream()
-            .map(Authority::getRole)
+            .map(Authority::role)
             .toList();
 
         return new MemberJpaEntity(
             member.getMemberNo(),
-            member.getIdName().getId(),
-            member.getIdName().getName(),
-            member.getPassword().getValue(),
-            member.getEmail().getValue(),
+            member.getIdName().id(),
+            member.getIdName().name(),
+            member.getPassword().value(),
+            member.getEmail().value(),
             roles,
-            member.getPoint().getPoint()
+            member.getPoint().point()
         );
     }
 

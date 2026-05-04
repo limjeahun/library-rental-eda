@@ -20,10 +20,10 @@ public record ReturnItemResponse(Long itemId, String itemTitle, LocalDate rentDa
      */
     public static ReturnItemResponse from(ReturnItem returnItem) {
         return new ReturnItemResponse(
-            returnItem.getItem().getItem().getNo(),
-            returnItem.getItem().getItem().getTitle(),
-            returnItem.getItem().getRentDate(),
-            returnItem.getReturnDate()
+            returnItem.item().item().no(),
+            returnItem.item().item().title(),
+            returnItem.item().rentDate(),
+            returnItem.returnDate()
         );
     }
 }

@@ -29,6 +29,6 @@ public class BookKafkaEventProducer implements PublishBookRentalResultPort {
      */
     @Override
     public void publish(EventResult result) {
-        kafkaTemplate.send(rentalResultTopic, result.getCorrelationId(), result);
+        kafkaTemplate.send(rentalResultTopic, result.correlationId(), result);
     }
 }

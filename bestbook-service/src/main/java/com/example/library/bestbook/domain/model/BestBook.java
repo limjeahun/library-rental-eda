@@ -33,7 +33,7 @@ public class BestBook {
      * @return 첫 대여 횟수 1회가 기록된 인기 도서 도메인 모델을 반환합니다.
      */
     public static BestBook registerBestBook(Item item) {
-        return new BestBook(null, item.getNo(), item.getTitle(), 1L);
+        return new BestBook(null, item.no(), item.title(), 1L);
     }
 
     /**

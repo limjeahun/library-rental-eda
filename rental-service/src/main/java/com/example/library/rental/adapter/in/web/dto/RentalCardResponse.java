@@ -33,10 +33,10 @@ public record RentalCardResponse(
     public static RentalCardResponse from(RentalCard rentalCard) {
         return new RentalCardResponse(
             rentalCard.getRentalCardNo(),
-            rentalCard.getMember().getId(),
-            rentalCard.getMember().getName(),
+            rentalCard.getMember().id(),
+            rentalCard.getMember().name(),
             rentalCard.getRentStatus(),
-            rentalCard.getLateFee().getPoint(),
+            rentalCard.getLateFee().point(),
             rentalCard.getRentItemList().stream().map(RentItemResponse::from).toList(),
             rentalCard.getReturnItemList().stream().map(ReturnItemResponse::from).toList()
         );

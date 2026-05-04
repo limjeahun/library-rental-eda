@@ -1,5 +1,7 @@
 package com.example.library.book.domain.model;
 
+import com.example.library.book.domain.vo.BookDesc;
+
 /**
  * 도서의 입고 상태, 대여 가능 상태, 위치를 관리하는 순수 도메인 모델입니다.
  */

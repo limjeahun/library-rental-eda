@@ -19,8 +19,8 @@ import com.example.library.rental.application.port.out.PublishItemReturnedPort;
 import com.example.library.rental.application.port.out.PublishOverdueClearedPort;
 import com.example.library.rental.application.port.out.PublishPointUseCommandPort;
 import com.example.library.rental.application.port.out.SaveRentalCardPort;
-import com.example.library.rental.domain.model.RentItem;
 import com.example.library.rental.domain.model.RentalCard;
+import com.example.library.rental.domain.model.RentItem;
 import com.example.library.rental.domain.model.ReturnItem;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -32,7 +32,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 대여카드 생성, 도서 대여/반납, 연체료 정산, 보상 command 발행 흐름을 조율하는 application service입니다.
+ * 대여카드 생성, 도서 대여/반납, 연체료 정산, 보상 command 발행 흐름을 조율하는 service.
  */
 @Service
 @Transactional
@@ -42,39 +42,44 @@ public class RentalCardService implements CreateRentalCardUseCase, RentItemUseCa
     private static final long RENT_POINT = 10L;
     private static final long RETURN_POINT = 10L;
 
-    private final LoadRentalCardPort loadRentalCardPort;
-    private final SaveRentalCardPort saveRentalCardPort;
-    private final PublishItemRentedPort publishItemRentedPort;
-    private final PublishItemReturnedPort publishItemReturnedPort;
-    private final PublishOverdueClearedPort publishOverdueClearedPort;
+    private final LoadRentalCardPort         loadRentalCardPort;
+    private final SaveRentalCardPort         saveRentalCardPort;
+    private final PublishItemRentedPort      publishItemRentedPort;
+    private final PublishItemReturnedPort    publishItemReturnedPort;
+    private final PublishOverdueClearedPort  publishOverdueClearedPort;
     private final PublishPointUseCommandPort publishPointUseCommandPort;
 
     /**
-     * 회원에게 기존 대여카드가 있으면 반환하고 없으면 새 대여카드를 생성합니다.
+     * 회원에게 기존 대여카드가 있으면 반환하고 없으면 새 대여카드를 생성.
      *
-     * @param creator 대여카드를 생성할 회원의 식별 값입니다.
-     * @return 기존 대여카드 또는 새로 저장한 대여카드를 반환합니다.
+     * @param creator 대여카드를 생성할 회원의 식별 값.
+     * @return 기존 대여카드 또는 새로 저장한 대여카드를 반환.
      */
     @Override
     public RentalCard createRentalCard(IDName creator) {
-        return loadRentalCardPort.loadRentalCard(creator.getId())
-            .orElseGet(() -> saveRentalCardPort.save(RentalCard.createRentalCard(creator)));
+        return loadRentalCardPort.loadRentalCard(creator.id())
+            .orElseGet(
+                    () -> saveRentalCardPort.save(
+                            RentalCard.createRentalCard(creator)
+                    )
+            );
     }
 
     /**
-     * 도서를 대여 처리하고 대여 완료 이벤트를 발행합니다.
+     * 도서를 대여 처리하고 대여 완료 이벤트를 발행.
      *
-     * @param idName 대상 회원의 ID와 이름을 담은 공통 값 객체입니다.
-     * @param item 업무 대상 도서의 번호와 제목입니다.
-     * @return 도서가 대여 목록에 추가되고 대여 이벤트가 발행된 대여카드를 반환합니다.
+     * @param idName 대상 회원의 ID와 이름을 담은 공통 값 객체.
+     * @param item 업무 대상 도서의 번호와 제목.
+     * @return 도서가 대여 목록에 추가되고 대여 이벤트가 발행된 대여카드를 반환.
      */
     @Override
     public RentalCard rentItem(IDName idName, Item item) {
-        RentalCard rentalCard = loadRentalCardPort.loadRentalCard(idName.getId())
+        String correlationId = UUID.randomUUID().toString();
+        RentalCard rentalCard = loadRentalCardPort.loadRentalCard(idName.id())
             .orElseGet(() -> RentalCard.createRentalCard(idName));
         rentalCard.rentItem(item);
         RentalCard saved = saveRentalCardPort.save(rentalCard);
-        ItemRented itemRented = RentalCard.createItemRentedEvent(idName, item, RENT_POINT);
+        ItemRented itemRented = RentalCard.createItemRentedEvent(correlationId, idName, item, RENT_POINT);
         publishItemRentedPort.publishRentalEvent(itemRented);
         return saved;
     }
@@ -89,10 +94,11 @@ public class RentalCardService implements CreateRentalCardUseCase, RentItemUseCa
      */
     @Override
     public RentalCard returnItem(IDName idName, Item item, LocalDate returnDate) {
+        String correlationId = UUID.randomUUID().toString();
         RentalCard rentalCard = load(idName);
         rentalCard.returnItem(item, returnDate);
         RentalCard saved = saveRentalCardPort.save(rentalCard);
-        ItemReturned itemReturned = RentalCard.createItemReturnEvent(idName, item, RETURN_POINT);
+        ItemReturned itemReturned = RentalCard.createItemReturnEvent(correlationId, idName, item, RETURN_POINT);
         publishItemReturnedPort.publishReturnEvent(itemReturned);
         return saved;
     }
@@ -120,10 +126,11 @@ public class RentalCardService implements CreateRentalCardUseCase, RentItemUseCa
      */
     @Override
     public RentalCard clearOverdue(IDName idName, long point) {
+        String correlationId = UUID.randomUUID().toString();
         RentalCard rentalCard = load(idName);
         long usedPoint = rentalCard.makeAvailableRental(point);
         RentalCard saved = saveRentalCardPort.save(rentalCard);
-        OverdueCleared overdueCleared = RentalCard.createOverdueClearedEvent(idName, usedPoint);
+        OverdueCleared overdueCleared = RentalCard.createOverdueClearedEvent(correlationId, idName, usedPoint);
         publishOverdueClearedPort.publishOverdueClearEvent(overdueCleared);
         return saved;
     }
@@ -172,11 +179,11 @@ public class RentalCardService implements CreateRentalCardUseCase, RentItemUseCa
      * @param item 업무 대상 도서의 번호와 제목입니다.
      */
     @Override
-    public void cancelRentItem(IDName idName, Item item) {
+    public void cancelRentItem(IDName idName, Item item, String correlationId) {
         RentalCard rentalCard = load(idName);
         rentalCard.cancelRentItem(item);
         saveRentalCardPort.save(rentalCard);
-        publishPointUseCommandPort.publishPointUseCommand(createPointUseCommand(idName, RENT_POINT, "RENT_COMPENSATION"));
+        publishPointUseCommandPort.publishPointUseCommand(createPointUseCommand(correlationId, idName, RENT_POINT, "RENT_COMPENSATION"));
     }
 
     /**
@@ -187,11 +194,11 @@ public class RentalCardService implements CreateRentalCardUseCase, RentItemUseCa
      * @param point 적립, 차감, 정산 또는 보상에 사용할 포인트 값입니다.
      */
     @Override
-    public void cancelReturnItem(IDName idName, Item item, long point) {
+    public void cancelReturnItem(IDName idName, Item item, long point, String correlationId) {
         RentalCard rentalCard = load(idName);
         rentalCard.cancelReturnItem(item, point);
         saveRentalCardPort.save(rentalCard);
-        publishPointUseCommandPort.publishPointUseCommand(createPointUseCommand(idName, point, "RETURN_COMPENSATION"));
+        publishPointUseCommandPort.publishPointUseCommand(createPointUseCommand(correlationId, idName, point, "RETURN_COMPENSATION"));
     }
 
     /**
@@ -201,7 +208,7 @@ public class RentalCardService implements CreateRentalCardUseCase, RentItemUseCa
      * @param point 적립, 차감, 정산 또는 보상에 사용할 포인트 값입니다.
      */
     @Override
-    public void cancelMakeAvailableRental(IDName idName, long point) {
+    public void cancelMakeAvailableRental(IDName idName, long point, String correlationId) {
         RentalCard rentalCard = load(idName);
         rentalCard.cancelMakeAvailableRental(point);
         saveRentalCardPort.save(rentalCard);
@@ -214,7 +221,7 @@ public class RentalCardService implements CreateRentalCardUseCase, RentItemUseCa
      * @return 보상 또는 상태 변경 대상 대여카드를 반환합니다.
      */
     private RentalCard load(IDName idName) {
-        return loadRentalCardPort.loadRentalCard(idName.getId())
+        return loadRentalCardPort.loadRentalCard(idName.id())
             .orElseThrow(() -> new IllegalArgumentException("대여카드가 없습니다."));
     }
 
@@ -226,8 +233,9 @@ public class RentalCardService implements CreateRentalCardUseCase, RentItemUseCa
      * @param reason 실패 결과나 보상 command의 사유입니다.
      * @return 회원 서비스가 포인트를 차감할 수 있도록 회원, 포인트, 사유를 담은 PointUseCommand를 반환합니다.
      */
-    private PointUseCommand createPointUseCommand(IDName idName, long point, String reason) {
+    private PointUseCommand createPointUseCommand(String correlationId, IDName idName, long point, String reason) {
         String eventId = UUID.randomUUID().toString();
-        return new PointUseCommand(eventId, eventId, Instant.now(), idName, point, reason);
+        String commandCorrelationId = correlationId == null || correlationId.isBlank() ? eventId : correlationId;
+        return new PointUseCommand(eventId, commandCorrelationId, Instant.now(), idName, point, reason);
     }
 }

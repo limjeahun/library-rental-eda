@@ -177,7 +177,7 @@ config/
 - `Retrun` -> `Return`
 - `Usercase` -> `UseCase`
 - `Classfication` -> `Classification`
-- `cancle` -> `cancel`
+- compensation method names use `cancel`
 - `successed` -> `succeeded` 또는 `success`
 
 목표:
@@ -298,7 +298,7 @@ com.example.library.{domain}/
 - `Usecase` -> `UseCase`
 - `OutPut/Ouput/Oupput` -> `Output`
 - `Retun/Retrun` -> `Return`
-- `cancle` -> `cancel`
+- compensation method names use `cancel`
 - `Classfication` -> `Classification`
 - `successed` -> `succeeded` 또는 `success`
 - 기존 public API나 JSON 필드에 영향이 있으면 호환 메서드 또는 Jackson alias를 둔다.

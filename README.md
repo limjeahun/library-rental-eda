@@ -96,7 +96,8 @@ com.example.library.{service}/
 │   └── service/
 ├── config/
 ├── domain/
-│   └── model/
+│   ├── model/
+│   └── vo/
 ├── adapter/
 │   ├── in/
 │   │   ├── web/
@@ -105,14 +106,14 @@ com.example.library.{service}/
 │   └── out/
 │       ├── messaging/
 │       └── persistence/
-└── infrastructure/
 ```
 
 계층별 책임은 다음과 같습니다.
 
 | 계층 | 책임 |
 | --- | --- |
-| `domain.model` | Aggregate, Value Object, 비즈니스 규칙, 상태 전이, 보상 메서드 |
+| `domain.model` | Aggregate, child domain model, 도메인 enum, 비즈니스 규칙, 상태 전이, 보상 메서드 |
+| `domain.vo` | 단순 불변 값 객체. 가능한 경우 Java `record`로 표현 |
 | `application.port.in` | 외부에서 호출할 use case 인터페이스 |
 | `application.port.out` | 저장소와 메시징 같은 외부 의존성 추상화 |
 | `application.service` | use case orchestration, 트랜잭션 경계, 도메인 호출, 포트 호출 |
@@ -120,9 +121,25 @@ com.example.library.{service}/
 | `adapter.in.messaging.consumer` | Kafka 메시지 수신, 역직렬화, 멱등성 체크, use case 위임 |
 | `adapter.out.persistence` | JPA/Mongo 저장소 구현, 도메인과 저장소 모델 매핑 |
 | `adapter.out.messaging` | KafkaTemplate을 이용한 메시지 발행, outbound port 구현 |
-| `config` | Spring Security, Kafka, QueryDSL 등 설정 |
+| `config` | Spring Security, Kafka, QueryDSL 설정, configuration properties, 기술 Bean wiring |
 
 도메인은 Spring, JPA, Kafka, Redis를 알지 않습니다. Application 계층은 도메인을 사용하고, Adapter 계층이 Spring/JPA/Kafka/Redis 세부 구현을 담당합니다.
+
+### Record와 VO 규칙
+
+- DTO, command, event, result, 단순 불변 VO는 가능한 경우 Java `record`를 사용합니다.
+- Record는 JavaBean getter를 추가하지 않고 `id()`, `item()`, `point()`, `correlationId()` 같은 canonical accessor로 접근합니다.
+- `RentItem`, `ReturnItem`처럼 aggregate의 상태 전이에 참여하는 child model은 record여도 `domain.model`에 둡니다.
+- `LateFee`, `RentalCardNo`처럼 독립 식별성 없이 값 자체와 규칙만 표현하는 객체는 `domain.vo`에 둡니다.
+- Aggregate나 JPA/Mongo 저장 모델처럼 기존 API 또는 프레임워크 매핑상 getter가 필요한 클래스는 `getXxx()`를 유지합니다.
+- `RentalCard`, `Book`, `Member` 같은 aggregate는 상태 전이 메서드로 규칙을 캡슐화하고, 내부 컬렉션은 수정 불가능한 목록으로만 노출합니다.
+
+### 도메인 enum 위치
+
+- Aggregate 상태나 도메인 분류를 표현하는 enum은 `domain.model`에 둡니다.
+- 예: `RentStatus`, `BookStatus`, `Classfication`, `Location`, `Source`, `UserRole`
+- 서비스 간 공유 메시지의 프로토콜 enum은 `common-events`에 둡니다. 예: `EventType`
+- 웹 요청, 저장소 매핑, 외부 프로토콜에만 필요한 enum은 해당 adapter 패키지에 둡니다.
 
 ## 공통 모듈
 
@@ -141,7 +158,9 @@ com.example.library.{service}/
 | VO | `IDName` | 회원 식별 값 | `id`, `name` |
 | VO | `Item` | 도서 식별 값 | `no`, `title` |
 
-`eventId`는 멱등성 판단에 사용하고, `correlationId`는 같은 비동기 업무 흐름을 묶는 추적 키로 사용합니다. 현재 구현에서는 이벤트 생성 시 `eventId`와 `correlationId`를 같은 UUID로 시작합니다.
+`common-events`의 메시지와 공통 VO는 Java `record`입니다. 호출부에서는 `event.getItem()`이 아니라 `event.item()`처럼 record accessor를 사용합니다.
+
+`eventId`는 개별 Kafka 메시지를 식별하며 Consumer 멱등성 판단에 사용합니다. `correlationId`는 같은 비동기 업무 흐름을 묶는 추적 키입니다. `rental-service`가 대여, 반납, 연체 해제 use case를 시작할 때 `correlationId`를 만들고, 참여 서비스의 `EventResult`와 보상용 `PointUseCommand`는 같은 `correlationId`를 유지합니다. 보상 command를 새로 발행할 때도 command 자체의 `eventId`는 새로 만들고 `correlationId`만 원래 흐름 값을 이어갑니다.
 
 ### `common-core`
 
@@ -212,14 +231,14 @@ Kafka 메시지는 JSON 문자열로 송수신하고, Consumer는 `ObjectMapper`
 | `book-service` | `GET` | `/api/book/{no}` | `200 OK` | 도서 조회 |
 | `book-service` | `POST` | `/api/book/{no}/available` | `200 OK` | 도서 이용 가능 처리 |
 | `book-service` | `POST` | `/api/book/{no}/unavailable` | `200 OK` | 도서 이용 불가 처리 |
-| `rental-service` | `POST` | `/api/RentalCard/` | `200 OK` | 회원 대여카드 생성 또는 조회 |
-| `rental-service` | `GET` | `/api/RentalCard/{id}` | `200 OK` | 대여카드 조회 |
-| `rental-service` | `GET` | `/api/RentalCard/{id}/rentbook` | `200 OK` | 대여 중 도서 목록 |
-| `rental-service` | `GET` | `/api/RentalCard/{id}/returnbook` | `200 OK` | 반납 완료 도서 목록 |
-| `rental-service` | `POST` | `/api/RentalCard/rent` | `202 Accepted` | 대여 처리 후 대여 이벤트 발행 |
-| `rental-service` | `POST` | `/api/RentalCard/return` | `202 Accepted` | 반납 처리 후 반납 이벤트 발행 |
-| `rental-service` | `POST` | `/api/RentalCard/overdue` | `200 OK` | 대여 도서 연체 표시 |
-| `rental-service` | `POST` | `/api/RentalCard/clearoverdue` | `202 Accepted` | 연체료 정산 후 연체 해제 이벤트 발행 |
+| `rental-service` | `POST` | `/api/rental-cards` | `200 OK` | 회원 대여카드 생성 또는 조회 |
+| `rental-service` | `GET` | `/api/rental-cards/{memberId}` | `200 OK` | 대여카드 조회 |
+| `rental-service` | `GET` | `/api/rental-cards/{memberId}/rent-items` | `200 OK` | 대여 중 도서 목록 |
+| `rental-service` | `GET` | `/api/rental-cards/{memberId}/return-items` | `200 OK` | 반납 완료 도서 목록 |
+| `rental-service` | `POST` | `/api/rental-cards/rent` | `202 Accepted` | 대여 처리 후 대여 이벤트 발행 |
+| `rental-service` | `POST` | `/api/rental-cards/return` | `202 Accepted` | 반납 처리 후 반납 이벤트 발행 |
+| `rental-service` | `POST` | `/api/rental-cards/overdue` | `200 OK` | 대여 도서 연체 표시 |
+| `rental-service` | `POST` | `/api/rental-cards/clear-overdue` | `202 Accepted` | 연체료 정산 후 연체 해제 이벤트 발행 |
 | `bestbook-service` | `GET` | `/api/books` | `200 OK` | 인기 도서 목록 |
 | `bestbook-service` | `GET` | `/api/books/{id}` | `200 OK` | 인기 도서 단건 |
 | `bestbook-service` | `POST` | `/api/books` | `200 OK` | 수동 집계 테스트 |
@@ -248,7 +267,7 @@ Kafka 메시지는 JSON 문자열로 송수신하고, Consumer는 `ObjectMapper`
 
 ### 3. 대여카드 생성
 
-1. Client가 `rental-service`의 `POST /api/RentalCard/`를 호출합니다.
+1. Client가 `rental-service`의 `POST /api/rental-cards`를 호출합니다.
 2. `RentalCardService.createRentalCard(...)`가 회원 ID로 기존 카드를 조회합니다.
 3. 기존 카드가 있으면 그대로 반환하고, 없으면 `RentalCard.createRentalCard(...)`로 새 대여카드를 생성합니다.
 4. HTTP `200 OK`로 `RentalCardResponse`를 반환합니다.
@@ -267,7 +286,7 @@ sequenceDiagram
     participant BB as bestbook-service
     participant RR as Kafka rental_result
 
-    C->>R: POST /api/RentalCard/rent
+    C->>R: POST /api/rental-cards/rent
     R->>R: RentalCard.rentItem()
     R->>R: RentalCard 저장
     R->>K: ItemRented 발행
@@ -315,7 +334,7 @@ sequenceDiagram
     participant M as member-service
     participant RR as Kafka rental_result
 
-    C->>R: POST /api/RentalCard/return
+    C->>R: POST /api/rental-cards/return
     R->>R: RentalCard.returnItem()
     R->>R: 반납 목록 이동, 연체료 계산
     R->>K: ItemReturned 발행
@@ -356,11 +375,11 @@ sequenceDiagram
     participant M as member-service
     participant RR as Kafka rental_result
 
-    C->>R: POST /api/RentalCard/overdue
+    C->>R: POST /api/rental-cards/overdue
     R->>R: RentalCard.overdueItem()
     R-->>C: 200 OK
 
-    C->>R: POST /api/RentalCard/clearoverdue
+    C->>R: POST /api/rental-cards/clear-overdue
     R->>R: 모든 도서 반납 여부 확인
     R->>R: 입력 포인트와 연체료 일치 확인
     R->>R: 연체료 제거, RENT_AVAILABLE 처리
@@ -416,11 +435,37 @@ sequenceDiagram
 4. `successed=true`이면 로그만 남기고 종료합니다.
 5. `successed=false`이면 `eventType`으로 보상 use case를 분기합니다.
 
-```java
-switch (result.getEventType()) {
-    case RENT -> compensationUseCase.cancelRentItem(result.getIdName(), result.getItem());
-    case RETURN -> compensationUseCase.cancelReturnItem(result.getIdName(), result.getItem(), result.getPoint());
-    case OVERDUE -> compensationUseCase.cancelMakeAvailableRental(result.getIdName(), result.getPoint());
+```text
+public class RentalResultService implements HandleRentalResultUseCase {
+    private final CompensationUseCase compensationUseCase;
+
+    @Override
+    public void handle(EventResult result) {
+        if (result.successed()) {
+            log.info("participant success eventType={} eventId={}", result.eventType(), result.eventId());
+            return;
+        }
+
+        switch (result.eventType()) {
+            case RENT -> compensationUseCase.cancelRentItem(
+                result.idName(),
+                result.item(),
+                result.correlationId()
+            );
+            case RETURN -> compensationUseCase.cancelReturnItem(
+                result.idName(),
+                result.item(),
+                result.point(),
+                result.correlationId()
+            );
+            case OVERDUE -> compensationUseCase.cancelMakeAvailableRental(
+                result.idName(),
+                result.point(),
+                result.correlationId()
+            );
+            default -> log.warn("unsupported eventType={}", result.eventType());
+        }
+    }
 }
 ```
 
@@ -582,7 +627,7 @@ curl -X POST http://localhost:8081/api/book \
 ### 3. 대여카드 생성
 
 ```bash
-curl -X POST http://localhost:8080/api/RentalCard/ \
+curl -X POST http://localhost:8080/api/rental-cards \
   -H "Content-Type: application/json" \
   -d '{"userId":"jenny","userNm":"제니"}'
 ```
@@ -590,7 +635,7 @@ curl -X POST http://localhost:8080/api/RentalCard/ \
 ### 4. 도서 대여
 
 ```bash
-curl -X POST http://localhost:8080/api/RentalCard/rent \
+curl -X POST http://localhost:8080/api/rental-cards/rent \
   -H "Content-Type: application/json" \
   -d '{"itemId":1,"itemTitle":"누구를 위하여 종은 울리나","userId":"jenny","userNm":"제니"}'
 ```
@@ -598,7 +643,9 @@ curl -X POST http://localhost:8080/api/RentalCard/rent \
 확인:
 
 ```bash
-curl http://localhost:8080/api/RentalCard/jenny
+curl http://localhost:8080/api/rental-cards/jenny
+curl http://localhost:8080/api/rental-cards/jenny/rent-items
+curl http://localhost:8080/api/rental-cards/jenny/return-items
 curl http://localhost:8081/api/book/1
 curl http://localhost:8082/api/Member/by-id/jenny
 curl http://localhost:8084/api/books
@@ -614,7 +661,7 @@ curl http://localhost:8084/api/books
 ### 5. 도서 반납
 
 ```bash
-curl -X POST http://localhost:8080/api/RentalCard/return \
+curl -X POST http://localhost:8080/api/rental-cards/return \
   -H "Content-Type: application/json" \
   -d '{"itemId":1,"itemTitle":"누구를 위하여 종은 울리나","userId":"jenny","userNm":"제니"}'
 ```
@@ -628,19 +675,19 @@ curl -X POST http://localhost:8080/api/RentalCard/return \
 ### 6. 연체 표시와 연체 해제
 
 ```bash
-curl -X POST http://localhost:8080/api/RentalCard/rent \
+curl -X POST http://localhost:8080/api/rental-cards/rent \
   -H "Content-Type: application/json" \
   -d '{"itemId":1,"itemTitle":"누구를 위하여 종은 울리나","userId":"jenny","userNm":"제니"}'
 
-curl -X POST http://localhost:8080/api/RentalCard/overdue \
+curl -X POST http://localhost:8080/api/rental-cards/overdue \
   -H "Content-Type: application/json" \
   -d '{"itemId":1,"itemTitle":"누구를 위하여 종은 울리나","userId":"jenny","userNm":"제니"}'
 
-curl -X POST http://localhost:8080/api/RentalCard/return \
+curl -X POST http://localhost:8080/api/rental-cards/return \
   -H "Content-Type: application/json" \
   -d '{"itemId":1,"itemTitle":"누구를 위하여 종은 울리나","userId":"jenny","userNm":"제니"}'
 
-curl -X POST http://localhost:8080/api/RentalCard/clearoverdue \
+curl -X POST http://localhost:8080/api/rental-cards/clear-overdue \
   -H "Content-Type: application/json" \
   -d '{"userId":"jenny","userNm":"제니","point":0}'
 ```
@@ -697,8 +744,12 @@ curl -X POST http://localhost:8080/api/RentalCard/clearoverdue \
 
 - DDD 도메인 모델
 - Hexagonal Architecture 기반 port/adapter 분리
+- `domain.model` Aggregate/child model/domain enum과 `domain.vo` 불변 값 객체 분리
 - 서비스 간 직접 HTTP 호출 없는 Kafka EDA
 - Domain Event, Command Message, Result Event 구분
+- `common-events` 메시지 계약과 단순 VO의 Java `record` 전환
+- Record 타입의 canonical accessor 사용
+- `eventId` 기반 멱등성, `correlationId` 기반 비동기 흐름 추적
 - Result Event 기반 Choreography 보상 트랜잭션
 - Redis 기반 Idempotent Consumer
 - MariaDB 기반 JPA 영속성
@@ -749,17 +800,18 @@ macOS/Linux에서는 `.\gradlew.bat` 대신 `./gradlew`를 사용합니다.
 
 처음 코드를 읽는다면 다음 순서가 가장 자연스럽습니다.
 
-1. `common-events/src/main/java/com/example/library/common/event`
-2. `rental-service/src/main/java/com/example/library/rental/domain/model/RentalCard.java`
-3. `rental-service/src/main/java/com/example/library/rental/application/service/RentalCardService.java`
-4. `rental-service/src/main/java/com/example/library/rental/adapter/out/messaging/RentalKafkaEventProducer.java`
-5. `book-service/src/main/java/com/example/library/book/adapter/in/messaging/consumer/BookEventConsumer.java`
-6. `book-service/src/main/java/com/example/library/book/application/service/BookRentalEventService.java`
-7. `member-service/src/main/java/com/example/library/member/adapter/in/messaging/consumer/MemberEventConsumer.java`
-8. `member-service/src/main/java/com/example/library/member/application/service/MemberEventService.java`
-9. `rental-service/src/main/java/com/example/library/rental/adapter/in/messaging/consumer/RentalEventConsumer.java`
-10. `rental-service/src/main/java/com/example/library/rental/application/service/RentalResultService.java`
-11. `bestbook-service/src/main/java/com/example/library/bestbook/adapter/in/messaging/consumer/BestBookEventConsumer.java`
-12. `common-core/src/main/java/com/example/library/common/core/web/GlobalExceptionHandler.java`
+1. `common-events/src/main/java/com/example/library/common/{event,vo}`
+2. `rental-service/src/main/java/com/example/library/rental/domain/model`
+3. `rental-service/src/main/java/com/example/library/rental/domain/vo`
+4. `rental-service/src/main/java/com/example/library/rental/application/service/RentalCardService.java`
+5. `rental-service/src/main/java/com/example/library/rental/adapter/out/messaging/RentalKafkaEventProducer.java`
+6. `book-service/src/main/java/com/example/library/book/adapter/in/messaging/consumer/BookEventConsumer.java`
+7. `book-service/src/main/java/com/example/library/book/application/service/BookRentalEventService.java`
+8. `member-service/src/main/java/com/example/library/member/adapter/in/messaging/consumer/MemberEventConsumer.java`
+9. `member-service/src/main/java/com/example/library/member/application/service/MemberEventService.java`
+10. `rental-service/src/main/java/com/example/library/rental/adapter/in/messaging/consumer/RentalEventConsumer.java`
+11. `rental-service/src/main/java/com/example/library/rental/application/service/RentalResultService.java`
+12. `bestbook-service/src/main/java/com/example/library/bestbook/adapter/in/messaging/consumer/BestBookEventConsumer.java`
+13. `common-core/src/main/java/com/example/library/common/core/web/GlobalExceptionHandler.java`
 
 이 순서로 보면 대여 이벤트가 어떻게 만들어지고, 어떤 서비스가 반응하며, 실패 결과가 어떻게 보상으로 이어지는지 한 흐름으로 따라갈 수 있습니다.
