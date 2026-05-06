@@ -76,7 +76,7 @@ public class RentalCardService implements CreateRentalCardUseCase, RentItemUseCa
      */
     @Override
     public RentalCardResult createRentalCard(CreateRentalCardCommand command) {
-        RentalMember creator = rentalMember(command.userId(), command.userNm());
+        var creator = new RentalMember(command.userId(), command.userNm());
         RentalCard rentalCard = loadRentalCardPort.loadRentalCard(creator.id())
             .orElseGet(
                     () -> saveRentalCardPort.save(
