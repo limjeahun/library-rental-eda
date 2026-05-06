@@ -1,6 +1,6 @@
 package com.example.library.member.adapter.out.persistence;
 
-import com.example.library.common.vo.IDName;
+import com.example.library.member.domain.vo.MemberIdentity;
 import com.example.library.member.adapter.out.persistence.mapper.MemberPersistenceMapper;
 import com.example.library.member.adapter.out.persistence.repository.MemberJpaRepository;
 import com.example.library.member.application.port.out.LoadMemberByIdNamePort;
@@ -51,7 +51,7 @@ public class MemberPersistenceAdapter implements LoadMemberByIdNamePort, LoadMem
      * @return 회원 ID에 해당하는 회원 도메인 모델을 반환합니다.
      */
     @Override
-    public Member loadMemberByIdName(IDName idName) {
+    public Member loadMemberByIdName(MemberIdentity idName) {
         return repository.findByMemberId(idName.id())
             .map(mapper::toDomain)
             .orElseThrow(() -> new NoSuchElementException("회원을 찾을 수 없습니다: " + idName.id()));

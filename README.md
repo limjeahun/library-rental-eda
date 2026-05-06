@@ -32,7 +32,7 @@ Java 21, Spring Boot 3.3.7, Gradle Kotlin DSL 기반의 사내 도서관 대여 
 | 모듈 | 실행 포트 | 저장소 | 역할 |
 | --- | ---: | --- | --- |
 | `common-core` | - | - | 공통 API 응답 `BaseResponse`, 공통 웹 예외 처리, `ErrorCode`, `ErrorResponse`, Spring Boot auto-configuration |
-| `common-events` | - | - | Kafka Event, Command, Result, 공통 VO 계약 |
+| `common-events` | - | - | Kafka Event, Command, Result, Protocol Enum 계약 |
 | `member-service` | `8082` | MariaDB `member_db` | 회원 등록/조회, 포인트 적립/사용, 연체 해제 포인트 차감, 보상 포인트 차감 |
 | `book-service` | `8081` | MariaDB `book_db` | 도서 등록/조회, 대여 시 이용 불가, 반납 시 이용 가능 |
 | `rental-service` | `8080` | MariaDB `rental_db` | 대여카드 생성, 도서 대여/반납, 연체, 연체 해제, 보상 트랜잭션 |
@@ -128,7 +128,7 @@ com.example.library.{service}/
 ### Record와 VO 규칙
 
 - DTO, command, event, result, 단순 불변 VO는 가능한 경우 Java `record`를 사용합니다.
-- Record는 JavaBean getter를 추가하지 않고 `id()`, `item()`, `point()`, `correlationId()` 같은 canonical accessor로 접근합니다.
+- Record는 JavaBean getter를 추가하지 않고 `id()`, `memberId()`, `itemNo()`, `point()`, `correlationId()` 같은 canonical accessor로 접근합니다.
 - `RentItem`, `ReturnItem`처럼 aggregate의 상태 전이에 참여하는 child model은 record여도 `domain.model`에 둡니다.
 - `LateFee`, `RentalCardNo`처럼 독립 식별성 없이 값 자체와 규칙만 표현하는 객체는 `domain.vo`에 둡니다.
 - Aggregate나 JPA/Mongo 저장 모델처럼 기존 API 또는 프레임워크 매핑상 getter가 필요한 클래스는 `getXxx()`를 유지합니다.
@@ -149,16 +149,16 @@ com.example.library.{service}/
 
 | 타입 | 클래스 | 의미 | 주요 필드 |
 | --- | --- | --- | --- |
-| Domain Event | `ItemRented` | 도서가 대여되었음 | `eventId`, `correlationId`, `idName`, `item`, `point` |
-| Domain Event | `ItemReturned` | 도서가 반납되었음 | `eventId`, `correlationId`, `idName`, `item`, `point` |
-| Domain Event | `OverdueCleared` | 연체료가 정산되어 대여 정지 해제를 요청했음 | `eventId`, `correlationId`, `idName`, `point` |
-| Command Message | `PointUseCommand` | 회원 포인트 차감을 요청함 | `eventId`, `correlationId`, `idName`, `point`, `reason` |
-| Result Event | `EventResult` | 참여 서비스 처리 성공/실패 결과 | `eventType`, `successed`, `reason`, 보상용 payload |
+| Domain Event | `ItemRented` | 도서가 대여되었음 | `eventId`, `correlationId`, `memberId`, `memberName`, `itemNo`, `itemTitle`, `point` |
+| Domain Event | `ItemReturned` | 도서가 반납되었음 | `eventId`, `correlationId`, `memberId`, `memberName`, `itemNo`, `itemTitle`, `point` |
+| Domain Event | `OverdueCleared` | 연체료가 정산되어 대여 정지 해제를 요청했음 | `eventId`, `correlationId`, `memberId`, `memberName`, `point` |
+| Command Message | `PointUseCommand` | 회원 포인트 차감을 요청함 | `eventId`, `correlationId`, `memberId`, `memberName`, `point`, `reason` |
+| Result Event | `EventResult` | 참여 서비스 처리 성공/실패 결과 | `eventType`, `participant`, `step`, `successed`, `reason`, snapshot payload |
 | Enum | `EventType` | 결과가 어떤 흐름에 대응하는지 구분 | `RENT`, `RETURN`, `OVERDUE` |
-| VO | `IDName` | 회원 식별 값 | `id`, `name` |
-| VO | `Item` | 도서 식별 값 | `no`, `title` |
+| Enum | `Participant` | 결과를 발행한 참여 서비스 구분 | `BOOK`, `MEMBER` |
+| Enum | `SagaStep` | 결과가 어느 참여 단계의 응답인지 구분 | `BOOK_MAKE_UNAVAILABLE`, `BOOK_MAKE_AVAILABLE`, `MEMBER_SAVE_POINT`, `MEMBER_USE_POINT` |
 
-`common-events`의 메시지와 공통 VO는 Java `record`입니다. 호출부에서는 `event.getItem()`이 아니라 `event.item()`처럼 record accessor를 사용합니다.
+`common-events`의 메시지는 Java `record`입니다. 서비스 도메인 VO는 `common-events`에 두지 않고 각 서비스의 `domain/vo`에 둡니다. Kafka 메시지에는 서비스 간 전달에 필요한 `memberId`, `memberName`, `itemNo`, `itemTitle` 같은 snapshot field를 둡니다.
 
 `eventId`는 개별 Kafka 메시지를 식별하며 Consumer 멱등성 판단에 사용합니다. `correlationId`는 같은 비동기 업무 흐름을 묶는 추적 키입니다. `rental-service`가 대여, 반납, 연체 해제 use case를 시작할 때 `correlationId`를 만들고, 참여 서비스의 `EventResult`와 보상용 `PointUseCommand`는 같은 `correlationId`를 유지합니다. 보상 command를 새로 발행할 때도 command 자체의 `eventId`는 새로 만들고 `correlationId`만 원래 흐름 값을 이어갑니다.
 
@@ -448,18 +448,18 @@ public class RentalResultService implements HandleRentalResultUseCase {
 
         switch (result.eventType()) {
             case RENT -> compensationUseCase.cancelRentItem(
-                result.idName(),
-                result.item(),
+                new RentalMember(result.memberId(), result.memberName()),
+                new RentalItem(result.itemNo(), result.itemTitle()),
                 result.correlationId()
             );
             case RETURN -> compensationUseCase.cancelReturnItem(
-                result.idName(),
-                result.item(),
+                new RentalMember(result.memberId(), result.memberName()),
+                new RentalItem(result.itemNo(), result.itemTitle()),
                 result.point(),
                 result.correlationId()
             );
             case OVERDUE -> compensationUseCase.cancelMakeAvailableRental(
-                result.idName(),
+                new RentalMember(result.memberId(), result.memberName()),
                 result.point(),
                 result.correlationId()
             );

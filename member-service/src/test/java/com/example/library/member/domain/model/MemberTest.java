@@ -3,7 +3,7 @@ package com.example.library.member.domain.model;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.example.library.common.vo.IDName;
+import com.example.library.member.domain.vo.MemberIdentity;
 import com.example.library.member.domain.vo.Email;
 import com.example.library.member.domain.vo.PassWord;
 import org.junit.jupiter.api.Test;
@@ -53,7 +53,7 @@ class MemberTest {
             .isInstanceOf(UnsupportedOperationException.class);
     }
 
-    private IDName idName() {
-        return new IDName("jenny", "제니");
+    private MemberIdentity idName() {
+        return new MemberIdentity("jenny", "제니");
     }
 }

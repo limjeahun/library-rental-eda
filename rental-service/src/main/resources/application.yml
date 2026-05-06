@@ -33,3 +33,6 @@ app:
       overdue-clear: overdue_clear
       rental-result: rental_result
       point-use: point_use
+      rent-cancel: rent_cancel
+      return-cancel: return_cancel
+      overdue-clear-cancel: overdue_clear_cancel

@@ -1,6 +1,6 @@
 package com.example.library.member.domain.model;
 
-import com.example.library.common.vo.IDName;
+import com.example.library.member.domain.vo.MemberIdentity;
 import com.example.library.member.domain.vo.Authority;
 import com.example.library.member.domain.vo.Email;
 import com.example.library.member.domain.vo.PassWord;
@@ -14,7 +14,7 @@ import java.util.List;
  */
 public class Member {
     private Long memberNo;
-    private IDName idName;
+    private MemberIdentity idName;
     private PassWord password;
     private Email email;
     private List<Authority> authorites = new ArrayList<>();
@@ -24,13 +24,13 @@ public class Member {
      * 영속성 어댑터가 저장된 회원 상태를 도메인 모델로 복원할 때 사용합니다.
      *
      * @param memberNo 조회할 회원 번호입니다.
-     * @param idName 대상 회원의 ID와 이름을 담은 공통 값 객체입니다.
+     * @param idName 대상 회원의 ID와 이름을 담은 값 객체입니다.
      * @param password 저장하거나 검증할 비밀번호 값입니다.
      * @param email 저장하거나 검증할 이메일 값입니다.
      * @param authorites 회원에게 부여된 권한 목록입니다.
      * @param point 적립, 차감, 정산 또는 보상에 사용할 포인트 값입니다.
      */
-    public Member(Long memberNo, IDName idName, PassWord password, Email email, List<Authority> authorites, Point point) {
+    public Member(Long memberNo, MemberIdentity idName, PassWord password, Email email, List<Authority> authorites, Point point) {
         this.memberNo = memberNo;
         this.idName = idName;
         this.password = password;
@@ -42,12 +42,12 @@ public class Member {
     /**
      * 기본 USER 권한과 0 포인트를 가진 새 회원을 등록합니다.
      *
-     * @param idName 대상 회원의 ID와 이름을 담은 공통 값 객체입니다.
+     * @param idName 대상 회원의 ID와 이름을 담은 값 객체입니다.
      * @param pwd 회원 등록에 사용할 비밀번호 값 객체입니다.
      * @param email 저장하거나 검증할 이메일 값입니다.
      * @return 기본 USER 권한과 0포인트로 초기화된 회원 도메인 모델을 반환합니다.
      */
-    public static Member registerMember(IDName idName, PassWord pwd, Email email) {
+    public static Member registerMember(MemberIdentity idName, PassWord pwd, Email email) {
         Member member = new Member(null, idName, pwd, email, new ArrayList<>(), new Point(0));
         member.addAuthority(Authority.create(UserRole.USER));
         return member;
@@ -98,7 +98,7 @@ public class Member {
      *
      * @return 메시지 대상 회원의 ID와 이름을 반환합니다.
      */
-    public IDName getIdName() {
+    public MemberIdentity getIdName() {
         return idName;
     }
 

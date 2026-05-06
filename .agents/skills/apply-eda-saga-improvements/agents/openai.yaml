@@ -1,0 +1,7 @@
+interface:
+  display_name: "Apply EDA SAGA Improvements"
+  short_description: "Apply library EDA-SAGA architecture fixes"
+  default_prompt: "Use $apply-eda-saga-improvements to implement the next Hexagonal EDA/SAGA improvement safely."
+
+policy:
+  allow_implicit_invocation: true

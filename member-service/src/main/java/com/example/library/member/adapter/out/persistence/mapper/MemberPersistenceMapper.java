@@ -1,6 +1,6 @@
 package com.example.library.member.adapter.out.persistence.mapper;
 
-import com.example.library.common.vo.IDName;
+import com.example.library.member.domain.vo.MemberIdentity;
 import com.example.library.member.adapter.out.persistence.entity.MemberJpaEntity;
 import com.example.library.member.domain.model.Member;
 import com.example.library.member.domain.model.UserRole;
@@ -51,7 +51,7 @@ public class MemberPersistenceMapper {
 
         return new Member(
             entity.getMemberNo(),
-            new IDName(entity.getMemberId(), entity.getMemberName()),
+            new MemberIdentity(entity.getMemberId(), entity.getMemberName()),
             new PassWord(entity.getPassword()),
             new Email(entity.getEmail()),
             authorities,

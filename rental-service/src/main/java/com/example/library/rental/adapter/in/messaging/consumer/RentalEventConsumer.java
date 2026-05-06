@@ -4,6 +4,7 @@ import com.example.library.common.event.EventResult;
 import com.example.library.rental.application.port.in.HandleRentalResultUseCase;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -18,7 +19,7 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @RequiredArgsConstructor
 public class RentalEventConsumer {
-    private static final Duration IDEMPOTENT_TTL = Duration.ofDays(7);
+    private static final Duration PROCESSING_TTL = Duration.ofMinutes(10);
 
     private final ObjectMapper objectMapper;
     private final StringRedisTemplate redisTemplate;
@@ -33,11 +34,15 @@ public class RentalEventConsumer {
     @KafkaListener(topics = "${app.kafka.topics.rental-result}", groupId = "${spring.kafka.consumer.group-id}")
     public void consumeRentalResult(ConsumerRecord<String, String> record) throws Exception {
         EventResult result = objectMapper.readValue(record.value(), EventResult.class);
-        if (!markProcessed(result.eventId())) {
-            log.info("skip already processed rental_result eventId={}", result.eventId());
+        if (!claimProcessing(result.eventId())) {
+            log.info("skip already processing rental_result eventId={}", result.eventId());
             return;
         }
-        handleRentalResultUseCase.handle(result);
+        try {
+            handleRentalResultUseCase.handle(result);
+        } finally {
+            releaseProcessing(result.eventId());
+        }
     }
 
     /**
@@ -46,8 +51,16 @@ public class RentalEventConsumer {
      * @param eventId 멱등성 판단과 추적에 사용할 이벤트 식별자입니다.
      * @return 새로 처리할 수 있는 이벤트이면 true, 이미 처리된 이벤트이면 false를 반환합니다.
      */
-    private boolean markProcessed(String eventId) {
-        String key = "processed:rental:" + eventId;
-        return Boolean.TRUE.equals(redisTemplate.opsForValue().setIfAbsent(key, "1", IDEMPOTENT_TTL));
+    private boolean claimProcessing(String eventId) {
+        String key = processingKey(eventId);
+        return Boolean.TRUE.equals(redisTemplate.opsForValue().setIfAbsent(key, UUID.randomUUID().toString(), PROCESSING_TTL));
+    }
+
+    private void releaseProcessing(String eventId) {
+        redisTemplate.delete(processingKey(eventId));
+    }
+
+    private String processingKey(String eventId) {
+        return "processing:rental:" + eventId;
     }
 }

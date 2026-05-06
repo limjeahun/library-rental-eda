@@ -5,6 +5,15 @@ package com.example.library.bestbook.application.dto;
  *
  * @param itemNo 인기 도서 집계 대상 도서 번호입니다.
  * @param itemTitle 인기 도서 집계에 표시할 도서 제목입니다.
+ * @param eventId 처리 완료 멱등성 판단에 사용할 메시지 식별자입니다.
+ * @param correlationId 하나의 비동기 업무 흐름을 묶는 상관관계 식별자입니다.
+ * @param messageType 처리 완료 기록에 저장할 메시지 타입입니다.
  */
-public record RecordBestBookRentCommand(Long itemNo, String itemTitle) {
+public record RecordBestBookRentCommand(
+    Long itemNo,
+    String itemTitle,
+    String eventId,
+    String correlationId,
+    String messageType
+) {
 }

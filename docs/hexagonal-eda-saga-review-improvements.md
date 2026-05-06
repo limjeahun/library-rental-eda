@@ -42,7 +42,7 @@
 
 1차 방어는 Redis `SETNX` 또는 `SET key value NX EX`로 원자적으로 처리 권한을 점유한다.
 
-```java
+```text
 Boolean acquired = redisTemplate.opsForValue()
     .setIfAbsent(processingKey, ownerValue, processingTtl);
 

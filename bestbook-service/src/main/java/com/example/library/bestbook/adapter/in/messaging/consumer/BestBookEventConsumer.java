@@ -1,10 +1,14 @@
 package com.example.library.bestbook.adapter.in.messaging.consumer;
 
+import com.example.library.bestbook.application.dto.CancelBestBookRentCommand;
 import com.example.library.bestbook.application.dto.RecordBestBookRentCommand;
+import com.example.library.bestbook.application.port.in.CancelBestBookRentUseCase;
 import com.example.library.bestbook.application.port.in.RecordBestBookRentUseCase;
+import com.example.library.common.event.ItemRentCanceled;
 import com.example.library.common.event.ItemRented;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -19,11 +23,12 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @RequiredArgsConstructor
 public class BestBookEventConsumer {
-    private static final Duration IDEMPOTENT_TTL = Duration.ofDays(7);
+    private static final Duration PROCESSING_TTL = Duration.ofMinutes(10);
 
     private final ObjectMapper objectMapper;
     private final StringRedisTemplate redisTemplate;
     private final RecordBestBookRentUseCase recordBestBookRentUseCase;
+    private final CancelBestBookRentUseCase cancelBestBookRentUseCase;
 
     /**
      * 대여 이벤트 JSON을 ItemRented로 읽고, Redis에 eventId를 기록한 뒤 도서의 누적 대여 횟수를 1 증가시킵니다.
@@ -34,14 +39,40 @@ public class BestBookEventConsumer {
     @KafkaListener(topics = "${app.kafka.topics.rental-rent}", groupId = "${spring.kafka.consumer.group-id}")
     public void consumeRent(ConsumerRecord<String, String> record) throws Exception {
         ItemRented event = objectMapper.readValue(record.value(), ItemRented.class);
-        if (!markProcessed(event.eventId())) {
-            log.info("skip already processed bestbook eventId={}", event.eventId());
+        if (!claimProcessing(event.eventId())) {
+            log.info("skip already processing bestbook eventId={}", event.eventId());
             return;
         }
-        recordBestBookRentUseCase.recordRent(new RecordBestBookRentCommand(
-            event.item().no(),
-            event.item().title()
-        ));
+        try {
+            recordBestBookRentUseCase.recordRent(new RecordBestBookRentCommand(
+                event.itemNo(),
+                event.itemTitle(),
+                event.eventId(),
+                event.correlationId(),
+                "ItemRented"
+            ));
+        } finally {
+            releaseProcessing(event.eventId());
+        }
+    }
+
+    @KafkaListener(topics = "${app.kafka.topics.rent-cancel}", groupId = "${spring.kafka.consumer.group-id}")
+    public void consumeRentCanceled(ConsumerRecord<String, String> record) throws Exception {
+        ItemRentCanceled event = objectMapper.readValue(record.value(), ItemRentCanceled.class);
+        if (!claimProcessing(event.eventId())) {
+            log.info("skip already processing bestbook cancel eventId={}", event.eventId());
+            return;
+        }
+        try {
+            cancelBestBookRentUseCase.cancelRent(new CancelBestBookRentCommand(
+                event.itemNo(),
+                event.eventId(),
+                event.correlationId(),
+                "ItemRentCanceled"
+            ));
+        } finally {
+            releaseProcessing(event.eventId());
+        }
     }
 
     /**
@@ -50,8 +81,16 @@ public class BestBookEventConsumer {
      * @param eventId 멱등성 판단과 추적에 사용할 이벤트 식별자입니다.
      * @return 새로 처리할 수 있는 이벤트이면 true, 이미 처리된 이벤트이면 false를 반환합니다.
      */
-    private boolean markProcessed(String eventId) {
-        String key = "processed:bestbook:" + eventId;
-        return Boolean.TRUE.equals(redisTemplate.opsForValue().setIfAbsent(key, "1", IDEMPOTENT_TTL));
+    private boolean claimProcessing(String eventId) {
+        String key = processingKey(eventId);
+        return Boolean.TRUE.equals(redisTemplate.opsForValue().setIfAbsent(key, UUID.randomUUID().toString(), PROCESSING_TTL));
+    }
+
+    private void releaseProcessing(String eventId) {
+        redisTemplate.delete(processingKey(eventId));
+    }
+
+    private String processingKey(String eventId) {
+        return "processing:bestbook:" + eventId;
     }
 }

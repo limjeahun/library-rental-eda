@@ -3,10 +3,9 @@ package com.example.library.rental.domain.model;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.example.library.common.event.ItemRented;
-import com.example.library.common.vo.IDName;
-import com.example.library.common.vo.Item;
 import com.example.library.rental.domain.vo.LateFee;
+import com.example.library.rental.domain.vo.RentalItem;
+import com.example.library.rental.domain.vo.RentalMember;
 import java.time.LocalDate;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -40,7 +39,7 @@ class RentalCardTest {
     @Test
     void duplicateRentItemThrowsException() {
         RentalCard rentalCard = RentalCard.createRentalCard(member());
-        Item item = item(1);
+        RentalItem item = item(1);
         rentalCard.rentItem(item);
 
         logRentalCard("duplicateRentItemThrowsException - before duplicate check", rentalCard);
@@ -51,7 +50,7 @@ class RentalCardTest {
     @Test
     void returnItem() {
         RentalCard rentalCard = RentalCard.createRentalCard(member());
-        Item item = item(1);
+        RentalItem item = item(1);
         rentalCard.rentItem(item);
 
         rentalCard.returnItem(item, LocalDate.now());
@@ -64,7 +63,7 @@ class RentalCardTest {
 
     @Test
     void calculateLateFee() {
-        Item item = item(1);
+        RentalItem item = item(1);
         RentalCard rentalCard = rentalCardWithRentItem(rentItem(item, LocalDate.now().minusDays(3)));
 
         rentalCard.returnItem(item, LocalDate.now());
@@ -76,7 +75,7 @@ class RentalCardTest {
 
     @Test
     void clearOverdue() {
-        Item item = item(1);
+        RentalItem item = item(1);
         RentalCard rentalCard = rentalCardWithRentItem(rentItem(item, LocalDate.now().minusDays(2)));
         rentalCard.returnItem(item, LocalDate.now());
 
@@ -90,9 +89,10 @@ class RentalCardTest {
     @Test
     void cancelRentItem() {
         RentalCard rentalCard = RentalCard.createRentalCard(member());
-        Item item = item(1);
+        RentalItem item = item(1);
         rentalCard.rentItem(item);
 
+        rentalCard.cancelRentItem(item);
         rentalCard.cancelRentItem(item);
 
         logRentalCard("cancelRentItem", rentalCard);
@@ -102,10 +102,11 @@ class RentalCardTest {
     @Test
     void cancelReturnItem() {
         RentalCard rentalCard = RentalCard.createRentalCard(member());
-        Item item = item(1);
+        RentalItem item = item(1);
         rentalCard.rentItem(item);
         rentalCard.returnItem(item, LocalDate.now());
 
+        rentalCard.cancelReturnItem(item, 10);
         rentalCard.cancelReturnItem(item, 10);
 
         logRentalCard("cancelReturnItem", rentalCard);
@@ -135,22 +136,19 @@ class RentalCardTest {
     }
 
     @Test
-    void createDomainEventKeepsCorrelationId() {
-        String correlationId = "rent-flow-1";
-
-        ItemRented event = RentalCard.createItemRentedEvent(correlationId, member(), item(1), 10);
+    void createDomainEventWithoutIntegrationMetadata() {
+        RentalCardEvents.ItemRentedDomainEvent event =
+            new RentalCardEvents.ItemRentedDomainEvent(member(), item(1), 10);
 
         log.info(
-            "createDomainEventKeepsCorrelationId eventId={} correlationId={} member={} item={} point={}",
-            event.eventId(),
-            event.correlationId(),
+            "createDomainEventWithoutIntegrationMetadata member={} RentalItem={} point={}",
             event.idName(),
             event.item(),
             event.point()
         );
-        assertThat(event.correlationId()).isEqualTo(correlationId);
-        assertThat(event.eventId()).isNotBlank();
-        assertThat(event.eventId()).isNotEqualTo(correlationId);
+        assertThat(event.idName()).isEqualTo(member());
+        assertThat(event.item()).isEqualTo(item(1));
+        assertThat(event.point()).isEqualTo(10);
     }
 
     private void logRentalCard(String scenario, RentalCard rentalCard) {
@@ -179,15 +177,15 @@ class RentalCardTest {
         );
     }
 
-    private RentItem rentItem(Item item, LocalDate overdueDate) {
+    private RentItem rentItem(RentalItem item, LocalDate overdueDate) {
         return new RentItem(item, LocalDate.now().minusDays(10), false, overdueDate);
     }
 
-    private IDName member() {
-        return new IDName("jenny", "제니");
+    private RentalMember member() {
+        return new RentalMember("jenny", "제니");
     }
 
-    private Item item(long no) {
-        return new Item(no, "book-" + no);
+    private RentalItem item(long no) {
+        return new RentalItem(no, "book-" + no);
     }
 }

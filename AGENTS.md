@@ -42,7 +42,9 @@ Use normal Spring Boot, Spring Kafka, JPA, MongoDB, Redis, and Gradle patterns a
 - Do not add `RestTemplate`, `WebClient`, OpenFeign, or other direct HTTP clients for service-to-service communication.
 - Cross-service state changes must be modeled as Kafka command/event flows.
 - Cross-service reads must not be implemented with direct HTTP calls. Prefer event-maintained local read models or ask for the intended design when unclear.
-- Shared event, command, result, and common value contracts belong in `common-events` when they are used by more than one service.
+- Shared event, command, result, and protocol enum contracts belong in `common-events` when they are used by more than one service.
+- Do not place service domain value objects in `common-events`.
+- When a Kafka message needs member, item, or other cross-service data, model it as immutable snapshot fields in the message contract, such as `memberId`, `memberName`, `itemNo`, and `itemTitle`.
 
 ## Architecture Principles
 
@@ -54,7 +56,9 @@ Use normal Spring Boot, Spring Kafka, JPA, MongoDB, Redis, and Gradle patterns a
 - Do not put persistence annotations on pure domain models unless the existing code already uses that pattern and the task is explicitly scoped to preserve it.
 - Keep inbound ports, outbound ports, use cases, domain models, and adapters separated.
 - Prefer Java `record` for DTOs, commands, events, and simple immutable message payloads when compatible with the existing code.
-- Keep simple immutable domain value objects under `domain/vo` and prefer Java `record` for them.
+- Keep simple immutable domain value objects under each service's `domain/vo` and prefer Java `record` for them.
+- Application DTOs under `application/dto` are use case Command, Query, and Result records; they are not a replacement location for domain value objects.
+- Do not reuse `common-events` message payload types as service domain value objects or application DTOs.
 - Keep child domain models that participate in aggregate state transitions under `domain/model`, even when they are implemented as Java records.
 - Domain enums that express business state or business classification belong in `domain/model`.
 - Shared message/protocol enums used across services belong in `common-events`, and adapter-only or persistence-only enums should stay in the relevant adapter package.
@@ -92,9 +96,26 @@ For `common-events`, keep shared contracts under:
 
 ```text
 com.example.library.common/
-├── event/
-└── vo/
+└── event/
 ```
+
+Do not create `common.vo` for service domain value objects.
+If a message-only nested value type is truly necessary, place it under a message-specific package or name it explicitly as a message payload type, and do not use it from service domain models.
+
+## DTO and Conversion Rules
+
+- Web request and response DTOs belong in `adapter/in/web/dto`.
+- Application Command, Query, and Result records belong in `application/dto`.
+- Domain value objects belong in each service's `domain/vo`, not in `application/dto`.
+- Web Request DTOs may convert to application Command or Query with `toCommand()` or `toQuery()`.
+- Web Response DTOs may convert from application Result with `from(result)`.
+- Application Result records may convert from domain models with `from(domain)` when useful.
+- Persistence Entity/Document and domain model conversion belongs in `adapter/out/persistence` mapper classes.
+- Shared Kafka message records from `common-events` must not define service-specific conversion methods such as `toRentalCommand()` or `toMemberCommand()`.
+- Kafka consumers or adapter-local messaging mappers convert shared Kafka messages to application commands.
+- Kafka producers or adapter-local messaging mappers convert local domain/application events or results to shared Kafka messages.
+- Domain models and domain value objects must not define `toResponse()`, `toCommonEvent()`, or `toJpaEntity()`.
+- Application Command records must not define `fromRequest()` because that would make application DTOs depend on adapter DTOs.
 
 ## EDA Rules
 
@@ -102,7 +123,9 @@ com.example.library.common/
 - Command messages express requested actions.
 - Domain events express facts that already happened.
 - Result events express command processing outcomes.
-- Shared event, command, result, and common value contracts in `common-events` should be Java records and should be accessed with record accessors.
+- Shared event, command, and result contracts in `common-events` should be Java records and should be accessed with record accessors.
+- Prefer primitive or simple snapshot fields in shared Kafka message records over shared domain VO fields.
+- Service-local domain/application code should convert to and from shared Kafka message records at adapter boundaries.
 - Use `eventId` as the unique message identifier for idempotent consumer checks.
 - Use `correlationId` to tie one asynchronous business flow together across domain events, result events, and compensation commands.
 - When publishing a compensation command from a failed result event, create a new `eventId` for the command and preserve the original `correlationId`.

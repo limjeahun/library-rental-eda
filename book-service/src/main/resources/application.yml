@@ -31,6 +31,8 @@ app:
       rental-rent: rental_rent
       rental-return: rental_return
       rental-result: rental_result
+      rent-cancel: rent_cancel
+      return-cancel: return_cancel
   failure:
     force-rent-fail: false
     force-return-fail: false

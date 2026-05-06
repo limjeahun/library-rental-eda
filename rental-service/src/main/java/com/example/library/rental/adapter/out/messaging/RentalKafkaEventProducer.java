@@ -1,14 +1,24 @@
 package com.example.library.rental.adapter.out.messaging;
 
+import com.example.library.common.event.ItemRentCanceled;
 import com.example.library.common.event.ItemRented;
+import com.example.library.common.event.ItemReturnCanceled;
 import com.example.library.common.event.ItemReturned;
 import com.example.library.common.event.OverdueCleared;
+import com.example.library.common.event.OverdueClearCanceled;
 import com.example.library.common.event.PointUseCommand;
+import com.example.library.rental.application.dto.PointUseCommandRequest;
+import com.example.library.rental.application.port.out.PublishItemRentCanceledPort;
 import com.example.library.rental.application.port.out.PublishItemRentedPort;
+import com.example.library.rental.application.port.out.PublishItemReturnCanceledPort;
 import com.example.library.rental.application.port.out.PublishItemReturnedPort;
+import com.example.library.rental.application.port.out.PublishOverdueClearCanceledPort;
 import com.example.library.rental.application.port.out.PublishOverdueClearedPort;
 import com.example.library.rental.application.port.out.PublishPointUseCommandPort;
 import com.example.library.rental.config.RentalKafkaTopicProperties;
+import com.example.library.rental.domain.model.RentalCardEvents;
+import java.time.Instant;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
@@ -19,7 +29,8 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 public class RentalKafkaEventProducer implements PublishItemRentedPort, PublishItemReturnedPort,
-    PublishOverdueClearedPort, PublishPointUseCommandPort {
+    PublishOverdueClearedPort, PublishPointUseCommandPort, PublishItemRentCanceledPort,
+    PublishItemReturnCanceledPort, PublishOverdueClearCanceledPort {
     private final KafkaTemplate<String, Object> kafkaTemplate;
     private final RentalKafkaTopicProperties topicProperties;
 
@@ -29,11 +40,21 @@ public class RentalKafkaEventProducer implements PublishItemRentedPort, PublishI
      * @param event 처리하거나 발행할 도메인 이벤트 메시지.
      */
     @Override
-    public void publishRentalEvent(ItemRented event) {
+    public void publishRentalEvent(RentalCardEvents.ItemRentedDomainEvent event, String correlationId) {
+        ItemRented message = new ItemRented(
+            UUID.randomUUID().toString(),
+            correlationId,
+            Instant.now(),
+            event.idName().id(),
+            event.idName().name(),
+            event.item().no(),
+            event.item().title(),
+            event.point()
+        );
         kafkaTemplate.send(
                 topicProperties.rentalRent(),
-                event.correlationId(),
-                event
+                message.correlationId(),
+                message
         );
     }
 
@@ -43,8 +64,18 @@ public class RentalKafkaEventProducer implements PublishItemRentedPort, PublishI
      * @param event 처리하거나 발행할 도메인 이벤트 메시지입니다.
      */
     @Override
-    public void publishReturnEvent(ItemReturned event) {
-        kafkaTemplate.send(topicProperties.rentalReturn(), event.correlationId(), event);
+    public void publishReturnEvent(RentalCardEvents.ItemReturnedDomainEvent event, String correlationId) {
+        ItemReturned message = new ItemReturned(
+            UUID.randomUUID().toString(),
+            correlationId,
+            Instant.now(),
+            event.idName().id(),
+            event.idName().name(),
+            event.item().no(),
+            event.item().title(),
+            event.point()
+        );
+        kafkaTemplate.send(topicProperties.rentalReturn(), message.correlationId(), message);
     }
 
     /**
@@ -53,8 +84,16 @@ public class RentalKafkaEventProducer implements PublishItemRentedPort, PublishI
      * @param event 처리하거나 발행할 도메인 이벤트 메시지입니다.
      */
     @Override
-    public void publishOverdueClearEvent(OverdueCleared event) {
-        kafkaTemplate.send(topicProperties.overdueClear(), event.correlationId(), event);
+    public void publishOverdueClearEvent(RentalCardEvents.OverdueClearedDomainEvent event, String correlationId) {
+        OverdueCleared message = new OverdueCleared(
+            UUID.randomUUID().toString(),
+            correlationId,
+            Instant.now(),
+            event.idName().id(),
+            event.idName().name(),
+            event.point()
+        );
+        kafkaTemplate.send(topicProperties.overdueClear(), message.correlationId(), message);
     }
 
     /**
@@ -63,7 +102,70 @@ public class RentalKafkaEventProducer implements PublishItemRentedPort, PublishI
      * @param command 포인트를 변경할 회원과 포인트 금액을 담은 command입니다.
      */
     @Override
-    public void publishPointUseCommand(PointUseCommand command) {
-        kafkaTemplate.send(topicProperties.pointUse(), command.correlationId(), command);
+    public void publishPointUseCommand(PointUseCommandRequest command) {
+        String eventId = UUID.randomUUID().toString();
+        PointUseCommand message = new PointUseCommand(
+            eventId,
+            normalizeCorrelationId(command.correlationId(), eventId),
+            Instant.now(),
+            command.idName().id(),
+            command.idName().name(),
+            command.point(),
+            command.reason()
+        );
+        kafkaTemplate.send(topicProperties.pointUse(), message.correlationId(), message);
+    }
+
+    @Override
+    public void publishRentCanceledEvent(RentalCardEvents.ItemRentCanceledDomainEvent event, String correlationId) {
+        ItemRentCanceled message = new ItemRentCanceled(
+            UUID.randomUUID().toString(),
+            correlationId,
+            Instant.now(),
+            event.idName().id(),
+            event.idName().name(),
+            event.item().no(),
+            event.item().title(),
+            event.point()
+        );
+        kafkaTemplate.send(topicProperties.rentCancel(), message.correlationId(), message);
+    }
+
+    @Override
+    public void publishReturnCanceledEvent(RentalCardEvents.ItemReturnCanceledDomainEvent event, String correlationId) {
+        ItemReturnCanceled message = new ItemReturnCanceled(
+            UUID.randomUUID().toString(),
+            correlationId,
+            Instant.now(),
+            event.idName().id(),
+            event.idName().name(),
+            event.item().no(),
+            event.item().title(),
+            event.point()
+        );
+        kafkaTemplate.send(topicProperties.returnCancel(), message.correlationId(), message);
+    }
+
+    @Override
+    public void publishOverdueClearCanceledEvent(
+        RentalCardEvents.OverdueClearCanceledDomainEvent event,
+        String correlationId
+    ) {
+        OverdueClearCanceled message = new OverdueClearCanceled(
+            UUID.randomUUID().toString(),
+            correlationId,
+            Instant.now(),
+            event.idName().id(),
+            event.idName().name(),
+            event.point()
+        );
+        kafkaTemplate.send(topicProperties.overdueClearCancel(), message.correlationId(), message);
+    }
+
+    private String normalizeCorrelationId(String correlationId, String eventId) {
+        if (correlationId == null || correlationId.isBlank()) {
+            return eventId;
+        }
+        return correlationId;
     }
 }

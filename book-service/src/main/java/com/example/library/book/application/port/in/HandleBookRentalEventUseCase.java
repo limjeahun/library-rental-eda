@@ -1,6 +1,8 @@
 package com.example.library.book.application.port.in;
 
+import com.example.library.common.event.ItemRentCanceled;
 import com.example.library.common.event.ItemRented;
+import com.example.library.common.event.ItemReturnCanceled;
 import com.example.library.common.event.ItemReturned;
 
 /**
@@ -20,4 +22,18 @@ public interface HandleBookRentalEventUseCase {
      * @param event 처리하거나 발행할 도메인 이벤트 메시지입니다.
      */
     void handleReturn(ItemReturned event);
+
+    /**
+     * 대여 보상 완료 이벤트를 처리합니다.
+     *
+     * @param event 처리할 대여 보상 완료 메시지입니다.
+     */
+    void handleRentCanceled(ItemRentCanceled event);
+
+    /**
+     * 반납 보상 완료 이벤트를 처리합니다.
+     *
+     * @param event 처리할 반납 보상 완료 메시지입니다.
+     */
+    void handleReturnCanceled(ItemReturnCanceled event);
 }

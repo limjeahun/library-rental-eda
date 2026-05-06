@@ -1,10 +1,13 @@
 package com.example.library.book.adapter.in.messaging.consumer;
 
 import com.example.library.book.application.port.in.HandleBookRentalEventUseCase;
+import com.example.library.common.event.ItemRentCanceled;
 import com.example.library.common.event.ItemRented;
+import com.example.library.common.event.ItemReturnCanceled;
 import com.example.library.common.event.ItemReturned;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -19,7 +22,7 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @RequiredArgsConstructor
 public class BookEventConsumer {
-    private static final Duration IDEMPOTENT_TTL = Duration.ofDays(7);
+    private static final Duration PROCESSING_TTL = Duration.ofMinutes(10);
 
     private final ObjectMapper objectMapper;
     private final StringRedisTemplate redisTemplate;
@@ -34,11 +37,15 @@ public class BookEventConsumer {
     @KafkaListener(topics = "${app.kafka.topics.rental-rent}", groupId = "${spring.kafka.consumer.group-id}")
     public void consumeRent(ConsumerRecord<String, String> record) throws Exception {
         ItemRented event = objectMapper.readValue(record.value(), ItemRented.class);
-        if (!markProcessed(event.eventId())) {
-            log.info("skip already processed book rent eventId={}", event.eventId());
+        if (!claimProcessing(event.eventId())) {
+            log.info("skip already processing book rent eventId={}", event.eventId());
             return;
         }
-        handleBookRentalEventUseCase.handleRent(event);
+        try {
+            handleBookRentalEventUseCase.handleRent(event);
+        } finally {
+            releaseProcessing(event.eventId());
+        }
     }
 
     /**
@@ -50,11 +57,43 @@ public class BookEventConsumer {
     @KafkaListener(topics = "${app.kafka.topics.rental-return}", groupId = "${spring.kafka.consumer.group-id}")
     public void consumeReturn(ConsumerRecord<String, String> record) throws Exception {
         ItemReturned event = objectMapper.readValue(record.value(), ItemReturned.class);
-        if (!markProcessed(event.eventId())) {
-            log.info("skip already processed book return eventId={}", event.eventId());
+        if (!claimProcessing(event.eventId())) {
+            log.info("skip already processing book return eventId={}", event.eventId());
             return;
         }
-        handleBookRentalEventUseCase.handleReturn(event);
+        try {
+            handleBookRentalEventUseCase.handleReturn(event);
+        } finally {
+            releaseProcessing(event.eventId());
+        }
+    }
+
+    @KafkaListener(topics = "${app.kafka.topics.rent-cancel}", groupId = "${spring.kafka.consumer.group-id}")
+    public void consumeRentCanceled(ConsumerRecord<String, String> record) throws Exception {
+        ItemRentCanceled event = objectMapper.readValue(record.value(), ItemRentCanceled.class);
+        if (!claimProcessing(event.eventId())) {
+            log.info("skip already processing book rent cancel eventId={}", event.eventId());
+            return;
+        }
+        try {
+            handleBookRentalEventUseCase.handleRentCanceled(event);
+        } finally {
+            releaseProcessing(event.eventId());
+        }
+    }
+
+    @KafkaListener(topics = "${app.kafka.topics.return-cancel}", groupId = "${spring.kafka.consumer.group-id}")
+    public void consumeReturnCanceled(ConsumerRecord<String, String> record) throws Exception {
+        ItemReturnCanceled event = objectMapper.readValue(record.value(), ItemReturnCanceled.class);
+        if (!claimProcessing(event.eventId())) {
+            log.info("skip already processing book return cancel eventId={}", event.eventId());
+            return;
+        }
+        try {
+            handleBookRentalEventUseCase.handleReturnCanceled(event);
+        } finally {
+            releaseProcessing(event.eventId());
+        }
     }
 
     /**
@@ -63,8 +102,16 @@ public class BookEventConsumer {
      * @param eventId 멱등성 판단과 추적에 사용할 이벤트 식별자입니다.
      * @return 새로 처리할 수 있는 이벤트이면 true, 이미 처리된 이벤트이면 false를 반환합니다.
      */
-    private boolean markProcessed(String eventId) {
-        String key = "processed:book:" + eventId;
-        return Boolean.TRUE.equals(redisTemplate.opsForValue().setIfAbsent(key, "1", IDEMPOTENT_TTL));
+    private boolean claimProcessing(String eventId) {
+        String key = processingKey(eventId);
+        return Boolean.TRUE.equals(redisTemplate.opsForValue().setIfAbsent(key, UUID.randomUUID().toString(), PROCESSING_TTL));
+    }
+
+    private void releaseProcessing(String eventId) {
+        redisTemplate.delete(processingKey(eventId));
+    }
+
+    private String processingKey(String eventId) {
+        return "processing:book:" + eventId;
     }
 }

@@ -2,7 +2,7 @@ package com.example.library.bestbook.domain.model;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.example.library.common.vo.Item;
+import com.example.library.bestbook.domain.vo.BestBookItem;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -14,7 +14,7 @@ class BestBookTest {
      */
     @Test
     void registerBestBook() {
-        BestBook bestBook = BestBook.registerBestBook(new Item(1L, "도서"));
+        BestBook bestBook = BestBook.registerBestBook(new BestBookItem(1L, "도서"));
 
         assertThat(bestBook.getItemNo()).isEqualTo(1L);
         assertThat(bestBook.getRentCount()).isEqualTo(1L);
@@ -25,7 +25,7 @@ class BestBookTest {
      */
     @Test
     void increaseBestBookCount() {
-        BestBook bestBook = BestBook.registerBestBook(new Item(1L, "도서"));
+        BestBook bestBook = BestBook.registerBestBook(new BestBookItem(1L, "도서"));
 
         bestBook.increaseBestBookCount();
 

@@ -1,6 +1,6 @@
 package com.example.library.rental.application.port.out;
 
-import com.example.library.common.event.PointUseCommand;
+import com.example.library.rental.application.dto.PointUseCommandRequest;
 
 /**
  * 보상 흐름에서 포인트 사용 command를 발행하는 outbound port입니다.
@@ -11,5 +11,5 @@ public interface PublishPointUseCommandPort {
      *
      * @param command 포인트를 변경할 회원과 포인트 금액을 담은 command입니다.
      */
-    void publishPointUseCommand(PointUseCommand command);
+    void publishPointUseCommand(PointUseCommandRequest command);
 }

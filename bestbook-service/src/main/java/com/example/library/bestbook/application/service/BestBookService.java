@@ -1,29 +1,38 @@
 package com.example.library.bestbook.application.service;
 
 import com.example.library.bestbook.application.dto.BestBookResult;
+import com.example.library.bestbook.application.dto.CancelBestBookRentCommand;
 import com.example.library.bestbook.application.dto.RecordBestBookRentCommand;
 import com.example.library.bestbook.application.port.in.BestBookQueryUseCase;
+import com.example.library.bestbook.application.port.in.CancelBestBookRentUseCase;
 import com.example.library.bestbook.application.port.in.RecordBestBookRentUseCase;
 import com.example.library.bestbook.application.port.out.FindAllBestBooksPort;
 import com.example.library.bestbook.application.port.out.FindBestBookByIdPort;
 import com.example.library.bestbook.application.port.out.FindBestBookByItemNoPort;
+import com.example.library.bestbook.application.port.out.MessageIdempotencyPort;
 import com.example.library.bestbook.application.port.out.SaveBestBookPort;
 import com.example.library.bestbook.domain.model.BestBook;
+import com.example.library.bestbook.domain.vo.BestBookItem;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 /**
  * 인기 도서 read model 조회와 대여 횟수 누적 기록 흐름을 조율하는 application service입니다.
  */
 @Service
+@Slf4j
 @RequiredArgsConstructor
-public class BestBookService implements BestBookQueryUseCase, RecordBestBookRentUseCase {
+public class BestBookService implements BestBookQueryUseCase, RecordBestBookRentUseCase, CancelBestBookRentUseCase {
+    private static final String SERVICE_NAME = "bestbook-service";
+
     private final FindAllBestBooksPort findAllBestBooksPort;
     private final FindBestBookByIdPort findBestBookByIdPort;
     private final FindBestBookByItemNoPort findBestBookByItemNoPort;
     private final SaveBestBookPort saveBestBookPort;
+    private final MessageIdempotencyPort messageIdempotencyPort;
 
     /**
      * 모든 인기 도서 read model을 조회합니다.
@@ -56,12 +65,39 @@ public class BestBookService implements BestBookQueryUseCase, RecordBestBookRent
      */
     @Override
     public void recordRent(RecordBestBookRentCommand command) {
+        if (!messageIdempotencyPort.markProcessed(
+            SERVICE_NAME,
+            command.eventId(),
+            command.correlationId(),
+            command.messageType()
+        )) {
+            log.info("skip already processed bestbook eventId={}", command.eventId());
+            return;
+        }
         BestBook bestBook = findBestBookByItemNoPort.findByItemNo(command.itemNo())
             .map(book -> {
                 book.increaseBestBookCount();
                 return book;
             })
-            .orElseGet(() -> BestBook.registerBestBook(command.itemNo(), command.itemTitle()));
+            .orElseGet(() -> BestBook.registerBestBook(new BestBookItem(command.itemNo(), command.itemTitle())));
         saveBestBookPort.save(bestBook);
+    }
+
+    @Override
+    public void cancelRent(CancelBestBookRentCommand command) {
+        if (!messageIdempotencyPort.markProcessed(
+            SERVICE_NAME,
+            command.eventId(),
+            command.correlationId(),
+            command.messageType()
+        )) {
+            log.info("skip already processed bestbook cancel eventId={}", command.eventId());
+            return;
+        }
+        findBestBookByItemNoPort.findByItemNo(command.itemNo())
+            .ifPresent(book -> {
+                book.decreaseBestBookCount();
+                saveBestBookPort.save(book);
+            });
     }
 }

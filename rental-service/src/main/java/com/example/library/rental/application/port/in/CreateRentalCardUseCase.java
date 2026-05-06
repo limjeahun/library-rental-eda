@@ -1,7 +1,7 @@
 package com.example.library.rental.application.port.in;
 
-import com.example.library.common.vo.IDName;
-import com.example.library.rental.domain.model.RentalCard;
+import com.example.library.rental.domain.vo.RentalMember;
+import com.example.library.rental.application.dto.RentalCardResult;
 
 /**
  * 회원별 대여카드를 새로 만드는 Use Case
@@ -13,5 +13,5 @@ public interface CreateRentalCardUseCase {
      * @param creator 대여카드를 생성할 회원의 식별 값.
      * @return 기존 대여카드 또는 새로 생성된 대여카드를 반환.
      */
-    RentalCard createRentalCard(IDName creator);
+    RentalCardResult createRentalCard(RentalMember creator);
 }

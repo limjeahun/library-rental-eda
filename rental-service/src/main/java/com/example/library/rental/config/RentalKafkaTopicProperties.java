@@ -7,6 +7,9 @@ public record RentalKafkaTopicProperties(
     String rentalRent,
     String rentalReturn,
     String overdueClear,
-    String pointUse
+    String pointUse,
+    String rentCancel,
+    String returnCancel,
+    String overdueClearCancel
 ) {
 }

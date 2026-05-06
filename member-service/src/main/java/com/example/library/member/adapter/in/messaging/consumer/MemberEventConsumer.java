@@ -1,6 +1,5 @@
 package com.example.library.member.adapter.in.messaging.consumer;
 
-import com.example.library.common.event.EventResult;
 import com.example.library.common.event.ItemRented;
 import com.example.library.common.event.ItemReturned;
 import com.example.library.common.event.OverdueCleared;
@@ -8,6 +7,7 @@ import com.example.library.common.event.PointUseCommand;
 import com.example.library.member.application.port.in.HandleMemberEventUseCase;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -22,7 +22,7 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @RequiredArgsConstructor
 public class MemberEventConsumer {
-    private static final Duration IDEMPOTENT_TTL = Duration.ofDays(7);
+    private static final Duration PROCESSING_TTL = Duration.ofMinutes(10);
 
     private final ObjectMapper objectMapper;
     private final StringRedisTemplate redisTemplate;
@@ -37,11 +37,15 @@ public class MemberEventConsumer {
     @KafkaListener(topics = "${app.kafka.topics.rental-rent}", groupId = "${spring.kafka.consumer.group-id}")
     public void consumeRent(ConsumerRecord<String, String> record) throws Exception {
         ItemRented event = objectMapper.readValue(record.value(), ItemRented.class);
-        if (!markProcessed(event.eventId())) {
-            log.info("skip already processed member rent eventId={}", event.eventId());
+        if (!claimProcessing(event.eventId())) {
+            log.info("skip already processing member rent eventId={}", event.eventId());
             return;
         }
-        handleMemberEventUseCase.handleRent(event);
+        try {
+            handleMemberEventUseCase.handleRent(event);
+        } finally {
+            releaseProcessing(event.eventId());
+        }
     }
 
     /**
@@ -53,11 +57,15 @@ public class MemberEventConsumer {
     @KafkaListener(topics = "${app.kafka.topics.rental-return}", groupId = "${spring.kafka.consumer.group-id}")
     public void consumeReturn(ConsumerRecord<String, String> record) throws Exception {
         ItemReturned event = objectMapper.readValue(record.value(), ItemReturned.class);
-        if (!markProcessed(event.eventId())) {
-            log.info("skip already processed member return eventId={}", event.eventId());
+        if (!claimProcessing(event.eventId())) {
+            log.info("skip already processing member return eventId={}", event.eventId());
             return;
         }
-        handleMemberEventUseCase.handleReturn(event);
+        try {
+            handleMemberEventUseCase.handleReturn(event);
+        } finally {
+            releaseProcessing(event.eventId());
+        }
     }
 
     /**
@@ -69,11 +77,15 @@ public class MemberEventConsumer {
     @KafkaListener(topics = "${app.kafka.topics.overdue-clear}", groupId = "${spring.kafka.consumer.group-id}")
     public void consumeClear(ConsumerRecord<String, String> record) throws Exception {
         OverdueCleared event = objectMapper.readValue(record.value(), OverdueCleared.class);
-        if (!markProcessed(event.eventId())) {
-            log.info("skip already processed overdue clear eventId={}", event.eventId());
+        if (!claimProcessing(event.eventId())) {
+            log.info("skip already processing overdue clear eventId={}", event.eventId());
             return;
         }
-        handleMemberEventUseCase.handleOverdueClear(event);
+        try {
+            handleMemberEventUseCase.handleOverdueClear(event);
+        } finally {
+            releaseProcessing(event.eventId());
+        }
     }
 
     /**
@@ -85,11 +97,15 @@ public class MemberEventConsumer {
     @KafkaListener(topics = "${app.kafka.topics.point-use}", groupId = "${spring.kafka.consumer.group-id}")
     public void consumeUsePoint(ConsumerRecord<String, String> record) throws Exception {
         PointUseCommand command = objectMapper.readValue(record.value(), PointUseCommand.class);
-        if (!markProcessed(command.eventId())) {
-            log.info("skip already processed point_use eventId={}", command.eventId());
+        if (!claimProcessing(command.eventId())) {
+            log.info("skip already processing point_use eventId={}", command.eventId());
             return;
         }
-        handleMemberEventUseCase.handlePointUse(command);
+        try {
+            handleMemberEventUseCase.handlePointUse(command);
+        } finally {
+            releaseProcessing(command.eventId());
+        }
     }
 
     /**
@@ -98,8 +114,16 @@ public class MemberEventConsumer {
      * @param eventId 멱등성 판단과 추적에 사용할 이벤트 식별자입니다.
      * @return 새로 처리할 수 있는 이벤트이면 true, 이미 처리된 이벤트이면 false를 반환합니다.
      */
-    private boolean markProcessed(String eventId) {
-        String key = "processed:member:" + eventId;
-        return Boolean.TRUE.equals(redisTemplate.opsForValue().setIfAbsent(key, "1", IDEMPOTENT_TTL));
+    private boolean claimProcessing(String eventId) {
+        String key = processingKey(eventId);
+        return Boolean.TRUE.equals(redisTemplate.opsForValue().setIfAbsent(key, UUID.randomUUID().toString(), PROCESSING_TTL));
+    }
+
+    private void releaseProcessing(String eventId) {
+        redisTemplate.delete(processingKey(eventId));
+    }
+
+    private String processingKey(String eventId) {
+        return "processing:member:" + eventId;
     }
 }

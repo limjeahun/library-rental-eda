@@ -1,6 +1,5 @@
 package com.example.library.common.event;
 
-import com.example.library.common.vo.IDName;
 import java.time.Instant;
 
 /**
@@ -10,7 +9,8 @@ public record PointUseCommand(
     String eventId,
     String correlationId,
     Instant occurredAt,
-    IDName idName,
+    String memberId,
+    String memberName,
     long point,
     String reason
 ) {

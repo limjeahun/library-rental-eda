@@ -1,7 +1,5 @@
 package com.example.library.common.event;
 
-import com.example.library.common.vo.IDName;
-import com.example.library.common.vo.Item;
 import java.time.Instant;
 
 /**
@@ -11,8 +9,10 @@ public record ItemReturned(
     String eventId,
     String correlationId,
     Instant occurredAt,
-    IDName idName,
-    Item item,
+    String memberId,
+    String memberName,
+    Long itemNo,
+    String itemTitle,
     long point
 ) {
     public ItemReturned(ItemRented itemRented) {
@@ -20,8 +20,10 @@ public record ItemReturned(
             itemRented.eventId(),
             itemRented.correlationId(),
             itemRented.occurredAt(),
-            itemRented.idName(),
-            itemRented.item(),
+            itemRented.memberId(),
+            itemRented.memberName(),
+            itemRented.itemNo(),
+            itemRented.itemTitle(),
             itemRented.point()
         );
     }

@@ -1,6 +1,6 @@
 package com.example.library.member.application.service;
 
-import com.example.library.common.vo.IDName;
+import com.example.library.member.domain.vo.MemberIdentity;
 import com.example.library.member.application.dto.AddMemberCommand;
 import com.example.library.member.application.dto.ChangePointCommand;
 import com.example.library.member.application.dto.MemberResult;
@@ -64,7 +64,7 @@ public class MemberService implements AddMemberUseCase, MemberQueryUseCase, Save
     @Override
     @Transactional(readOnly = true)
     public MemberResult getMemberById(String id) {
-        return MemberResult.from(loadMemberByIdNamePort.loadMemberByIdName(new IDName(id, null)));
+        return MemberResult.from(loadMemberByIdNamePort.loadMemberByIdName(new MemberIdentity(id, null)));
     }
 
     /**

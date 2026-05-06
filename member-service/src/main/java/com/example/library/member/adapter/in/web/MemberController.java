@@ -1,7 +1,7 @@
 package com.example.library.member.adapter.in.web;
 
 import com.example.library.common.core.web.BaseResponse;
-import com.example.library.common.vo.IDName;
+import com.example.library.member.domain.vo.MemberIdentity;
 import com.example.library.member.adapter.in.web.request.MemberRequest;
 import com.example.library.member.adapter.in.web.response.MemberResponse;
 import com.example.library.member.adapter.in.web.request.PointRequest;
@@ -97,7 +97,7 @@ public class MemberController {
     @PostMapping("/{id}/points/use")
     public ResponseEntity<BaseResponse<MemberResponse>> usePoint(@PathVariable String id, @Valid @RequestBody PointRequest request) {
         return BaseResponse.ok(
-            MemberResponse.from(usePointUseCase.usePoint(new ChangePointCommand(new IDName(id, null), request.point())))
+            MemberResponse.from(usePointUseCase.usePoint(new ChangePointCommand(new MemberIdentity(id, null), request.point())))
         ).toResponseEntity();
     }
 }

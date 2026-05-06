@@ -1,6 +1,6 @@
 package com.example.library.member.adapter.in.web.request;
 
-import com.example.library.common.vo.IDName;
+import com.example.library.member.domain.vo.MemberIdentity;
 import com.example.library.member.application.dto.AddMemberCommand;
 import com.example.library.member.domain.vo.Email;
 import com.example.library.member.domain.vo.PassWord;
@@ -26,6 +26,6 @@ public record MemberRequest(
      * @return 요청 값을 업무 처리에 사용할 application command로 변환해 반환합니다.
      */
     public AddMemberCommand toCommand() {
-        return new AddMemberCommand(new IDName(id, name), new PassWord(passWord), new Email(email));
+        return new AddMemberCommand(new MemberIdentity(id, name), new PassWord(passWord), new Email(email));
     }
 }

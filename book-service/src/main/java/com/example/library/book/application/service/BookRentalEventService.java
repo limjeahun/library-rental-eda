@@ -3,16 +3,21 @@ package com.example.library.book.application.service;
 import com.example.library.book.application.port.in.HandleBookRentalEventUseCase;
 import com.example.library.book.application.port.in.MakeAvailableBookUseCase;
 import com.example.library.book.application.port.in.MakeUnavailableBookUseCase;
+import com.example.library.book.application.port.out.BookRentalFailurePolicyPort;
+import com.example.library.book.application.port.out.MessageIdempotencyPort;
 import com.example.library.book.application.port.out.PublishBookRentalResultPort;
-import com.example.library.book.config.BookFailureProperties;
 import com.example.library.common.event.EventResult;
 import com.example.library.common.event.EventType;
+import com.example.library.common.event.ItemRentCanceled;
 import com.example.library.common.event.ItemRented;
+import com.example.library.common.event.ItemReturnCanceled;
 import com.example.library.common.event.ItemReturned;
-import java.time.Instant;
+import com.example.library.common.event.Participant;
+import com.example.library.common.event.SagaStep;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 대여 이벤트를 받아 도서 상태를 변경하고 처리 결과 이벤트를 발행하는 application service입니다.
@@ -21,10 +26,13 @@ import org.springframework.stereotype.Service;
 @Slf4j
 @RequiredArgsConstructor
 public class BookRentalEventService implements HandleBookRentalEventUseCase {
+    private static final String SERVICE_NAME = "book-service";
+
     private final MakeAvailableBookUseCase makeAvailableBookUseCase;
     private final MakeUnavailableBookUseCase makeUnavailableBookUseCase;
     private final PublishBookRentalResultPort publishBookRentalResultPort;
-    private final BookFailureProperties failureProperties;
+    private final MessageIdempotencyPort messageIdempotencyPort;
+    private final BookRentalFailurePolicyPort failurePolicyPort;
 
     /**
      * 도서 대여 이벤트를 처리해 도서를 대여 불가능 상태로 바꾸고 결과 이벤트를 발행합니다.
@@ -32,16 +40,44 @@ public class BookRentalEventService implements HandleBookRentalEventUseCase {
      * @param event 처리하거나 발행할 도메인 이벤트 메시지입니다.
      */
     @Override
+    @Transactional
     public void handleRent(ItemRented event) {
+        if (!messageIdempotencyPort.markProcessed(SERVICE_NAME, event.eventId(), event.correlationId(), "ItemRented")) {
+            log.info("skip already processed book rent eventId={}", event.eventId());
+            return;
+        }
         try {
-            if (failureProperties.forceRentFail()) {
+            if (failurePolicyPort.shouldFailRent()) {
                 throw new IllegalArgumentException("forced rental_rent failure");
             }
-            makeUnavailableBookUseCase.makeUnavailable(event.item().no());
-            publishBookRentalResultPort.publish(result(event, EventType.RENT, true, null));
+            makeUnavailableBookUseCase.makeUnavailable(event.itemNo());
+            publishBookRentalResultPort.publish(EventResult.success(
+                event.eventId(),
+                event.correlationId(),
+                EventType.RENT,
+                Participant.BOOK,
+                SagaStep.BOOK_MAKE_UNAVAILABLE,
+                event.memberId(),
+                event.memberName(),
+                event.itemNo(),
+                event.itemTitle(),
+                event.point()
+            ));
         } catch (Exception ex) {
             log.error("Book rent event failed eventId={}", event.eventId(), ex);
-            publishBookRentalResultPort.publish(result(event, EventType.RENT, false, ex.getMessage()));
+            publishBookRentalResultPort.publish(EventResult.failure(
+                event.eventId(),
+                event.correlationId(),
+                EventType.RENT,
+                Participant.BOOK,
+                SagaStep.BOOK_MAKE_UNAVAILABLE,
+                event.memberId(),
+                event.memberName(),
+                event.itemNo(),
+                event.itemTitle(),
+                event.point(),
+                ex.getMessage()
+            ));
         }
     }
 
@@ -51,79 +87,64 @@ public class BookRentalEventService implements HandleBookRentalEventUseCase {
      * @param event 처리하거나 발행할 도메인 이벤트 메시지입니다.
      */
     @Override
+    @Transactional
     public void handleReturn(ItemReturned event) {
+        if (!messageIdempotencyPort.markProcessed(SERVICE_NAME, event.eventId(), event.correlationId(), "ItemReturned")) {
+            log.info("skip already processed book return eventId={}", event.eventId());
+            return;
+        }
         try {
-            if (failureProperties.forceReturnFail()) {
+            if (failurePolicyPort.shouldFailReturn()) {
                 throw new IllegalArgumentException("forced rental_return failure");
             }
-            makeAvailableBookUseCase.makeAvailable(event.item().no());
-            publishBookRentalResultPort.publish(result(
+            makeAvailableBookUseCase.makeAvailable(event.itemNo());
+            publishBookRentalResultPort.publish(EventResult.success(
                 event.eventId(),
                 event.correlationId(),
-                event.idName(),
-                event.item(),
-                event.point(),
                 EventType.RETURN,
-                true,
-                null
+                Participant.BOOK,
+                SagaStep.BOOK_MAKE_AVAILABLE,
+                event.memberId(),
+                event.memberName(),
+                event.itemNo(),
+                event.itemTitle(),
+                event.point()
             ));
         } catch (Exception ex) {
             log.error("Book return event failed eventId={}", event.eventId(), ex);
-            publishBookRentalResultPort.publish(result(
+            publishBookRentalResultPort.publish(EventResult.failure(
                 event.eventId(),
                 event.correlationId(),
-                event.idName(),
-                event.item(),
-                event.point(),
                 EventType.RETURN,
-                false,
+                Participant.BOOK,
+                SagaStep.BOOK_MAKE_AVAILABLE,
+                event.memberId(),
+                event.memberName(),
+                event.itemNo(),
+                event.itemTitle(),
+                event.point(),
                 ex.getMessage()
             ));
         }
     }
 
-    /**
-     * 대여 서비스가 보상 여부를 판단할 수 있도록 처리 결과 이벤트를 생성합니다.
-     *
-     * @param event 처리하거나 발행할 도메인 이벤트 메시지입니다.
-     * @param eventType 결과 이벤트가 대응하는 대여 흐름 타입입니다.
-     * @param successed 참여 서비스 처리 성공 여부입니다.
-     * @param reason 실패 결과나 보상 command의 사유입니다.
-     * @return 도서 상태 변경 성공/실패, 회원, 도서, 포인트, 사유를 담은 EventResult를 반환합니다.
-     */
-    private EventResult result(ItemRented event, EventType eventType, boolean successed, String reason) {
-        return result(
-            event.eventId(),
-            event.correlationId(),
-            event.idName(),
-            event.item(),
-            event.point(),
-            eventType,
-            successed,
-            reason
-        );
+    @Override
+    @Transactional
+    public void handleRentCanceled(ItemRentCanceled event) {
+        if (!messageIdempotencyPort.markProcessed(SERVICE_NAME, event.eventId(), event.correlationId(), "ItemRentCanceled")) {
+            log.info("skip already processed book rent cancel eventId={}", event.eventId());
+            return;
+        }
+        makeAvailableBookUseCase.makeAvailable(event.itemNo());
     }
 
-    private EventResult result(
-        String eventId,
-        String correlationId,
-        com.example.library.common.vo.IDName idName,
-        com.example.library.common.vo.Item item,
-        long point,
-        EventType eventType,
-        boolean successed,
-        String reason
-    ) {
-        return new EventResult(
-            eventId,
-            correlationId,
-            Instant.now(),
-            eventType,
-            successed,
-            idName,
-            item,
-            point,
-            reason
-        );
+    @Override
+    @Transactional
+    public void handleReturnCanceled(ItemReturnCanceled event) {
+        if (!messageIdempotencyPort.markProcessed(SERVICE_NAME, event.eventId(), event.correlationId(), "ItemReturnCanceled")) {
+            log.info("skip already processed book return cancel eventId={}", event.eventId());
+            return;
+        }
+        makeUnavailableBookUseCase.makeUnavailable(event.itemNo());
     }
 }

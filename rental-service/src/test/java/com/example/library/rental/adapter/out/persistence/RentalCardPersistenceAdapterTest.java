@@ -2,13 +2,13 @@ package com.example.library.rental.adapter.out.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.example.library.common.vo.IDName;
-import com.example.library.common.vo.Item;
 import com.example.library.rental.adapter.out.persistence.mapper.RentalCardPersistenceMapper;
 import com.example.library.rental.domain.model.RentItem;
 import com.example.library.rental.domain.model.RentStatus;
 import com.example.library.rental.domain.model.RentalCard;
 import com.example.library.rental.domain.vo.LateFee;
+import com.example.library.rental.domain.vo.RentalItem;
+import com.example.library.rental.domain.vo.RentalMember;
 import jakarta.persistence.EntityManager;
 import java.time.LocalDate;
 import java.util.List;
@@ -45,9 +45,9 @@ class RentalCardPersistenceAdapterTest {
     @Test
     void saveAndLoadRentalCard() {
         LocalDate returnDate = LocalDate.now();
-        IDName member = new IDName("db-member-" + UUID.randomUUID(), "DB 회원");
-        Item returnedBook = item(1);
-        Item stillRentedBook = item(2);
+        RentalMember member = new RentalMember("db-member-" + UUID.randomUUID(), "DB 회원");
+        RentalItem returnedBook = item(1);
+        RentalItem stillRentedBook = item(2);
         RentalCard rentalCard = rentalCardWithRentItems(
             "card-db-" + UUID.randomUUID(),
             member,
@@ -82,7 +82,7 @@ class RentalCardPersistenceAdapterTest {
             });
     }
 
-    private RentalCard rentalCardWithRentItems(String rentalCardNo, IDName member, RentItem... rentItems) {
+    private RentalCard rentalCardWithRentItems(String rentalCardNo, RentalMember member, RentItem... rentItems) {
         return RentalCard.reconstitute(
             rentalCardNo,
             member,
@@ -93,12 +93,12 @@ class RentalCardPersistenceAdapterTest {
         );
     }
 
-    private RentItem rentItem(Item item, LocalDate overdueDate) {
+    private RentItem rentItem(RentalItem item, LocalDate overdueDate) {
         return new RentItem(item, LocalDate.now().minusDays(10), false, overdueDate);
     }
 
-    private Item item(long no) {
-        return new Item(no, "book-" + no);
+    private RentalItem item(long no) {
+        return new RentalItem(no, "book-" + no);
     }
 
     private void logRentalCard(String scenario, RentalCard rentalCard) {

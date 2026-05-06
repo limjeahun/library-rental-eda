@@ -1,7 +1,7 @@
 package com.example.library.rental.adapter.out.persistence.mapper;
 
-import com.example.library.common.vo.IDName;
-import com.example.library.common.vo.Item;
+import com.example.library.rental.domain.vo.RentalMember;
+import com.example.library.rental.domain.vo.RentalItem;
 import com.example.library.rental.adapter.out.persistence.entity.RentItemJpaEmbeddable;
 import com.example.library.rental.adapter.out.persistence.entity.RentalCardJpaEntity;
 import com.example.library.rental.adapter.out.persistence.entity.ReturnItemJpaEmbeddable;
@@ -51,7 +51,7 @@ public class RentalCardPersistenceMapper {
     public RentalCard toDomain(RentalCardJpaEntity entity) {
         return RentalCard.reconstitute(
             entity.getRentalCardNo(),
-            new IDName(entity.getMemberId(), entity.getMemberName()),
+            new RentalMember(entity.getMemberId(), entity.getMemberName()),
             entity.getRentStatus(),
             new LateFee(entity.getLateFeePoint()),
             entity.getRentItems().stream().map(this::toRentItemDomain).toList(),
@@ -101,7 +101,7 @@ public class RentalCardPersistenceMapper {
      */
     private RentItem toRentItemDomain(RentItemJpaEmbeddable entity) {
         return new RentItem(
-            new Item(entity.getItemNo(), entity.getItemTitle()),
+            new RentalItem(entity.getItemNo(), entity.getItemTitle()),
             entity.getRentDate(),
             entity.isOverdued(),
             entity.getOverdueDate()
@@ -116,7 +116,7 @@ public class RentalCardPersistenceMapper {
      */
     private ReturnItem toReturnItemDomain(ReturnItemJpaEmbeddable entity) {
         RentItem rentItem = new RentItem(
-            new Item(entity.getItemNo(), entity.getItemTitle()),
+            new RentalItem(entity.getItemNo(), entity.getItemTitle()),
             entity.getRentDate(),
             entity.isOverdued(),
             entity.getOverdueDate()

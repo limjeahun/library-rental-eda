@@ -19,3 +19,4 @@ app:
   kafka:
     topics:
       rental-rent: rental_rent
+      rent-cancel: rent_cancel

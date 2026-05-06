@@ -1,6 +1,6 @@
 package com.example.library.bestbook.domain.model;
 
-import com.example.library.common.vo.Item;
+import com.example.library.bestbook.domain.vo.BestBookItem;
 
 /**
  * 대여 이벤트를 기반으로 누적되는 인기 도서 read model 도메인 모델입니다.
@@ -27,12 +27,12 @@ public class BestBook {
     }
 
     /**
-     * 공통 도서 값으로 첫 대여가 기록된 인기 도서 모델을 생성합니다.
+     * 서비스 로컬 도서 값으로 첫 대여가 기록된 인기 도서 모델을 생성합니다.
      *
      * @param item 업무 대상 도서의 번호와 제목입니다.
      * @return 첫 대여 횟수 1회가 기록된 인기 도서 도메인 모델을 반환합니다.
      */
-    public static BestBook registerBestBook(Item item) {
+    public static BestBook registerBestBook(BestBookItem item) {
         return new BestBook(null, item.no(), item.title(), 1L);
     }
 
@@ -65,6 +65,18 @@ public class BestBook {
      */
     public long increaseBestBookCount() {
         this.rentCount += 1;
+        return this.rentCount;
+    }
+
+    /**
+     * 보상 완료 이벤트에 따라 누적 대여 횟수를 1 감소시키되 0 아래로 내려가지 않게 합니다.
+     *
+     * @return 감소 후 누적 대여 횟수를 반환합니다.
+     */
+    public long decreaseBestBookCount() {
+        if (this.rentCount > 0) {
+            this.rentCount -= 1;
+        }
         return this.rentCount;
     }
 

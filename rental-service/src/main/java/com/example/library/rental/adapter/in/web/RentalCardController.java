@@ -1,13 +1,13 @@
 package com.example.library.rental.adapter.in.web;
 
 import com.example.library.common.core.web.BaseResponse;
-import com.example.library.rental.adapter.in.web.dto.ClearOverdueRequest;
-import com.example.library.rental.adapter.in.web.dto.RentItemResponse;
-import com.example.library.rental.adapter.in.web.dto.RentalCardResponse;
-import com.example.library.rental.adapter.in.web.dto.RentalResultResponse;
-import com.example.library.rental.adapter.in.web.dto.ReturnItemResponse;
-import com.example.library.rental.adapter.in.web.dto.UserItemRequest;
-import com.example.library.rental.adapter.in.web.dto.UserRequest;
+import com.example.library.rental.adapter.in.web.request.ClearOverdueRequest;
+import com.example.library.rental.adapter.in.web.response.RentItemResponse;
+import com.example.library.rental.adapter.in.web.response.RentalCardResponse;
+import com.example.library.rental.adapter.in.web.response.RentalResultResponse;
+import com.example.library.rental.adapter.in.web.response.ReturnItemResponse;
+import com.example.library.rental.adapter.in.web.request.UserItemRequest;
+import com.example.library.rental.adapter.in.web.request.UserRequest;
 import com.example.library.rental.application.port.in.ClearOverdueItemUseCase;
 import com.example.library.rental.application.port.in.CreateRentalCardUseCase;
 import com.example.library.rental.application.port.in.OverdueItemUseCase;

@@ -1,8 +1,8 @@
 package com.example.library.rental.application.port.in;
 
-import com.example.library.common.vo.IDName;
-import com.example.library.common.vo.Item;
-import com.example.library.rental.domain.model.RentalCard;
+import com.example.library.rental.domain.vo.RentalMember;
+import com.example.library.rental.domain.vo.RentalItem;
+import com.example.library.rental.application.dto.RentalCardResult;
 import java.time.LocalDate;
 
 /**
@@ -17,5 +17,5 @@ public interface ReturnItemUseCase {
      * @param returnDate 도서가 실제로 반납된 날짜.
      * @return 도서가 반납 목록으로 이동하고 반납 이벤트가 발행된 대여카드를 반환.
      */
-    RentalCard returnItem(IDName idName, Item item, LocalDate returnDate);
+    RentalCardResult returnItem(RentalMember idName, RentalItem item, LocalDate returnDate);
 }

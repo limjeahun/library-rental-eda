@@ -1,0 +1,4 @@
+interface:
+  display_name: "common-events VO 리팩터링 적용"
+  short_description: "common-events VO 경계 정리"
+  default_prompt: "$apply-common-events-vo-refactoring 를 사용해서 common-events VO 리팩터링 변경안을 적용해줘."
