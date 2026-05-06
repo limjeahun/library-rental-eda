@@ -1,6 +1,6 @@
 package com.example.library.rental.adapter.in.web.request;
 
-import com.example.library.rental.domain.vo.RentalMember;
+import com.example.library.rental.application.dto.CreateRentalCardCommand;
 import com.fasterxml.jackson.annotation.JsonAlias;
 import jakarta.validation.constraints.NotBlank;
 
@@ -15,11 +15,11 @@ public record UserRequest(
     @NotBlank @JsonAlias({"UserNm", "userNm"}) String userNm
 ) {
     /**
-     * 요청의 회원 정보를 공통 회원 식별 값으로 변환.
+     * 요청의 회원 정보를 대여카드 생성 command로 변환.
      *
-     * @return 요청 회원 ID와 이름을 담은 공통 값 객체를 반환.
+     * @return 요청 회원 ID와 이름을 담은 application command를 반환.
      */
-    public RentalMember toIdName() {
-        return new RentalMember(userId, userNm);
+    public CreateRentalCardCommand toCommand() {
+        return new CreateRentalCardCommand(userId, userNm);
     }
 }

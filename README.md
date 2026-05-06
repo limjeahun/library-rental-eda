@@ -308,8 +308,8 @@ sequenceDiagram
 
 상세 동작은 다음과 같습니다.
 
-1. `RentalCardController.rent(...)`가 `UserItemRequest`를 받습니다.
-2. `RentalCardService.rentItem(...)`가 대여카드를 조회하거나 없으면 생성합니다.
+1. `RentalCardController.rent(...)`가 `RentItemRequest`를 받아 `RentItemCommand`로 변환합니다.
+2. `RentalCardService.rentItem(...)`가 command 값으로 domain VO를 만들고, 대여카드를 조회하거나 없으면 생성합니다.
 3. `RentalCard.rentItem(...)`가 도메인 규칙을 검증합니다.
    - 대여 정지 상태면 대여 불가
    - 최대 5권까지 대여 가능

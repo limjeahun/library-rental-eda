@@ -108,14 +108,18 @@ If a message-only nested value type is truly necessary, place it under a message
 - Application Command, Query, and Result records belong in `application/dto`.
 - Domain value objects belong in each service's `domain/vo`, not in `application/dto`.
 - Web Request DTOs may convert to application Command or Query with `toCommand()` or `toQuery()`.
+- Web Request DTOs should convert to application Command or Query using primitive or simple request fields, not service domain value objects.
 - Web Response DTOs may convert from application Result with `from(result)`.
 - Application Result records may convert from domain models with `from(domain)` when useful.
+- Application services should create service domain value objects from application Command or Query values immediately before invoking domain models.
+- Application Command and Query records should prefer primitive or simple use-case input fields over domain value object fields unless the use case is purely internal and has no adapter-facing input.
 - Persistence Entity/Document and domain model conversion belongs in `adapter/out/persistence` mapper classes.
 - Shared Kafka message records from `common-events` must not define service-specific conversion methods such as `toRentalCommand()` or `toMemberCommand()`.
 - Kafka consumers or adapter-local messaging mappers convert shared Kafka messages to application commands.
 - Kafka producers or adapter-local messaging mappers convert local domain/application events or results to shared Kafka messages.
 - Domain models and domain value objects must not define `toResponse()`, `toCommonEvent()`, or `toJpaEntity()`.
 - Application Command records must not define `fromRequest()` because that would make application DTOs depend on adapter DTOs.
+- Inbound web and messaging adapters should not expose methods such as `toIdName()`, `toItem()`, or `toDomainVo()` on request/message DTOs.
 
 ## EDA Rules
 

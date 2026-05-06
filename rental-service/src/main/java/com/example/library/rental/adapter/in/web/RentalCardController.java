@@ -2,11 +2,13 @@ package com.example.library.rental.adapter.in.web;
 
 import com.example.library.common.core.web.BaseResponse;
 import com.example.library.rental.adapter.in.web.request.ClearOverdueRequest;
+import com.example.library.rental.adapter.in.web.request.OverdueItemRequest;
+import com.example.library.rental.adapter.in.web.request.RentItemRequest;
+import com.example.library.rental.adapter.in.web.request.ReturnItemRequest;
 import com.example.library.rental.adapter.in.web.response.RentItemResponse;
 import com.example.library.rental.adapter.in.web.response.RentalCardResponse;
 import com.example.library.rental.adapter.in.web.response.RentalResultResponse;
 import com.example.library.rental.adapter.in.web.response.ReturnItemResponse;
-import com.example.library.rental.adapter.in.web.request.UserItemRequest;
 import com.example.library.rental.adapter.in.web.request.UserRequest;
 import com.example.library.rental.application.port.in.ClearOverdueItemUseCase;
 import com.example.library.rental.application.port.in.CreateRentalCardUseCase;
@@ -15,7 +17,6 @@ import com.example.library.rental.application.port.in.RentItemUseCase;
 import com.example.library.rental.application.port.in.RentalCardQueryUseCase;
 import com.example.library.rental.application.port.in.ReturnItemUseCase;
 import jakarta.validation.Valid;
-import java.time.LocalDate;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -50,7 +51,7 @@ public class RentalCardController {
     public ResponseEntity<BaseResponse<RentalCardResponse>> createRentalCard(@Valid @RequestBody UserRequest request) {
         return BaseResponse.ok(
                     RentalCardResponse.from(
-                        createRentalCardUseCase.createRentalCard(request.toIdName())
+                        createRentalCardUseCase.createRentalCard(request.toCommand())
                     )
                 )
             .toResponseEntity();
@@ -111,12 +112,12 @@ public class RentalCardController {
      * @return 클라이언트에 반환할 HTTP 응답 DTO 를 반환.
      */
     @PostMapping("/rent")
-    public ResponseEntity<BaseResponse<RentalResultResponse>> rent(@Valid @RequestBody UserItemRequest request) {
+    public ResponseEntity<BaseResponse<RentalResultResponse>> rent(@Valid @RequestBody RentItemRequest request) {
         return BaseResponse.accepted(
                 RentalResultResponse.of(
                         "도서 대여 이벤트를 발행했습니다.",
                         RentalCardResponse.from(
-                                rentItemUseCase.rentItem(request.toIdName(), request.toItem())
+                                rentItemUseCase.rentItem(request.toCommand())
                         )
                 )
         ).toResponseEntity();
@@ -129,10 +130,10 @@ public class RentalCardController {
      * @return 클라이언트에 반환할 HTTP 응답 DTO를 반환합니다.
      */
     @PostMapping("/return")
-    public ResponseEntity<BaseResponse<RentalResultResponse>> returnItem(@Valid @RequestBody UserItemRequest request) {
+    public ResponseEntity<BaseResponse<RentalResultResponse>> returnItem(@Valid @RequestBody ReturnItemRequest request) {
         return BaseResponse.accepted(RentalResultResponse.of(
             "도서 반납 이벤트를 발행했습니다.",
-            RentalCardResponse.from(returnItemUseCase.returnItem(request.toIdName(), request.toItem(), LocalDate.now()))
+            RentalCardResponse.from(returnItemUseCase.returnItem(request.toCommand()))
         )).toResponseEntity();
     }
 
@@ -143,8 +144,8 @@ public class RentalCardController {
      * @return 클라이언트에 반환할 HTTP 응답 DTO를 반환합니다.
      */
     @PostMapping("/overdue")
-    public ResponseEntity<BaseResponse<RentalCardResponse>> overdue(@Valid @RequestBody UserItemRequest request) {
-        return BaseResponse.ok(RentalCardResponse.from(overdueItemUseCase.overdueItem(request.toIdName(), request.toItem())))
+    public ResponseEntity<BaseResponse<RentalCardResponse>> overdue(@Valid @RequestBody OverdueItemRequest request) {
+        return BaseResponse.ok(RentalCardResponse.from(overdueItemUseCase.overdueItem(request.toCommand())))
             .toResponseEntity();
     }
 
@@ -158,7 +159,7 @@ public class RentalCardController {
     public ResponseEntity<BaseResponse<RentalResultResponse>> clearOverdue(@Valid @RequestBody ClearOverdueRequest request) {
         return BaseResponse.accepted(RentalResultResponse.of(
             "연체해제 이벤트를 발행했습니다.",
-            RentalCardResponse.from(clearOverdueItemUseCase.clearOverdue(request.toIdName(), request.point()))
+            RentalCardResponse.from(clearOverdueItemUseCase.clearOverdue(request.toCommand()))
         )).toResponseEntity();
     }
 }

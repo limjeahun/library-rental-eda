@@ -1,0 +1,7 @@
+interface:
+  display_name: "Web Request/Command/Domain VO 경계 적용"
+  short_description: "Web 요청과 도메인 VO 경계 정리"
+  default_prompt: "$apply-web-request-command-domain-vo-boundary 를 사용해서 Web Request, application Command, domain VO 경계 개선안을 적용해줘."
+
+policy:
+  allow_implicit_invocation: true

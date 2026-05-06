@@ -1,11 +1,14 @@
 package com.example.library.rental.application.service;
 
-import com.example.library.rental.domain.vo.RentalMember;
-import com.example.library.rental.domain.vo.RentalItem;
+import com.example.library.rental.application.dto.ClearOverdueCommand;
+import com.example.library.rental.application.dto.CreateRentalCardCommand;
+import com.example.library.rental.application.dto.OverdueItemCommand;
 import com.example.library.rental.application.dto.PointUseCommandRequest;
+import com.example.library.rental.application.dto.RentItemCommand;
 import com.example.library.rental.application.dto.RentItemResult;
 import com.example.library.rental.application.dto.RentalCardResult;
 import com.example.library.rental.application.dto.RentalSagaState;
+import com.example.library.rental.application.dto.ReturnItemCommand;
 import com.example.library.rental.application.dto.ReturnItemResult;
 import com.example.library.rental.application.port.in.ClearOverdueItemUseCase;
 import com.example.library.rental.application.port.in.CompensationUseCase;
@@ -27,6 +30,8 @@ import com.example.library.rental.application.port.out.SaveRentalCardPort;
 import com.example.library.rental.application.port.out.SaveRentalSagaStatePort;
 import com.example.library.rental.domain.model.RentalCard;
 import com.example.library.rental.domain.model.RentalCardEvents;
+import com.example.library.rental.domain.vo.RentalItem;
+import com.example.library.rental.domain.vo.RentalMember;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -66,11 +71,12 @@ public class RentalCardService implements CreateRentalCardUseCase, RentItemUseCa
     /**
      * 회원에게 기존 대여카드가 있으면 반환하고 없으면 새 대여카드를 생성.
      *
-     * @param creator 대여카드를 생성할 회원의 식별 값.
+     * @param command 대여카드를 생성할 회원 입력 command.
      * @return 기존 대여카드 또는 새로 저장한 대여카드를 반환.
      */
     @Override
-    public RentalCardResult createRentalCard(RentalMember creator) {
+    public RentalCardResult createRentalCard(CreateRentalCardCommand command) {
+        RentalMember creator = rentalMember(command.userId(), command.userNm());
         RentalCard rentalCard = loadRentalCardPort.loadRentalCard(creator.id())
             .orElseGet(
                     () -> saveRentalCardPort.save(
@@ -83,12 +89,13 @@ public class RentalCardService implements CreateRentalCardUseCase, RentItemUseCa
     /**
      * 도서를 대여 처리하고 대여 완료 이벤트를 발행.
      *
-     * @param idName 대상 회원의 ID와 이름을 담은 공통 값 객체.
-     * @param item 업무 대상 도서의 번호와 제목.
+     * @param command 대상 회원과 도서 정보를 담은 입력 command.
      * @return 도서가 대여 목록에 추가되고 대여 이벤트가 발행된 대여카드를 반환.
      */
     @Override
-    public RentalCardResult rentItem(RentalMember idName, RentalItem item) {
+    public RentalCardResult rentItem(RentItemCommand command) {
+        RentalMember idName = rentalMember(command.userId(), command.userNm());
+        RentalItem item = rentalItem(command.itemNo(), command.itemTitle());
         String correlationId = UUID.randomUUID().toString();
         RentalCard rentalCard = loadRentalCardPort.loadRentalCard(idName.id())
             .orElseGet(() -> RentalCard.createRentalCard(idName));
@@ -105,13 +112,14 @@ public class RentalCardService implements CreateRentalCardUseCase, RentItemUseCa
     /**
      * 도서를 반납 처리하고 반납 완료 이벤트를 발행합니다.
      *
-     * @param idName 대상 회원의 ID와 이름을 담은 공통 값 객체입니다.
-     * @param item 업무 대상 도서의 번호와 제목입니다.
-     * @param returnDate 도서가 실제로 반납된 날짜입니다.
+     * @param command 대상 회원과 도서 정보를 담은 입력 command입니다.
      * @return 도서가 반납 목록으로 이동하고 반납 이벤트가 발행된 대여카드를 반환합니다.
      */
     @Override
-    public RentalCardResult returnItem(RentalMember idName, RentalItem item, LocalDate returnDate) {
+    public RentalCardResult returnItem(ReturnItemCommand command) {
+        RentalMember idName = rentalMember(command.userId(), command.userNm());
+        RentalItem item = rentalItem(command.itemNo(), command.itemTitle());
+        LocalDate returnDate = LocalDate.now();
         String correlationId = UUID.randomUUID().toString();
         RentalCard rentalCard = load(idName);
         rentalCard.returnItem(item, returnDate);
@@ -127,12 +135,13 @@ public class RentalCardService implements CreateRentalCardUseCase, RentItemUseCa
     /**
      * 대여 중인 도서를 연체 처리합니다.
      *
-     * @param idName 대상 회원의 ID와 이름을 담은 공통 값 객체입니다.
-     * @param item 업무 대상 도서의 번호와 제목입니다.
+     * @param command 대상 회원과 도서 정보를 담은 입력 command입니다.
      * @return 대상 도서가 연체 표시되고 대여 정지 상태로 저장된 대여카드를 반환합니다.
      */
     @Override
-    public RentalCardResult overdueItem(RentalMember idName, RentalItem item) {
+    public RentalCardResult overdueItem(OverdueItemCommand command) {
+        RentalMember idName = rentalMember(command.userId(), command.userNm());
+        RentalItem item = rentalItem(command.itemNo(), command.itemTitle());
         RentalCard rentalCard = load(idName);
         rentalCard.overdueItem(item);
         return RentalCardResult.from(saveRentalCardPort.save(rentalCard));
@@ -141,12 +150,13 @@ public class RentalCardService implements CreateRentalCardUseCase, RentItemUseCa
     /**
      * 연체료를 포인트로 정산하고 연체 해제 이벤트를 발행합니다.
      *
-     * @param idName 대상 회원의 ID와 이름을 담은 공통 값 객체입니다.
-     * @param point 적립, 차감, 정산 또는 보상에 사용할 포인트 값입니다.
+     * @param command 대상 회원과 포인트 정보를 담은 입력 command입니다.
      * @return 연체료가 포인트로 정산되고 연체 해제 이벤트가 발행된 대여카드를 반환합니다.
      */
     @Override
-    public RentalCardResult clearOverdue(RentalMember idName, long point) {
+    public RentalCardResult clearOverdue(ClearOverdueCommand command) {
+        RentalMember idName = rentalMember(command.userId(), command.userNm());
+        long point = command.point();
         String correlationId = UUID.randomUUID().toString();
         RentalCard rentalCard = load(idName);
         long usedPoint = rentalCard.makeAvailableRental(point);
@@ -292,6 +302,14 @@ public class RentalCardService implements CreateRentalCardUseCase, RentItemUseCa
     private RentalCard load(RentalMember idName) {
         return loadRentalCardPort.loadRentalCard(idName.id())
             .orElseThrow(() -> new IllegalArgumentException("대여카드가 없습니다."));
+    }
+
+    private RentalMember rentalMember(String userId, String userNm) {
+        return new RentalMember(userId, userNm);
+    }
+
+    private RentalItem rentalItem(Long itemNo, String itemTitle) {
+        return new RentalItem(itemNo, itemTitle);
     }
 
     /**

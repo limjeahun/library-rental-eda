@@ -1,7 +1,6 @@
 package com.example.library.rental.application.port.in;
 
-import com.example.library.rental.domain.vo.RentalMember;
-import com.example.library.rental.domain.vo.RentalItem;
+import com.example.library.rental.application.dto.RentItemCommand;
 import com.example.library.rental.application.dto.RentalCardResult;
 
 /**
@@ -11,9 +10,8 @@ public interface RentItemUseCase {
     /**
      * 지정 회원에게 도서를 대여 처리.
      *
-     * @param idName 대상 회원의 ID와 이름을 담은 공통 값 객체.
-     * @param item 업무 대상 도서의 번호와 제목.
+     * @param command 대상 회원과 도서 정보를 담은 입력 command.
      * @return 도서가 대여 목록에 추가되고 대여 이벤트가 발행된 대여카드를 반환.
      */
-    RentalCardResult rentItem(RentalMember idName, RentalItem item);
+    RentalCardResult rentItem(RentItemCommand command);
 }

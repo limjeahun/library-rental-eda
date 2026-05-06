@@ -1,6 +1,6 @@
 package com.example.library.rental.application.port.in;
 
-import com.example.library.rental.domain.vo.RentalMember;
+import com.example.library.rental.application.dto.CreateRentalCardCommand;
 import com.example.library.rental.application.dto.RentalCardResult;
 
 /**
@@ -8,10 +8,10 @@ import com.example.library.rental.application.dto.RentalCardResult;
  */
 public interface CreateRentalCardUseCase {
     /**
-     * 회원 식별 값으로 대여카드를 생성하거나 조회.
+     * 회원 생성 command로 대여카드를 생성하거나 조회.
      *
-     * @param creator 대여카드를 생성할 회원의 식별 값.
+     * @param command 대여카드를 생성할 회원 입력 command.
      * @return 기존 대여카드 또는 새로 생성된 대여카드를 반환.
      */
-    RentalCardResult createRentalCard(RentalMember creator);
+    RentalCardResult createRentalCard(CreateRentalCardCommand command);
 }
