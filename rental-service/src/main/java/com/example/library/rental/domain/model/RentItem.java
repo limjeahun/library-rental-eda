@@ -8,11 +8,9 @@ import java.util.Objects;
  *  대여 중인 단일 도서와 대여 상태.
  */
 public record RentItem(RentalItem item, LocalDate rentDate, boolean overdued, LocalDate overdueDate) {
-    private static final int RENTAL_DAYS = 14;
-
     public static RentItem createRentalItem(RentalItem item) {
         LocalDate now = LocalDate.now();
-        return new RentItem(item, now, false, now.plusDays(RENTAL_DAYS));
+        return new RentItem(item, now, false, RentalPeriodPolicy.STANDARD.overdueDateFrom(now));
     }
 
     public boolean isSameItem(RentalItem other) {

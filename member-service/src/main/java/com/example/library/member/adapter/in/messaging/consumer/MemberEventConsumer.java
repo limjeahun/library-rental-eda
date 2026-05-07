@@ -5,8 +5,8 @@ import com.example.library.common.event.ItemReturned;
 import com.example.library.common.event.OverdueCleared;
 import com.example.library.common.event.PointUseCommand;
 import com.example.library.member.application.port.in.HandleMemberEventUseCase;
+import com.example.library.member.config.KafkaConsumerProcessingProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.time.Duration;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,11 +22,10 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @RequiredArgsConstructor
 public class MemberEventConsumer {
-    private static final Duration PROCESSING_TTL = Duration.ofMinutes(10);
-
     private final ObjectMapper objectMapper;
     private final StringRedisTemplate redisTemplate;
     private final HandleMemberEventUseCase handleMemberEventUseCase;
+    private final KafkaConsumerProcessingProperties processingProperties;
 
     /**
      * 대여 이벤트 JSON을 ItemRented로 읽고, Redis에 eventId를 기록한 뒤 회원에게 대여 포인트를 적립합니다.
@@ -116,7 +115,9 @@ public class MemberEventConsumer {
      */
     private boolean claimProcessing(String eventId) {
         String key = processingKey(eventId);
-        return Boolean.TRUE.equals(redisTemplate.opsForValue().setIfAbsent(key, UUID.randomUUID().toString(), PROCESSING_TTL));
+        return Boolean.TRUE.equals(
+            redisTemplate.opsForValue().setIfAbsent(key, UUID.randomUUID().toString(), processingProperties.ttl())
+        );
     }
 
     private void releaseProcessing(String eventId) {

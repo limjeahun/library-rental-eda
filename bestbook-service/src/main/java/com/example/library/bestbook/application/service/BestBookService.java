@@ -26,8 +26,6 @@ import org.springframework.stereotype.Service;
 @Slf4j
 @RequiredArgsConstructor
 public class BestBookService implements BestBookQueryUseCase, RecordBestBookRentUseCase, CancelBestBookRentUseCase {
-    private static final String SERVICE_NAME = "bestbook-service";
-
     private final FindAllBestBooksPort findAllBestBooksPort;
     private final FindBestBookByIdPort findBestBookByIdPort;
     private final FindBestBookByItemNoPort findBestBookByItemNoPort;
@@ -66,7 +64,6 @@ public class BestBookService implements BestBookQueryUseCase, RecordBestBookRent
     @Override
     public void recordRent(RecordBestBookRentCommand command) {
         if (!messageIdempotencyPort.markProcessed(
-            SERVICE_NAME,
             command.eventId(),
             command.correlationId(),
             command.messageType()
@@ -86,7 +83,6 @@ public class BestBookService implements BestBookQueryUseCase, RecordBestBookRent
     @Override
     public void cancelRent(CancelBestBookRentCommand command) {
         if (!messageIdempotencyPort.markProcessed(
-            SERVICE_NAME,
             command.eventId(),
             command.correlationId(),
             command.messageType()

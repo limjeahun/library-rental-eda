@@ -50,11 +50,8 @@ public class RentalCardController {
     @PostMapping
     public ResponseEntity<BaseResponse<RentalCardResponse>> createRentalCard(@Valid @RequestBody UserRequest request) {
         return BaseResponse.ok(
-                    RentalCardResponse.from(
-                        createRentalCardUseCase.createRentalCard(request.toCommand())
-                    )
-                )
-            .toResponseEntity();
+                RentalCardResponse.from(createRentalCardUseCase.createRentalCard(request.toCommand()))
+        ).toResponseEntity();
     }
 
     /**
@@ -66,11 +63,8 @@ public class RentalCardController {
     @GetMapping("/{memberId}")
     public ResponseEntity<BaseResponse<RentalCardResponse>> getRentalCard(@PathVariable String memberId) {
         return BaseResponse.ok(
-                    RentalCardResponse.from(
-                            rentalCardQueryUseCase.getRentalCard(memberId)
-                    )
-                )
-            .toResponseEntity();
+                RentalCardResponse.from(rentalCardQueryUseCase.getRentalCard(memberId))
+        ).toResponseEntity();
     }
 
     /**
@@ -82,11 +76,8 @@ public class RentalCardController {
     @GetMapping("/{memberId}/rent-items")
     public ResponseEntity<BaseResponse<List<RentItemResponse>>> getRentItems(@PathVariable String memberId) {
         return BaseResponse.ok(
-                    rentalCardQueryUseCase.getRentItems(memberId).stream()
-                            .map(RentItemResponse::from)
-                            .toList()
-                )
-            .toResponseEntity();
+                RentItemResponse.from(rentalCardQueryUseCase.getRentItems(memberId))
+        ).toResponseEntity();
     }
 
     /**
@@ -98,11 +89,8 @@ public class RentalCardController {
     @GetMapping("/{memberId}/return-items")
     public ResponseEntity<BaseResponse<List<ReturnItemResponse>>> getReturnItems(@PathVariable String memberId) {
         return BaseResponse.ok(
-                    rentalCardQueryUseCase.getReturnItems(memberId).stream()
-                            .map(ReturnItemResponse::from)
-                            .toList()
-                )
-            .toResponseEntity();
+                ReturnItemResponse.from(rentalCardQueryUseCase.getReturnItems(memberId))
+        ).toResponseEntity();
     }
 
     /**
@@ -114,34 +102,28 @@ public class RentalCardController {
     @PostMapping("/rent")
     public ResponseEntity<BaseResponse<RentalResultResponse>> rent(@Valid @RequestBody RentItemRequest request) {
         return BaseResponse.accepted(
-                RentalResultResponse.of(
-                        "도서 대여 이벤트를 발행했습니다.",
-                        RentalCardResponse.from(
-                                rentItemUseCase.rentItem(request.toCommand())
-                        )
-                )
+                RentalResultResponse.rentAccepted(rentItemUseCase.rentItem(request.toCommand()))
         ).toResponseEntity();
     }
 
     /**
-     * 도서 반납을 처리하고 후속 Kafka 이벤트 발행 결과 메시지를 반환합니다.
+     * 도서 반납을 처리하고 후속 Kafka 이벤트 발행 결과 메시지를 반환.
      *
-     * @param request 반납할 도서 번호/제목과 회원 ID/이름을 담은 요청 본문 DTO입니다.
-     * @return 클라이언트에 반환할 HTTP 응답 DTO를 반환합니다.
+     * @param request 반납할 도서 번호/제목과 회원 ID/이름을 담은 요청 본문 DTO.
+     * @return 클라이언트에 반환할 HTTP 응답 DTO 반환.
      */
     @PostMapping("/return")
     public ResponseEntity<BaseResponse<RentalResultResponse>> returnItem(@Valid @RequestBody ReturnItemRequest request) {
-        return BaseResponse.accepted(RentalResultResponse.of(
-            "도서 반납 이벤트를 발행했습니다.",
-            RentalCardResponse.from(returnItemUseCase.returnItem(request.toCommand()))
-        )).toResponseEntity();
+        return BaseResponse.accepted(
+                RentalResultResponse.returnAccepted(returnItemUseCase.returnItem(request.toCommand()))
+        ).toResponseEntity();
     }
 
     /**
-     * 대여 중인 도서를 연체 상태로 표시합니다.
+     * 대여 중인 도서를 연체 상태로 표시.
      *
-     * @param request 연체로 표시할 회원 ID/이름과 도서 번호/제목을 담은 요청 본문 DTO입니다.
-     * @return 클라이언트에 반환할 HTTP 응답 DTO를 반환합니다.
+     * @param request 연체로 표시할 회원 ID/이름과 도서 번호/제목을 담은 요청 본문 DTO.
+     * @return 클라이언트에 반환할 HTTP 응답 DTO 반환.
      */
     @PostMapping("/overdue")
     public ResponseEntity<BaseResponse<RentalCardResponse>> overdue(@Valid @RequestBody OverdueItemRequest request) {
@@ -150,16 +132,15 @@ public class RentalCardController {
     }
 
     /**
-     * 연체료를 정산하고 후속 Kafka 이벤트 발행 결과 메시지를 반환합니다.
+     * 연체료를 정산하고 후속 Kafka 이벤트 발행 결과 메시지를 반환.
      *
-     * @param request 연체료 정산에 사용할 회원 ID/이름과 포인트를 담은 요청 본문 DTO입니다.
-     * @return 클라이언트에 반환할 HTTP 응답 DTO를 반환합니다.
+     * @param request 연체료 정산에 사용할 회원 ID/이름과 포인트를 담은 요청 본문 DTO.
+     * @return 클라이언트에 반환할 HTTP 응답 DTO 반환.
      */
     @PostMapping("/clear-overdue")
     public ResponseEntity<BaseResponse<RentalResultResponse>> clearOverdue(@Valid @RequestBody ClearOverdueRequest request) {
-        return BaseResponse.accepted(RentalResultResponse.of(
-            "연체해제 이벤트를 발행했습니다.",
-            RentalCardResponse.from(clearOverdueItemUseCase.clearOverdue(request.toCommand()))
-        )).toResponseEntity();
+        return BaseResponse.accepted(
+                RentalResultResponse.clearOverdueAccepted(clearOverdueItemUseCase.clearOverdue(request.toCommand()))
+        ).toResponseEntity();
     }
 }

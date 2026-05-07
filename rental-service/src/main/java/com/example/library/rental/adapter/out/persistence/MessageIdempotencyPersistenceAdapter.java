@@ -1,9 +1,11 @@
 package com.example.library.rental.adapter.out.persistence;
 
 import com.example.library.rental.application.port.out.MessageIdempotencyPort;
+import com.example.library.common.event.InboundMessageType;
 import java.sql.Timestamp;
 import java.time.Instant;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -14,21 +16,26 @@ import org.springframework.stereotype.Repository;
 @RequiredArgsConstructor
 public class MessageIdempotencyPersistenceAdapter implements MessageIdempotencyPort {
     private final JdbcTemplate jdbcTemplate;
+    private final Environment environment;
 
     @Override
-    public boolean markProcessed(String serviceName, String eventId, String correlationId, String messageType) {
+    public boolean markProcessed(String eventId, String correlationId, InboundMessageType messageType) {
         int inserted = jdbcTemplate.update(
             """
             insert ignore into processed_messages
                 (service_name, event_id, correlation_id, message_type, processed_at)
             values (?, ?, ?, ?, ?)
             """,
-            serviceName,
+            serviceName(),
             eventId,
             correlationId,
-            messageType,
+            messageType.name(),
             Timestamp.from(Instant.now())
         );
         return inserted == 1;
+    }
+
+    private String serviceName() {
+        return environment.getRequiredProperty("spring.application.name");
     }
 }

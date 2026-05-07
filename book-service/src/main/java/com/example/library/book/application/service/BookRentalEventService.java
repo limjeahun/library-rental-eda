@@ -8,6 +8,7 @@ import com.example.library.book.application.port.out.MessageIdempotencyPort;
 import com.example.library.book.application.port.out.PublishBookRentalResultPort;
 import com.example.library.common.event.EventResult;
 import com.example.library.common.event.EventType;
+import com.example.library.common.event.InboundMessageType;
 import com.example.library.common.event.ItemRentCanceled;
 import com.example.library.common.event.ItemRented;
 import com.example.library.common.event.ItemReturnCanceled;
@@ -26,8 +27,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 @RequiredArgsConstructor
 public class BookRentalEventService implements HandleBookRentalEventUseCase {
-    private static final String SERVICE_NAME = "book-service";
-
     private final MakeAvailableBookUseCase makeAvailableBookUseCase;
     private final MakeUnavailableBookUseCase makeUnavailableBookUseCase;
     private final PublishBookRentalResultPort publishBookRentalResultPort;
@@ -42,7 +41,11 @@ public class BookRentalEventService implements HandleBookRentalEventUseCase {
     @Override
     @Transactional
     public void handleRent(ItemRented event) {
-        if (!messageIdempotencyPort.markProcessed(SERVICE_NAME, event.eventId(), event.correlationId(), "ItemRented")) {
+        if (!messageIdempotencyPort.markProcessed(
+            event.eventId(),
+            event.correlationId(),
+            InboundMessageType.ITEM_RENTED
+        )) {
             log.info("skip already processed book rent eventId={}", event.eventId());
             return;
         }
@@ -89,7 +92,11 @@ public class BookRentalEventService implements HandleBookRentalEventUseCase {
     @Override
     @Transactional
     public void handleReturn(ItemReturned event) {
-        if (!messageIdempotencyPort.markProcessed(SERVICE_NAME, event.eventId(), event.correlationId(), "ItemReturned")) {
+        if (!messageIdempotencyPort.markProcessed(
+            event.eventId(),
+            event.correlationId(),
+            InboundMessageType.ITEM_RETURNED
+        )) {
             log.info("skip already processed book return eventId={}", event.eventId());
             return;
         }
@@ -131,7 +138,11 @@ public class BookRentalEventService implements HandleBookRentalEventUseCase {
     @Override
     @Transactional
     public void handleRentCanceled(ItemRentCanceled event) {
-        if (!messageIdempotencyPort.markProcessed(SERVICE_NAME, event.eventId(), event.correlationId(), "ItemRentCanceled")) {
+        if (!messageIdempotencyPort.markProcessed(
+            event.eventId(),
+            event.correlationId(),
+            InboundMessageType.ITEM_RENT_CANCELED
+        )) {
             log.info("skip already processed book rent cancel eventId={}", event.eventId());
             return;
         }
@@ -141,7 +152,11 @@ public class BookRentalEventService implements HandleBookRentalEventUseCase {
     @Override
     @Transactional
     public void handleReturnCanceled(ItemReturnCanceled event) {
-        if (!messageIdempotencyPort.markProcessed(SERVICE_NAME, event.eventId(), event.correlationId(), "ItemReturnCanceled")) {
+        if (!messageIdempotencyPort.markProcessed(
+            event.eventId(),
+            event.correlationId(),
+            InboundMessageType.ITEM_RETURN_CANCELED
+        )) {
             log.info("skip already processed book return cancel eventId={}", event.eventId());
             return;
         }

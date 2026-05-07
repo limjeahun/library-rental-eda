@@ -1,12 +1,12 @@
 package com.example.library.book.adapter.in.messaging.consumer;
 
 import com.example.library.book.application.port.in.HandleBookRentalEventUseCase;
+import com.example.library.book.config.KafkaConsumerProcessingProperties;
 import com.example.library.common.event.ItemRentCanceled;
 import com.example.library.common.event.ItemRented;
 import com.example.library.common.event.ItemReturnCanceled;
 import com.example.library.common.event.ItemReturned;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.time.Duration;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,11 +22,10 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @RequiredArgsConstructor
 public class BookEventConsumer {
-    private static final Duration PROCESSING_TTL = Duration.ofMinutes(10);
-
     private final ObjectMapper objectMapper;
     private final StringRedisTemplate redisTemplate;
     private final HandleBookRentalEventUseCase handleBookRentalEventUseCase;
+    private final KafkaConsumerProcessingProperties processingProperties;
 
     /**
      * 대여 이벤트 JSON을 ItemRented로 읽고, Redis에 eventId를 기록한 뒤 도서를 UNAVAILABLE로 바꾸는 처리를 실행합니다.
@@ -104,7 +103,9 @@ public class BookEventConsumer {
      */
     private boolean claimProcessing(String eventId) {
         String key = processingKey(eventId);
-        return Boolean.TRUE.equals(redisTemplate.opsForValue().setIfAbsent(key, UUID.randomUUID().toString(), PROCESSING_TTL));
+        return Boolean.TRUE.equals(
+            redisTemplate.opsForValue().setIfAbsent(key, UUID.randomUUID().toString(), processingProperties.ttl())
+        );
     }
 
     private void releaseProcessing(String eventId) {

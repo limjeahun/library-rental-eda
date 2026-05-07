@@ -2,6 +2,7 @@ package com.example.library.member.application.service;
 
 import com.example.library.common.event.EventResult;
 import com.example.library.common.event.EventType;
+import com.example.library.common.event.InboundMessageType;
 import com.example.library.common.event.ItemRented;
 import com.example.library.common.event.ItemReturned;
 import com.example.library.common.event.OverdueCleared;
@@ -28,8 +29,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 @RequiredArgsConstructor
 public class MemberEventService implements HandleMemberEventUseCase {
-    private static final String SERVICE_NAME = "member-service";
-
     private final SavePointUseCase savePointUseCase;
     private final UsePointUseCase usePointUseCase;
     private final PublishMemberEventResultPort publishMemberEventResultPort;
@@ -44,7 +43,11 @@ public class MemberEventService implements HandleMemberEventUseCase {
     @Override
     @Transactional
     public void handleRent(ItemRented event) {
-        if (!messageIdempotencyPort.markProcessed(SERVICE_NAME, event.eventId(), event.correlationId(), "ItemRented")) {
+        if (!messageIdempotencyPort.markProcessed(
+            event.eventId(),
+            event.correlationId(),
+            InboundMessageType.ITEM_RENTED
+        )) {
             log.info("skip already processed member rent eventId={}", event.eventId());
             return;
         }
@@ -65,7 +68,11 @@ public class MemberEventService implements HandleMemberEventUseCase {
     @Override
     @Transactional
     public void handleReturn(ItemReturned event) {
-        if (!messageIdempotencyPort.markProcessed(SERVICE_NAME, event.eventId(), event.correlationId(), "ItemReturned")) {
+        if (!messageIdempotencyPort.markProcessed(
+            event.eventId(),
+            event.correlationId(),
+            InboundMessageType.ITEM_RETURNED
+        )) {
             log.info("skip already processed member return eventId={}", event.eventId());
             return;
         }
@@ -109,7 +116,11 @@ public class MemberEventService implements HandleMemberEventUseCase {
     @Override
     @Transactional
     public void handleOverdueClear(OverdueCleared event) {
-        if (!messageIdempotencyPort.markProcessed(SERVICE_NAME, event.eventId(), event.correlationId(), "OverdueCleared")) {
+        if (!messageIdempotencyPort.markProcessed(
+            event.eventId(),
+            event.correlationId(),
+            InboundMessageType.OVERDUE_CLEARED
+        )) {
             log.info("skip already processed overdue clear eventId={}", event.eventId());
             return;
         }
@@ -133,7 +144,11 @@ public class MemberEventService implements HandleMemberEventUseCase {
     @Override
     @Transactional
     public void handlePointUse(PointUseCommand command) {
-        if (!messageIdempotencyPort.markProcessed(SERVICE_NAME, command.eventId(), command.correlationId(), "PointUseCommand")) {
+        if (!messageIdempotencyPort.markProcessed(
+            command.eventId(),
+            command.correlationId(),
+            InboundMessageType.POINT_USE_COMMAND
+        )) {
             log.info("skip already processed point_use eventId={}", command.eventId());
             return;
         }

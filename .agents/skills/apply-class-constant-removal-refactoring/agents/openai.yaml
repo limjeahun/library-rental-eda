@@ -1,0 +1,7 @@
+interface:
+  display_name: "클래스 상수 제거 리팩터링 적용"
+  short_description: "서비스 클래스 상수와 매직 스트링 제거"
+  default_prompt: "$apply-class-constant-removal-refactoring 를 사용해서 클래스 상수 제거 리팩터링 개선안을 적용해줘."
+
+policy:
+  allow_implicit_invocation: true

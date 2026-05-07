@@ -1,6 +1,7 @@
 package com.example.library.rental.adapter.out.persistence;
 
 import com.example.library.rental.application.port.out.CompensationIdempotencyPort;
+import com.example.library.rental.domain.model.RentalCompensationType;
 import java.sql.Timestamp;
 import java.time.Instant;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +17,7 @@ public class CompensationIdempotencyPersistenceAdapter implements CompensationId
     private final JdbcTemplate jdbcTemplate;
 
     @Override
-    public boolean markCompensated(String correlationId, String compensationType) {
+    public boolean markCompensated(String correlationId, RentalCompensationType compensationType) {
         int inserted = jdbcTemplate.update(
             """
             insert ignore into rental_compensation_records
@@ -24,7 +25,7 @@ public class CompensationIdempotencyPersistenceAdapter implements CompensationId
             values (?, ?, ?)
             """,
             correlationId,
-            compensationType,
+            compensationType.name(),
             Timestamp.from(Instant.now())
         );
         return inserted == 1;

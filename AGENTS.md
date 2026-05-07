@@ -65,6 +65,16 @@ Use normal Spring Boot, Spring Kafka, JPA, MongoDB, Redis, and Gradle patterns a
 - Use record canonical accessors such as `id()`, `item()`, and `correlationId()` for records. Do not add JavaBean compatibility getters or setters to records.
 - Existing aggregate/domain model getters such as `RentalCard.getRentItemList()` and persistence entity getters may remain when they are part of the current API or framework mapping style.
 
+## Policy, Protocol Key, and Constants Rules
+
+- Do not use application services or use case services as a place to hold class-level constants for domain policy values, compensation/idempotency keys, event or command type strings, Kafka protocol keys, or cross-service workflow identifiers.
+- Avoid introducing `private static final` constants in service classes. A service class should orchestrate a use case, not define business policy or protocol vocabularies.
+- Domain policy values such as rent points, return points, overdue rules, or rental limits belong in domain model behavior, a domain policy object, a domain value object, or a domain enum with behavior.
+- Do not turn magic strings into string constants when the value represents a finite business or protocol concept. Use a typed enum or value object instead so the compiler can catch invalid values.
+- Compensation, idempotency, and workflow step keys should be represented by typed service-local enums or value objects. If the key is part of an inter-service message protocol, define the shared protocol type in `common-events`.
+- Runtime-configurable technical values belong in Spring configuration properties under `config`, then flow into adapters or application services through explicit dependencies.
+- Local constants are allowed only when they are purely private implementation details with no business, protocol, persistence, messaging, or cross-service meaning. Keep them close to the code that uses them and avoid promoting them to service-level vocabulary.
+
 ## Target Package Structure
 
 For `book-service`, `member-service`, `rental-service`, and `bestbook-service`, follow the Architecture Rule target structure:
@@ -120,6 +130,36 @@ If a message-only nested value type is truly necessary, place it under a message
 - Domain models and domain value objects must not define `toResponse()`, `toCommonEvent()`, or `toJpaEntity()`.
 - Application Command records must not define `fromRequest()` because that would make application DTOs depend on adapter DTOs.
 - Inbound web and messaging adapters should not expose methods such as `toIdName()`, `toItem()`, or `toDomainVo()` on request/message DTOs.
+
+## Web Response DTO Rules
+
+- Controllers should stay thin: validate the request, convert the request DTO to a Command or Query, call the use case, convert the application Result to the final response DTO, and wrap it in `BaseResponse`.
+- Controllers should not manually build one response DTO and pass it into another response DTO just to create the final response.
+- Response DTO factory methods should accept application Result records or primitive/simple values as input.
+- Avoid response factory methods that require another response DTO as an input, such as `RentalResultResponse.of(message, RentalCardResponse.from(result))`.
+- Prefer intent-revealing response factory methods such as `RentalResultResponse.rentAccepted(result)`, where the response DTO owns the final HTTP response shape.
+- A response DTO may contain nested response-shaped fields only when that nested JSON object is part of the public API contract. Even then, conversion should start from application Result records, not from a response DTO already created by the controller.
+- HTTP response messages such as "요청을 접수했습니다." belong in web response DTO factories or web adapter-local helpers, not in controllers, application services, domain models, or application Result records.
+- Application Result records should contain use case result data, not presentation-only HTTP messages. Add a separate application result only when the message represents real use case state, protocol status, or correlation data.
+- When a response DTO needs the same application Result mapping in several factory methods, keep the shared mapping in a private helper inside the response DTO.
+- Before finishing web adapter changes, check whether any controller composes response DTOs manually, whether any response DTO factory unnecessarily accepts another response DTO, and whether response messages expose Kafka/event implementation details.
+
+Bad:
+
+```java
+RentalResultResponse.of(
+    "도서 대여 요청을 접수했습니다.",
+    RentalCardResponse.from(rentItemUseCase.rentItem(command))
+)
+```
+
+Good:
+
+```java
+RentalResultResponse.rentAccepted(
+    rentItemUseCase.rentItem(command)
+)
+```
 
 ## EDA Rules
 

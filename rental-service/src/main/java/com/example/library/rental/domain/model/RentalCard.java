@@ -5,7 +5,6 @@ import com.example.library.rental.domain.vo.RentalItem;
 import com.example.library.rental.domain.vo.LateFee;
 import com.example.library.rental.domain.vo.RentalCardNo;
 import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -14,8 +13,6 @@ import java.util.List;
  * 회원의 대여 가능 상태, 대여/반납 목록, 연체료 규칙을 관리하는 대여카드.
  */
 public class RentalCard {
-    private static final int MAX_RENTAL_COUNT = 5;
-
     private final String rentalCardNo;
     private final RentalMember member;
     private RentStatus rentStatus;
@@ -76,8 +73,10 @@ public class RentalCard {
         if (rentStatus == RentStatus.RENT_UNAVAILABLE) {
             throw new IllegalArgumentException("대여 정지 상태에서는 도서를 대여할 수 없습니다.");
         }
-        if (rentItemList.size() >= MAX_RENTAL_COUNT) {
-            throw new IllegalArgumentException("대여 중인 도서는 최대 5권까지 가능합니다.");
+        if (!RentalLimitPolicy.STANDARD.canRent(rentItemList.size())) {
+            throw new IllegalArgumentException(
+                "대여 중인 도서는 최대 " + RentalLimitPolicy.STANDARD.maxRentalCount() + "권까지 가능합니다."
+            );
         }
         if (findRentItem(item) != null) {
             throw new IllegalArgumentException("이미 대여 중인 도서입니다.");
@@ -195,10 +194,7 @@ public class RentalCard {
     }
 
     private long calculateLatePoint(RentItem rentItem, LocalDate returnDate) {
-        if (returnDate.isAfter(rentItem.overdueDate())) {
-            return ChronoUnit.DAYS.between(rentItem.overdueDate(), returnDate) * 10;
-        }
-        return 0;
+        return RentalLateFeePolicy.DAILY.calculate(rentItem.overdueDate(), returnDate);
     }
 
     public String getRentalCardNo() {
@@ -218,7 +214,7 @@ public class RentalCard {
     }
 
     public List<RentItem> getRentItemList() {
-        return Collections.unmodifiableList(rentItemList);
+        return List.copyOf(rentItemList);
     }
 
     public List<ReturnItem> getReturnItemList() {

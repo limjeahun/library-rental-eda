@@ -2,6 +2,7 @@ package com.example.library.rental.application.service;
 
 import com.example.library.common.event.EventResult;
 import com.example.library.common.event.EventType;
+import com.example.library.common.event.InboundMessageType;
 import com.example.library.rental.application.port.in.CompensationUseCase;
 import com.example.library.rental.application.port.in.HandleRentalResultUseCase;
 import com.example.library.rental.application.dto.RentalSagaState;
@@ -22,8 +23,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 @RequiredArgsConstructor
 public class RentalResultService implements HandleRentalResultUseCase {
-    private static final String SERVICE_NAME = "rental-service";
-
     private final CompensationUseCase compensationUseCase;
     private final MessageIdempotencyPort messageIdempotencyPort;
     private final LoadRentalSagaStatePort loadRentalSagaStatePort;
@@ -37,7 +36,11 @@ public class RentalResultService implements HandleRentalResultUseCase {
     @Override
     @Transactional
     public void handle(EventResult result) {
-        if (!messageIdempotencyPort.markProcessed(SERVICE_NAME, result.eventId(), result.correlationId(), "EventResult")) {
+        if (!messageIdempotencyPort.markProcessed(
+            result.eventId(),
+            result.correlationId(),
+            InboundMessageType.EVENT_RESULT
+        )) {
             log.info("skip already processed rental_result eventId={}", result.eventId());
             return;
         }

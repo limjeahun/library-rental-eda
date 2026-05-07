@@ -1,6 +1,7 @@
 package com.example.library.bestbook.adapter.in.web.dto;
 
 import com.example.library.bestbook.application.dto.RecordBestBookRentCommand;
+import com.example.library.common.event.InboundMessageType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.util.UUID;
@@ -22,6 +23,12 @@ public record BestBookRegisterRequest(
      */
     public RecordBestBookRentCommand toCommand() {
         String eventId = UUID.randomUUID().toString();
-        return new RecordBestBookRentCommand(itemNo, itemTitle, eventId, eventId, "ManualBestBookRent");
+        return new RecordBestBookRentCommand(
+            itemNo,
+            itemTitle,
+            eventId,
+            eventId,
+            InboundMessageType.MANUAL_BESTBOOK_RENT
+        );
     }
 }

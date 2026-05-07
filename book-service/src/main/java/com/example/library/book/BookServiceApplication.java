@@ -1,6 +1,7 @@
 package com.example.library.book;
 
 import com.example.library.book.config.BookFailureProperties;
+import com.example.library.book.config.KafkaConsumerProcessingProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -9,7 +10,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
  * 도서 서비스 Spring Boot 애플리케이션을 시작하는 진입점입니다.
  */
 @SpringBootApplication
-@EnableConfigurationProperties(BookFailureProperties.class)
+@EnableConfigurationProperties({BookFailureProperties.class, KafkaConsumerProcessingProperties.class})
 public class BookServiceApplication {
     /**
      * 도서 서비스 애플리케이션을 실행합니다.

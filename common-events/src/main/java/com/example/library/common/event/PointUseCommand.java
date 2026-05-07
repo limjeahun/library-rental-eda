@@ -12,6 +12,6 @@ public record PointUseCommand(
     String memberId,
     String memberName,
     long point,
-    String reason
+    PointUseReason reason
 ) {
 }

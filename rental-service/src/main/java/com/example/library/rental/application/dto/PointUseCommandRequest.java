@@ -1,5 +1,6 @@
 package com.example.library.rental.application.dto;
 
+import com.example.library.common.event.PointUseReason;
 import com.example.library.rental.domain.vo.RentalMember;
 
 /**
@@ -9,6 +10,6 @@ public record PointUseCommandRequest(
     String correlationId,
     RentalMember idName,
     long point,
-    String reason
+    PointUseReason reason
 ) {
 }

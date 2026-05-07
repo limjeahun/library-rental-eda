@@ -2,8 +2,8 @@ package com.example.library.rental.adapter.in.messaging.consumer;
 
 import com.example.library.common.event.EventResult;
 import com.example.library.rental.application.port.in.HandleRentalResultUseCase;
+import com.example.library.rental.config.KafkaConsumerProcessingProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.time.Duration;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,11 +19,10 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @RequiredArgsConstructor
 public class RentalEventConsumer {
-    private static final Duration PROCESSING_TTL = Duration.ofMinutes(10);
-
     private final ObjectMapper objectMapper;
     private final StringRedisTemplate redisTemplate;
     private final HandleRentalResultUseCase handleRentalResultUseCase;
+    private final KafkaConsumerProcessingProperties processingProperties;
 
     /**
      * 도서/회원 서비스 결과 이벤트 JSON을 EventResult로 읽고, 실패 결과이면 RENT/RETURN/OVERDUE 유형에 맞는 보상 처리를 실행합니다.
@@ -53,7 +52,9 @@ public class RentalEventConsumer {
      */
     private boolean claimProcessing(String eventId) {
         String key = processingKey(eventId);
-        return Boolean.TRUE.equals(redisTemplate.opsForValue().setIfAbsent(key, UUID.randomUUID().toString(), PROCESSING_TTL));
+        return Boolean.TRUE.equals(
+            redisTemplate.opsForValue().setIfAbsent(key, UUID.randomUUID().toString(), processingProperties.ttl())
+        );
     }
 
     private void releaseProcessing(String eventId) {

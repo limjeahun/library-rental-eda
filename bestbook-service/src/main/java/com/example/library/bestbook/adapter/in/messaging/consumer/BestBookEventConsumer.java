@@ -4,10 +4,11 @@ import com.example.library.bestbook.application.dto.CancelBestBookRentCommand;
 import com.example.library.bestbook.application.dto.RecordBestBookRentCommand;
 import com.example.library.bestbook.application.port.in.CancelBestBookRentUseCase;
 import com.example.library.bestbook.application.port.in.RecordBestBookRentUseCase;
+import com.example.library.bestbook.config.KafkaConsumerProcessingProperties;
+import com.example.library.common.event.InboundMessageType;
 import com.example.library.common.event.ItemRentCanceled;
 import com.example.library.common.event.ItemRented;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.time.Duration;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,12 +24,11 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @RequiredArgsConstructor
 public class BestBookEventConsumer {
-    private static final Duration PROCESSING_TTL = Duration.ofMinutes(10);
-
     private final ObjectMapper objectMapper;
     private final StringRedisTemplate redisTemplate;
     private final RecordBestBookRentUseCase recordBestBookRentUseCase;
     private final CancelBestBookRentUseCase cancelBestBookRentUseCase;
+    private final KafkaConsumerProcessingProperties processingProperties;
 
     /**
      * 대여 이벤트 JSON을 ItemRented로 읽고, Redis에 eventId를 기록한 뒤 도서의 누적 대여 횟수를 1 증가시킵니다.
@@ -49,7 +49,7 @@ public class BestBookEventConsumer {
                 event.itemTitle(),
                 event.eventId(),
                 event.correlationId(),
-                "ItemRented"
+                InboundMessageType.ITEM_RENTED
             ));
         } finally {
             releaseProcessing(event.eventId());
@@ -68,7 +68,7 @@ public class BestBookEventConsumer {
                 event.itemNo(),
                 event.eventId(),
                 event.correlationId(),
-                "ItemRentCanceled"
+                InboundMessageType.ITEM_RENT_CANCELED
             ));
         } finally {
             releaseProcessing(event.eventId());
@@ -83,7 +83,9 @@ public class BestBookEventConsumer {
      */
     private boolean claimProcessing(String eventId) {
         String key = processingKey(eventId);
-        return Boolean.TRUE.equals(redisTemplate.opsForValue().setIfAbsent(key, UUID.randomUUID().toString(), PROCESSING_TTL));
+        return Boolean.TRUE.equals(
+            redisTemplate.opsForValue().setIfAbsent(key, UUID.randomUUID().toString(), processingProperties.ttl())
+        );
     }
 
     private void releaseProcessing(String eventId) {

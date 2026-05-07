@@ -17,6 +17,9 @@ spring:
 
 app:
   kafka:
+    consumer:
+      processing:
+        ttl: 10m
     topics:
       rental-rent: rental_rent
       rent-cancel: rent_cancel
