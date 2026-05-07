@@ -1,8 +1,8 @@
 package com.example.library.rental.adapter.out.persistence.entity;
 
-import com.example.library.common.event.EventType;
-import com.example.library.rental.application.dto.RentalSagaStatus;
-import com.example.library.rental.application.dto.SagaParticipantStatus;
+import com.example.library.rental.domain.model.RentalSagaStatus;
+import com.example.library.rental.domain.model.RentalSagaType;
+import com.example.library.rental.domain.model.SagaParticipantStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -26,7 +26,7 @@ public class RentalSagaStateJpaEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "event_type", nullable = false, length = 40)
-    private EventType eventType;
+    private RentalSagaType sagaType;
 
     @Column(name = "member_id", nullable = false)
     private String memberId;
@@ -67,7 +67,7 @@ public class RentalSagaStateJpaEntity {
     public RentalSagaStateJpaEntity(
         String correlationId,
         String sourceEventId,
-        EventType eventType,
+        RentalSagaType sagaType,
         String memberId,
         String memberName,
         Long itemNo,
@@ -81,7 +81,7 @@ public class RentalSagaStateJpaEntity {
     ) {
         this.correlationId = correlationId;
         this.sourceEventId = sourceEventId;
-        this.eventType = eventType;
+        this.sagaType = sagaType;
         this.memberId = memberId;
         this.memberName = memberName;
         this.itemNo = itemNo;
@@ -102,8 +102,8 @@ public class RentalSagaStateJpaEntity {
         return sourceEventId;
     }
 
-    public EventType getEventType() {
-        return eventType;
+    public RentalSagaType getSagaType() {
+        return sagaType;
     }
 
     public String getMemberId() {

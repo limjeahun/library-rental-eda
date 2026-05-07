@@ -1,19 +1,16 @@
-package com.example.library.rental.application.dto;
+package com.example.library.rental.domain.model;
 
-import com.example.library.common.event.EventResult;
-import com.example.library.common.event.EventType;
-import com.example.library.common.event.Participant;
-import com.example.library.rental.domain.vo.RentalMember;
 import com.example.library.rental.domain.vo.RentalItem;
+import com.example.library.rental.domain.vo.RentalMember;
 import java.time.Instant;
 
 /**
- * rental-service가 시작한 Kafka 기반 업무 흐름의 참여자 결과를 correlationId 기준으로 추적합니다.
+ * rental-service 가 시작한 Kafka 기반 업무 흐름의 참여자 결과를 correlationId 기준으로 추적합니다.
  */
 public class RentalSagaState {
     private final String correlationId;
     private String sourceEventId;
-    private final EventType eventType;
+    private final RentalSagaType sagaType;
     private final RentalMember idName;
     private final RentalItem item;
     private final long point;
@@ -26,7 +23,7 @@ public class RentalSagaState {
     private RentalSagaState(
         String correlationId,
         String sourceEventId,
-        EventType eventType,
+        RentalSagaType sagaType,
         RentalMember idName,
         RentalItem item,
         long point,
@@ -38,7 +35,7 @@ public class RentalSagaState {
     ) {
         this.correlationId = correlationId;
         this.sourceEventId = sourceEventId;
-        this.eventType = eventType;
+        this.sagaType = sagaType;
         this.idName = idName;
         this.item = item;
         this.point = point;
@@ -50,21 +47,21 @@ public class RentalSagaState {
     }
 
     public static RentalSagaState startRent(String correlationId, RentalMember idName, RentalItem item, long point) {
-        return start(correlationId, EventType.RENT, idName, item, point, SagaParticipantStatus.PENDING);
+        return start(correlationId, RentalSagaType.RENT, idName, item, point, SagaParticipantStatus.PENDING);
     }
 
     public static RentalSagaState startReturn(String correlationId, RentalMember idName, RentalItem item, long point) {
-        return start(correlationId, EventType.RETURN, idName, item, point, SagaParticipantStatus.PENDING);
+        return start(correlationId, RentalSagaType.RETURN, idName, item, point, SagaParticipantStatus.PENDING);
     }
 
     public static RentalSagaState startOverdue(String correlationId, RentalMember idName, long point) {
-        return start(correlationId, EventType.OVERDUE, idName, null, point, SagaParticipantStatus.NOT_REQUIRED);
+        return start(correlationId, RentalSagaType.OVERDUE, idName, null, point, SagaParticipantStatus.NOT_REQUIRED);
     }
 
     public static RentalSagaState reconstitute(
         String correlationId,
         String sourceEventId,
-        EventType eventType,
+        RentalSagaType sagaType,
         RentalMember idName,
         RentalItem item,
         long point,
@@ -77,7 +74,7 @@ public class RentalSagaState {
         return new RentalSagaState(
             correlationId,
             sourceEventId,
-            eventType,
+            sagaType,
             idName,
             item,
             point,
@@ -91,7 +88,7 @@ public class RentalSagaState {
 
     private static RentalSagaState start(
         String correlationId,
-        EventType eventType,
+        RentalSagaType sagaType,
         RentalMember idName,
         RentalItem item,
         long point,
@@ -101,7 +98,7 @@ public class RentalSagaState {
         return new RentalSagaState(
             correlationId,
             null,
-            eventType,
+            sagaType,
             idName,
             item,
             point,
@@ -113,14 +110,18 @@ public class RentalSagaState {
         );
     }
 
-    public void recordResult(EventResult result) {
-        if (sourceEventId == null || sourceEventId.isBlank()) {
-            sourceEventId = result.sourceEventId();
+    public void recordParticipantResult(
+        String sourceEventId,
+        RentalSagaParticipant participant,
+        boolean successed
+    ) {
+        if (this.sourceEventId == null || this.sourceEventId.isBlank()) {
+            this.sourceEventId = sourceEventId;
         }
-        if (result.participant() == Participant.BOOK && bookResult == SagaParticipantStatus.PENDING) {
-            bookResult = toParticipantStatus(result);
-        } else if (result.participant() == Participant.MEMBER && memberResult == SagaParticipantStatus.PENDING) {
-            memberResult = toParticipantStatus(result);
+        if (participant == RentalSagaParticipant.BOOK && bookResult == SagaParticipantStatus.PENDING) {
+            bookResult = toParticipantStatus(successed);
+        } else if (participant == RentalSagaParticipant.MEMBER && memberResult == SagaParticipantStatus.PENDING) {
+            memberResult = toParticipantStatus(successed);
         }
         refreshStatus();
     }
@@ -152,8 +153,8 @@ public class RentalSagaState {
         updatedAt = Instant.now();
     }
 
-    private SagaParticipantStatus toParticipantStatus(EventResult result) {
-        return result.successed() ? SagaParticipantStatus.SUCCESS : SagaParticipantStatus.FAILED;
+    private SagaParticipantStatus toParticipantStatus(boolean successed) {
+        return successed ? SagaParticipantStatus.SUCCESS : SagaParticipantStatus.FAILED;
     }
 
     public String correlationId() {
@@ -164,8 +165,8 @@ public class RentalSagaState {
         return sourceEventId;
     }
 
-    public EventType eventType() {
-        return eventType;
+    public RentalSagaType sagaType() {
+        return sagaType;
     }
 
     public RentalMember idName() {

@@ -59,6 +59,9 @@ Use normal Spring Boot, Spring Kafka, JPA, MongoDB, Redis, and Gradle patterns a
 - Keep simple immutable domain value objects under each service's `domain/vo` and prefer Java `record` for them.
 - Application DTOs under `application/dto` are use case Command, Query, and Result records; they are not a replacement location for domain value objects.
 - Do not reuse `common-events` message payload types as service domain value objects or application DTOs.
+- Service-local domain events belong in each service's `domain/event` as top-level Java records.
+- Do not group domain events in a generic holder class when each event is part of the service's domain language.
+- Service-local domain events must not contain Kafka metadata or depend on `common-events`; messaging adapters convert them to shared integration messages.
 - Keep child domain models that participate in aggregate state transitions under `domain/model`, even when they are implemented as Java records.
 - Domain enums that express business state or business classification belong in `domain/model`.
 - Shared message/protocol enums used across services belong in `common-events`, and adapter-only or persistence-only enums should stay in the relevant adapter package.
@@ -89,6 +92,7 @@ com.example.library.{service}/
 │   └── service/
 ├── config/
 ├── domain/
+│   ├── event/
 │   ├── model/
 │   └── vo/
 ├── adapter/
@@ -167,6 +171,7 @@ RentalResultResponse.rentAccepted(
 - Command messages express requested actions.
 - Domain events express facts that already happened.
 - Result events express command processing outcomes.
+- Service-local domain events belong under `domain/event`; shared Kafka integration events belong under `common-events`.
 - Shared event, command, and result contracts in `common-events` should be Java records and should be accessed with record accessors.
 - Prefer primitive or simple snapshot fields in shared Kafka message records over shared domain VO fields.
 - Service-local domain/application code should convert to and from shared Kafka message records at adapter boundaries.

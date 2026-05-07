@@ -2,9 +2,9 @@ package com.example.library.rental.adapter.out.persistence;
 
 import com.example.library.rental.adapter.out.persistence.entity.RentalSagaStateJpaEntity;
 import com.example.library.rental.adapter.out.persistence.repository.RentalSagaStateJpaRepository;
-import com.example.library.rental.application.dto.RentalSagaState;
 import com.example.library.rental.application.port.out.LoadRentalSagaStatePort;
 import com.example.library.rental.application.port.out.SaveRentalSagaStatePort;
+import com.example.library.rental.domain.model.RentalSagaState;
 import com.example.library.rental.domain.vo.RentalItem;
 import com.example.library.rental.domain.vo.RentalMember;
 import java.util.Optional;
@@ -12,7 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
 /**
- * rental-service SAGA 추적 상태를 JPA 엔티티로 저장하고 application state로 복원하는 adapter입니다.
+ * rental-service SAGA 추적 상태를 JPA 엔티티로 저장하고 domain model로 복원하는 adapter입니다.
  */
 @Repository
 @RequiredArgsConstructor
@@ -34,7 +34,7 @@ public class RentalSagaStatePersistenceAdapter implements LoadRentalSagaStatePor
         return new RentalSagaStateJpaEntity(
             state.correlationId(),
             state.sourceEventId(),
-            state.eventType(),
+            state.sagaType(),
             state.idName().id(),
             state.idName().name(),
             item == null ? null : item.no(),
@@ -53,7 +53,7 @@ public class RentalSagaStatePersistenceAdapter implements LoadRentalSagaStatePor
         return RentalSagaState.reconstitute(
             entity.getCorrelationId(),
             entity.getSourceEventId(),
-            entity.getEventType(),
+            entity.getSagaType(),
             new RentalMember(entity.getMemberId(), entity.getMemberName()),
             item,
             entity.getPoint(),

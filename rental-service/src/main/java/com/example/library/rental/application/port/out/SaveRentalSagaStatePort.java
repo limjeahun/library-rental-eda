@@ -1,9 +1,9 @@
 package com.example.library.rental.application.port.out;
 
-import com.example.library.rental.application.dto.RentalSagaState;
+import com.example.library.rental.domain.model.RentalSagaState;
 
 /**
- * correlationId 기준 SAGA 추적 상태를 저장하는 outbound port입니다.
+ * correlationId 기준 SAGA 추적 상태를 저장하는 outbound port.
  */
 public interface SaveRentalSagaStatePort {
     RentalSagaState save(RentalSagaState state);

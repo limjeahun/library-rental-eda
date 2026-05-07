@@ -3,6 +3,7 @@ package com.example.library.rental.domain.model;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.example.library.rental.domain.event.ItemRentedDomainEvent;
 import com.example.library.rental.domain.vo.LateFee;
 import com.example.library.rental.domain.vo.RentalItem;
 import com.example.library.rental.domain.vo.RentalMember;
@@ -137,8 +138,7 @@ class RentalCardTest {
 
     @Test
     void createDomainEventWithoutIntegrationMetadata() {
-        RentalCardEvents.ItemRentedDomainEvent event =
-            new RentalCardEvents.ItemRentedDomainEvent(member(), item(1), 10);
+        ItemRentedDomainEvent event = new ItemRentedDomainEvent(member(), item(1), 10);
 
         log.info(
             "createDomainEventWithoutIntegrationMetadata member={} RentalItem={} point={}",

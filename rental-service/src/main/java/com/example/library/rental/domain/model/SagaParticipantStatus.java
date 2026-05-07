@@ -1,4 +1,4 @@
-package com.example.library.rental.application.dto;
+package com.example.library.rental.domain.model;
 
 /**
  * SAGA 참여자별 처리 결과 상태입니다.

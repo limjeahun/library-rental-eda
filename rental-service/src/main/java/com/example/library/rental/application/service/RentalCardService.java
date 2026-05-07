@@ -8,7 +8,6 @@ import com.example.library.rental.application.dto.PointUseCommandRequest;
 import com.example.library.rental.application.dto.RentItemCommand;
 import com.example.library.rental.application.dto.RentItemResult;
 import com.example.library.rental.application.dto.RentalCardResult;
-import com.example.library.rental.application.dto.RentalSagaState;
 import com.example.library.rental.application.dto.ReturnItemCommand;
 import com.example.library.rental.application.dto.ReturnItemResult;
 import com.example.library.rental.application.port.in.ClearOverdueItemUseCase;
@@ -29,10 +28,16 @@ import com.example.library.rental.application.port.out.PublishOverdueClearedPort
 import com.example.library.rental.application.port.out.PublishPointUseCommandPort;
 import com.example.library.rental.application.port.out.SaveRentalCardPort;
 import com.example.library.rental.application.port.out.SaveRentalSagaStatePort;
+import com.example.library.rental.domain.event.ItemRentCanceledDomainEvent;
+import com.example.library.rental.domain.event.ItemRentedDomainEvent;
+import com.example.library.rental.domain.event.ItemReturnCanceledDomainEvent;
+import com.example.library.rental.domain.event.ItemReturnedDomainEvent;
+import com.example.library.rental.domain.event.OverdueClearCanceledDomainEvent;
+import com.example.library.rental.domain.event.OverdueClearedDomainEvent;
 import com.example.library.rental.domain.model.RentalCard;
-import com.example.library.rental.domain.model.RentalCardEvents;
 import com.example.library.rental.domain.model.RentalCompensationType;
 import com.example.library.rental.domain.model.RentalPointPolicy;
+import com.example.library.rental.domain.model.RentalSagaState;
 import com.example.library.rental.domain.vo.RentalItem;
 import com.example.library.rental.domain.vo.RentalMember;
 import java.time.LocalDate;
@@ -101,7 +106,7 @@ public class RentalCardService implements CreateRentalCardUseCase, RentItemUseCa
         String correlationId = UUID.randomUUID().toString();
         saveRentalSagaStatePort.save(RentalSagaState.startRent(correlationId, member, item, point));
         publishItemRentedPort.publishRentalEvent(
-            new RentalCardEvents.ItemRentedDomainEvent(member, item, point),
+            new ItemRentedDomainEvent(member, item, point),
             correlationId
         );
         return RentalCardResult.from(saved);
@@ -127,7 +132,7 @@ public class RentalCardService implements CreateRentalCardUseCase, RentItemUseCa
         String correlationId = UUID.randomUUID().toString();
         saveRentalSagaStatePort.save(RentalSagaState.startReturn(correlationId, member, item, point));
         publishItemReturnedPort.publishReturnEvent(
-            new RentalCardEvents.ItemReturnedDomainEvent(member, item, point),
+            new ItemReturnedDomainEvent(member, item, point),
             correlationId
         );
         return RentalCardResult.from(saved);
@@ -167,7 +172,7 @@ public class RentalCardService implements CreateRentalCardUseCase, RentItemUseCa
         RentalCard saved = saveRentalCardPort.save(rentalCard);
         saveRentalSagaStatePort.save(RentalSagaState.startOverdue(correlationId, idName, usedPoint));
         publishOverdueClearedPort.publishOverdueClearEvent(
-            new RentalCardEvents.OverdueClearedDomainEvent(idName, usedPoint),
+            new OverdueClearedDomainEvent(idName, usedPoint),
             correlationId
         );
         return RentalCardResult.from(saved);
@@ -237,7 +242,7 @@ public class RentalCardService implements CreateRentalCardUseCase, RentItemUseCa
         rentalCard.cancelRentItem(item);
         saveRentalCardPort.save(rentalCard);
         publishItemRentCanceledPort.publishRentCanceledEvent(
-            new RentalCardEvents.ItemRentCanceledDomainEvent(idName, item, RentalPointPolicy.RENT.point()),
+            new ItemRentCanceledDomainEvent(idName, item, RentalPointPolicy.RENT.point()),
             correlationId
         );
     }
@@ -273,7 +278,7 @@ public class RentalCardService implements CreateRentalCardUseCase, RentItemUseCa
         rentalCard.cancelReturnItem(item, point);
         saveRentalCardPort.save(rentalCard);
         publishItemReturnCanceledPort.publishReturnCanceledEvent(
-            new RentalCardEvents.ItemReturnCanceledDomainEvent(idName, item, point),
+            new ItemReturnCanceledDomainEvent(idName, item, point),
             correlationId
         );
     }
@@ -306,7 +311,7 @@ public class RentalCardService implements CreateRentalCardUseCase, RentItemUseCa
         rentalCard.cancelMakeAvailableRental(point);
         saveRentalCardPort.save(rentalCard);
         publishOverdueClearCanceledPort.publishOverdueClearCanceledEvent(
-            new RentalCardEvents.OverdueClearCanceledDomainEvent(idName, point),
+            new OverdueClearCanceledDomainEvent(idName, point),
             correlationId
         );
     }

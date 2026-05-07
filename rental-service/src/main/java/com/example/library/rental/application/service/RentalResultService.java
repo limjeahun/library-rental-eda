@@ -3,12 +3,15 @@ package com.example.library.rental.application.service;
 import com.example.library.common.event.EventResult;
 import com.example.library.common.event.EventType;
 import com.example.library.common.event.InboundMessageType;
+import com.example.library.common.event.Participant;
 import com.example.library.rental.application.port.in.CompensationUseCase;
 import com.example.library.rental.application.port.in.HandleRentalResultUseCase;
-import com.example.library.rental.application.dto.RentalSagaState;
 import com.example.library.rental.application.port.out.LoadRentalSagaStatePort;
 import com.example.library.rental.application.port.out.MessageIdempotencyPort;
 import com.example.library.rental.application.port.out.SaveRentalSagaStatePort;
+import com.example.library.rental.domain.model.RentalSagaParticipant;
+import com.example.library.rental.domain.model.RentalSagaState;
+import com.example.library.rental.domain.model.RentalSagaType;
 import com.example.library.rental.domain.vo.RentalItem;
 import com.example.library.rental.domain.vo.RentalMember;
 import lombok.RequiredArgsConstructor;
@@ -47,7 +50,11 @@ public class RentalResultService implements HandleRentalResultUseCase {
 
         RentalSagaState state = loadRentalSagaStatePort.loadByCorrelationId(result.correlationId())
             .orElseGet(() -> fallbackState(result));
-        state.recordResult(result);
+        state.recordParticipantResult(
+            result.sourceEventId(),
+            toSagaParticipant(result.participant()),
+            result.successed()
+        );
         saveRentalSagaStatePort.save(state);
 
         if (!state.hasFailure()) {
@@ -68,35 +75,47 @@ public class RentalResultService implements HandleRentalResultUseCase {
     private RentalSagaState fallbackState(EventResult result) {
         RentalMember member = new RentalMember(result.memberId(), result.memberName());
         RentalItem item = result.itemNo() == null ? null : new RentalItem(result.itemNo(), result.itemTitle());
-        if (result.eventType() == EventType.RENT) {
-            return RentalSagaState.startRent(result.correlationId(), member, item, result.point());
-        }
-        if (result.eventType() == EventType.RETURN) {
-            return RentalSagaState.startReturn(result.correlationId(), member, item, result.point());
-        }
-        if (result.eventType() == EventType.OVERDUE) {
-            return RentalSagaState.startOverdue(result.correlationId(), member, result.point());
-        }
-        throw new IllegalArgumentException("unsupported eventType=" + result.eventType());
+        return switch (toSagaType(result.eventType())) {
+            case RENT -> RentalSagaState.startRent(result.correlationId(), member, item, result.point());
+            case RETURN -> RentalSagaState.startReturn(result.correlationId(), member, item, result.point());
+            case OVERDUE -> RentalSagaState.startOverdue(result.correlationId(), member, result.point());
+        };
     }
 
     private void compensate(RentalSagaState state) {
-        if (state.eventType() == EventType.RENT) {
-            compensationUseCase.cancelRentItem(state.idName(), state.item(), state.correlationId());
-            if (state.isMemberSuccess()) {
-                compensationUseCase.compensateRentPoint(state.idName(), state.correlationId());
+        switch (state.sagaType()) {
+            case RENT -> {
+                compensationUseCase.cancelRentItem(state.idName(), state.item(), state.correlationId());
+                if (state.isMemberSuccess()) {
+                    compensationUseCase.compensateRentPoint(state.idName(), state.correlationId());
+                }
             }
-            return;
-        }
-        if (state.eventType() == EventType.RETURN) {
-            compensationUseCase.cancelReturnItem(state.idName(), state.item(), state.point(), state.correlationId());
-            if (state.isMemberSuccess()) {
-                compensationUseCase.compensateReturnPoint(state.idName(), state.point(), state.correlationId());
+            case RETURN -> {
+                compensationUseCase.cancelReturnItem(state.idName(), state.item(), state.point(), state.correlationId());
+                if (state.isMemberSuccess()) {
+                    compensationUseCase.compensateReturnPoint(state.idName(), state.point(), state.correlationId());
+                }
             }
-            return;
+            case OVERDUE -> compensationUseCase.cancelMakeAvailableRental(
+                state.idName(),
+                state.point(),
+                state.correlationId()
+            );
         }
-        if (state.eventType() == EventType.OVERDUE) {
-            compensationUseCase.cancelMakeAvailableRental(state.idName(), state.point(), state.correlationId());
-        }
+    }
+
+    private RentalSagaType toSagaType(EventType eventType) {
+        return switch (eventType) {
+            case RENT -> RentalSagaType.RENT;
+            case RETURN -> RentalSagaType.RETURN;
+            case OVERDUE -> RentalSagaType.OVERDUE;
+        };
+    }
+
+    private RentalSagaParticipant toSagaParticipant(Participant participant) {
+        return switch (participant) {
+            case BOOK -> RentalSagaParticipant.BOOK;
+            case MEMBER -> RentalSagaParticipant.MEMBER;
+        };
     }
 }

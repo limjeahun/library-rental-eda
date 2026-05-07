@@ -16,7 +16,12 @@ import com.example.library.rental.application.port.out.PublishOverdueClearCancel
 import com.example.library.rental.application.port.out.PublishOverdueClearedPort;
 import com.example.library.rental.application.port.out.PublishPointUseCommandPort;
 import com.example.library.rental.config.RentalKafkaTopicProperties;
-import com.example.library.rental.domain.model.RentalCardEvents;
+import com.example.library.rental.domain.event.ItemRentCanceledDomainEvent;
+import com.example.library.rental.domain.event.ItemRentedDomainEvent;
+import com.example.library.rental.domain.event.ItemReturnCanceledDomainEvent;
+import com.example.library.rental.domain.event.ItemReturnedDomainEvent;
+import com.example.library.rental.domain.event.OverdueClearCanceledDomainEvent;
+import com.example.library.rental.domain.event.OverdueClearedDomainEvent;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -40,7 +45,7 @@ public class RentalKafkaEventProducer implements PublishItemRentedPort, PublishI
      * @param event 처리하거나 발행할 도메인 이벤트 메시지.
      */
     @Override
-    public void publishRentalEvent(RentalCardEvents.ItemRentedDomainEvent event, String correlationId) {
+    public void publishRentalEvent(ItemRentedDomainEvent event, String correlationId) {
         ItemRented message = new ItemRented(
             UUID.randomUUID().toString(),
             correlationId,
@@ -64,7 +69,7 @@ public class RentalKafkaEventProducer implements PublishItemRentedPort, PublishI
      * @param event 처리하거나 발행할 도메인 이벤트 메시지입니다.
      */
     @Override
-    public void publishReturnEvent(RentalCardEvents.ItemReturnedDomainEvent event, String correlationId) {
+    public void publishReturnEvent(ItemReturnedDomainEvent event, String correlationId) {
         ItemReturned message = new ItemReturned(
             UUID.randomUUID().toString(),
             correlationId,
@@ -84,7 +89,7 @@ public class RentalKafkaEventProducer implements PublishItemRentedPort, PublishI
      * @param event 처리하거나 발행할 도메인 이벤트 메시지입니다.
      */
     @Override
-    public void publishOverdueClearEvent(RentalCardEvents.OverdueClearedDomainEvent event, String correlationId) {
+    public void publishOverdueClearEvent(OverdueClearedDomainEvent event, String correlationId) {
         OverdueCleared message = new OverdueCleared(
             UUID.randomUUID().toString(),
             correlationId,
@@ -117,7 +122,7 @@ public class RentalKafkaEventProducer implements PublishItemRentedPort, PublishI
     }
 
     @Override
-    public void publishRentCanceledEvent(RentalCardEvents.ItemRentCanceledDomainEvent event, String correlationId) {
+    public void publishRentCanceledEvent(ItemRentCanceledDomainEvent event, String correlationId) {
         ItemRentCanceled message = new ItemRentCanceled(
             UUID.randomUUID().toString(),
             correlationId,
@@ -132,7 +137,7 @@ public class RentalKafkaEventProducer implements PublishItemRentedPort, PublishI
     }
 
     @Override
-    public void publishReturnCanceledEvent(RentalCardEvents.ItemReturnCanceledDomainEvent event, String correlationId) {
+    public void publishReturnCanceledEvent(ItemReturnCanceledDomainEvent event, String correlationId) {
         ItemReturnCanceled message = new ItemReturnCanceled(
             UUID.randomUUID().toString(),
             correlationId,
@@ -148,7 +153,7 @@ public class RentalKafkaEventProducer implements PublishItemRentedPort, PublishI
 
     @Override
     public void publishOverdueClearCanceledEvent(
-        RentalCardEvents.OverdueClearCanceledDomainEvent event,
+        OverdueClearCanceledDomainEvent event,
         String correlationId
     ) {
         OverdueClearCanceled message = new OverdueClearCanceled(

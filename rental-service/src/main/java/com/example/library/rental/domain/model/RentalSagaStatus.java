@@ -1,4 +1,4 @@
-package com.example.library.rental.application.dto;
+package com.example.library.rental.domain.model;
 
 /**
  * rental-service가 시작한 비동기 업무 흐름의 로컬 추적 상태입니다.
