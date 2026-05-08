@@ -10,10 +10,10 @@ import java.util.List;
  * @param itemId 대여, 반납, 연체 처리 대상 도서 번호입니다.
  * @param itemTitle 대여 또는 반납 항목의 도서 제목입니다.
  * @param rentDate 저장하거나 복원할 대여일입니다.
- * @param overdued 저장하거나 복원할 연체 여부입니다.
+ * @param overdue 저장하거나 복원할 연체 여부입니다.
  * @param overdueDate 저장하거나 복원할 반납 예정일입니다.
  */
-public record RentItemResponse(Long itemId, String itemTitle, LocalDate rentDate, boolean overdued, LocalDate overdueDate) {
+public record RentItemResponse(Long itemId, String itemTitle, LocalDate rentDate, boolean overdue, LocalDate overdueDate) {
     /**
      * 대여 항목 도메인 모델을 응답 DTO 변환.
      *
@@ -25,7 +25,7 @@ public record RentItemResponse(Long itemId, String itemTitle, LocalDate rentDate
             rentItem.itemId(),
             rentItem.itemTitle(),
             rentItem.rentDate(),
-            rentItem.overdued(),
+            rentItem.overdue(),
             rentItem.overdueDate()
         );
     }

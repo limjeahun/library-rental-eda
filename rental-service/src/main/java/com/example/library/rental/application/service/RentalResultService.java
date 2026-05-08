@@ -9,9 +9,9 @@ import com.example.library.rental.application.port.in.HandleRentalResultUseCase;
 import com.example.library.rental.application.port.out.LoadRentalSagaStatePort;
 import com.example.library.rental.application.port.out.MessageIdempotencyPort;
 import com.example.library.rental.application.port.out.SaveRentalSagaStatePort;
-import com.example.library.rental.domain.model.RentalSagaParticipant;
-import com.example.library.rental.domain.model.RentalSagaState;
-import com.example.library.rental.domain.model.RentalSagaType;
+import com.example.library.rental.domain.model.saga.RentalSagaParticipant;
+import com.example.library.rental.domain.model.saga.RentalSagaState;
+import com.example.library.rental.domain.model.saga.RentalSagaType;
 import com.example.library.rental.domain.vo.RentalItem;
 import com.example.library.rental.domain.vo.RentalMember;
 import lombok.RequiredArgsConstructor;
@@ -20,21 +20,21 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 도서/회원 서비스의 성공/실패 결과 이벤트를 해석해 대여, 반납, 연체 해제 보상을 실행하는 application service입니다.
+ * 도서/회원 서비스의 성공/실패 결과 이벤트를 해석해 대여, 반납, 연체 해제 보상을 실행하는 application service.
  */
 @Service
 @Slf4j
 @RequiredArgsConstructor
 public class RentalResultService implements HandleRentalResultUseCase {
-    private final CompensationUseCase compensationUseCase;
-    private final MessageIdempotencyPort messageIdempotencyPort;
-    private final LoadRentalSagaStatePort loadRentalSagaStatePort;
-    private final SaveRentalSagaStatePort saveRentalSagaStatePort;
+    private final CompensationUseCase       compensationUseCase;
+    private final MessageIdempotencyPort    messageIdempotencyPort;
+    private final LoadRentalSagaStatePort   loadRentalSagaStatePort;
+    private final SaveRentalSagaStatePort   saveRentalSagaStatePort;
 
     /**
-     * 성공 결과는 기록만 하고, 실패 결과는 이벤트 타입별 보상 흐름으로 분기합니다.
+     * 성공 결과는 기록만 하고, 실패 결과는 이벤트 타입별 보상 흐름으로 분기.
      *
-     * @param result 처리하거나 발행할 result event 메시지입니다.
+     * @param result 처리하거나 발행할 result event 메시지.
      */
     @Override
     @Transactional
@@ -85,19 +85,19 @@ public class RentalResultService implements HandleRentalResultUseCase {
     private void compensate(RentalSagaState state) {
         switch (state.sagaType()) {
             case RENT -> {
-                compensationUseCase.cancelRentItem(state.idName(), state.item(), state.correlationId());
+                compensationUseCase.cancelRentItem(state.member(), state.item(), state.correlationId());
                 if (state.isMemberSuccess()) {
-                    compensationUseCase.compensateRentPoint(state.idName(), state.correlationId());
+                    compensationUseCase.compensateRentPoint(state.member(), state.correlationId());
                 }
             }
             case RETURN -> {
-                compensationUseCase.cancelReturnItem(state.idName(), state.item(), state.point(), state.correlationId());
+                compensationUseCase.cancelReturnItem(state.member(), state.item(), state.point(), state.correlationId());
                 if (state.isMemberSuccess()) {
-                    compensationUseCase.compensateReturnPoint(state.idName(), state.point(), state.correlationId());
+                    compensationUseCase.compensateReturnPoint(state.member(), state.point(), state.correlationId());
                 }
             }
             case OVERDUE -> compensationUseCase.cancelMakeAvailableRental(
-                state.idName(),
+                state.member(),
                 state.point(),
                 state.correlationId()
             );

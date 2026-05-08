@@ -1,19 +1,22 @@
 package com.example.library.rental.adapter.out.persistence.entity;
 
-import com.example.library.rental.domain.model.RentalSagaStatus;
-import com.example.library.rental.domain.model.RentalSagaType;
-import com.example.library.rental.domain.model.SagaParticipantStatus;
+import com.example.library.rental.domain.model.saga.RentalSagaStatus;
+import com.example.library.rental.domain.model.saga.RentalSagaType;
+import com.example.library.rental.domain.model.saga.SagaParticipantStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import lombok.Getter;
+
 import java.time.Instant;
 
 /**
- * rental-service가 시작한 비동기 업무 흐름의 참여자 결과 상태를 저장하는 JPA 엔티티입니다.
+ * rental-service 가 시작한 비동기 업무 흐름의 참여자 결과 상태를 저장하는 JPA 엔티티입니다.
  */
+@Getter
 @Entity
 @Table(name = "rental_saga_states")
 public class RentalSagaStateJpaEntity {
@@ -94,55 +97,4 @@ public class RentalSagaStateJpaEntity {
         this.updatedAt = updatedAt;
     }
 
-    public String getCorrelationId() {
-        return correlationId;
-    }
-
-    public String getSourceEventId() {
-        return sourceEventId;
-    }
-
-    public RentalSagaType getSagaType() {
-        return sagaType;
-    }
-
-    public String getMemberId() {
-        return memberId;
-    }
-
-    public String getMemberName() {
-        return memberName;
-    }
-
-    public Long getItemNo() {
-        return itemNo;
-    }
-
-    public String getItemTitle() {
-        return itemTitle;
-    }
-
-    public long getPoint() {
-        return point;
-    }
-
-    public SagaParticipantStatus getBookResult() {
-        return bookResult;
-    }
-
-    public SagaParticipantStatus getMemberResult() {
-        return memberResult;
-    }
-
-    public RentalSagaStatus getSagaStatus() {
-        return sagaStatus;
-    }
-
-    public Instant getStartedAt() {
-        return startedAt;
-    }
-
-    public Instant getUpdatedAt() {
-        return updatedAt;
-    }
 }

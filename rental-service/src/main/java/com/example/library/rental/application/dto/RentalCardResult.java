@@ -18,11 +18,11 @@ public record RentalCardResult(
 ) {
     public static RentalCardResult from(RentalCard rentalCard) {
         return new RentalCardResult(
-            rentalCard.getRentalCardNo(),
-            rentalCard.getMember().id(),
-            rentalCard.getMember().name(),
-            rentalCard.getRentStatus(),
-            rentalCard.getLateFee().point(),
+            rentalCard.rentalCardNo(),
+            rentalCard.member().id(),
+            rentalCard.member().name(),
+            rentalCard.rentStatus(),
+            rentalCard.lateFee().point(),
             rentalCard.getRentItemList().stream().map(RentItemResult::from).toList(),
             rentalCard.getReturnItemList().stream().map(ReturnItemResult::from).toList()
         );

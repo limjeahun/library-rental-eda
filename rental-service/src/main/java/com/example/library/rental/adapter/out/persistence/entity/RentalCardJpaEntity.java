@@ -57,14 +57,14 @@ public class RentalCardJpaEntity {
     /**
      *  저장된 대여 중 항목 목록을 반환.
      */
-    @ElementCollection(fetch = FetchType.EAGER)
+    @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(name = "rental_card_rent_items", joinColumns = @JoinColumn(name = "rental_card_no"))
     private List<RentItemJpaEmbeddable> rentItems = new ArrayList<>();
 
     /**
      *  저장된 반납 완료 항목 목록을 반환.
      */
-    @ElementCollection(fetch = FetchType.EAGER)
+    @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(name = "rental_card_return_items", joinColumns = @JoinColumn(name = "rental_card_no"))
     private List<ReturnItemJpaEmbeddable> returnItems = new ArrayList<>();
 

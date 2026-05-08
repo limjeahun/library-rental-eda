@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 회원 등록/조회와 포인트 적립/사용 HTTP 요청을 처리하는 REST 컨트롤러입니다.
+ * 회원 등록/조회와 포인트 적립/사용 HTTP 요청을 처리하는 REST 컨트롤러.
  */
 @RestController
 @RequestMapping("/api/Member")

@@ -25,10 +25,10 @@ public record RentalCardResponse(
     List<ReturnItemResponse> returnItems
 ) {
     /**
-     * 대여카드 도메인 모델을 HTTP 응답 DTO로 변환합니다.
+     * 대여카드 도메인 모델을 HTTP 응답 DTO로 변환.
      *
-     * @param rentalCard 저장하거나 응답 DTO로 변환할 대여카드 도메인 모델입니다.
-     * @return 클라이언트에 반환할 HTTP 응답 DTO를 반환합니다.
+     * @param rentalCard 저장하거나 응답 DTO 로 변환할 대여카드 도메인 모델.
+     * @return 클라이언트에 반환할 HTTP 응답 DTO 반환.
      */
     public static RentalCardResponse from(RentalCardResult rentalCard) {
         return new RentalCardResponse(

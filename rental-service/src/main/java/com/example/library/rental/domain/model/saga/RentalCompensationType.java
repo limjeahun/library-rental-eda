@@ -1,4 +1,4 @@
-package com.example.library.rental.domain.model;
+package com.example.library.rental.domain.model.saga;
 
 /**
  * correlationId 기준으로 한 번만 실행해야 하는 rental-service 보상 종류입니다.

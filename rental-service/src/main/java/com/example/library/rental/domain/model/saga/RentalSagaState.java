@@ -1,4 +1,4 @@
-package com.example.library.rental.domain.model;
+package com.example.library.rental.domain.model.saga;
 
 import com.example.library.rental.domain.vo.RentalItem;
 import com.example.library.rental.domain.vo.RentalMember;
@@ -11,7 +11,7 @@ public class RentalSagaState {
     private final String correlationId;
     private String sourceEventId;
     private final RentalSagaType sagaType;
-    private final RentalMember idName;
+    private final RentalMember member;
     private final RentalItem item;
     private final long point;
     private SagaParticipantStatus bookResult;
@@ -24,7 +24,7 @@ public class RentalSagaState {
         String correlationId,
         String sourceEventId,
         RentalSagaType sagaType,
-        RentalMember idName,
+        RentalMember member,
         RentalItem item,
         long point,
         SagaParticipantStatus bookResult,
@@ -36,7 +36,7 @@ public class RentalSagaState {
         this.correlationId = correlationId;
         this.sourceEventId = sourceEventId;
         this.sagaType = sagaType;
-        this.idName = idName;
+        this.member = member;
         this.item = item;
         this.point = point;
         this.bookResult = bookResult;
@@ -46,23 +46,23 @@ public class RentalSagaState {
         this.updatedAt = updatedAt;
     }
 
-    public static RentalSagaState startRent(String correlationId, RentalMember idName, RentalItem item, long point) {
-        return start(correlationId, RentalSagaType.RENT, idName, item, point, SagaParticipantStatus.PENDING);
+    public static RentalSagaState startRent(String correlationId, RentalMember member, RentalItem item, long point) {
+        return start(correlationId, RentalSagaType.RENT, member, item, point, SagaParticipantStatus.PENDING);
     }
 
-    public static RentalSagaState startReturn(String correlationId, RentalMember idName, RentalItem item, long point) {
-        return start(correlationId, RentalSagaType.RETURN, idName, item, point, SagaParticipantStatus.PENDING);
+    public static RentalSagaState startReturn(String correlationId, RentalMember member, RentalItem item, long point) {
+        return start(correlationId, RentalSagaType.RETURN, member, item, point, SagaParticipantStatus.PENDING);
     }
 
-    public static RentalSagaState startOverdue(String correlationId, RentalMember idName, long point) {
-        return start(correlationId, RentalSagaType.OVERDUE, idName, null, point, SagaParticipantStatus.NOT_REQUIRED);
+    public static RentalSagaState startOverdue(String correlationId, RentalMember member, long point) {
+        return start(correlationId, RentalSagaType.OVERDUE, member, null, point, SagaParticipantStatus.NOT_REQUIRED);
     }
 
     public static RentalSagaState reconstitute(
         String correlationId,
         String sourceEventId,
         RentalSagaType sagaType,
-        RentalMember idName,
+        RentalMember member,
         RentalItem item,
         long point,
         SagaParticipantStatus bookResult,
@@ -75,7 +75,7 @@ public class RentalSagaState {
             correlationId,
             sourceEventId,
             sagaType,
-            idName,
+            member,
             item,
             point,
             bookResult,
@@ -89,7 +89,7 @@ public class RentalSagaState {
     private static RentalSagaState start(
         String correlationId,
         RentalSagaType sagaType,
-        RentalMember idName,
+        RentalMember member,
         RentalItem item,
         long point,
         SagaParticipantStatus bookResult
@@ -99,7 +99,7 @@ public class RentalSagaState {
             correlationId,
             null,
             sagaType,
-            idName,
+            member,
             item,
             point,
             bookResult,
@@ -169,8 +169,8 @@ public class RentalSagaState {
         return sagaType;
     }
 
-    public RentalMember idName() {
-        return idName;
+    public RentalMember member() {
+        return member;
     }
 
     public RentalItem item() {

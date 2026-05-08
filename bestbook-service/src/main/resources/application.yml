@@ -1,6 +1,14 @@
 server:
   port: 8084
 
+swagger:
+  title: Bestbook Service API
+  description: Library bestbook read model service API
+  version: v1.0.0
+  contact:
+    name: Library Team
+    email: support@example.com
+
 spring:
   application:
     name: bestbook-service

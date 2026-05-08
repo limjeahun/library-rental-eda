@@ -32,11 +32,11 @@ public class RentalCardPersistenceMapper {
             .toList();
 
         return new RentalCardJpaEntity(
-            rentalCard.getRentalCardNo(),
-            rentalCard.getMember().id(),
-            rentalCard.getMember().name(),
-            rentalCard.getRentStatus(),
-            rentalCard.getLateFee().point(),
+            rentalCard.rentalCardNo(),
+            rentalCard.member().id(),
+            rentalCard.member().name(),
+            rentalCard.rentStatus(),
+            rentalCard.lateFee().point(),
             rentItems,
             returnItems
         );
@@ -70,7 +70,7 @@ public class RentalCardPersistenceMapper {
             rentItem.item().no(),
             rentItem.item().title(),
             rentItem.rentDate(),
-            rentItem.overdued(),
+            rentItem.overdue(),
             rentItem.overdueDate()
         );
     }
@@ -87,7 +87,7 @@ public class RentalCardPersistenceMapper {
             rentItem.item().no(),
             rentItem.item().title(),
             rentItem.rentDate(),
-            rentItem.overdued(),
+            rentItem.overdue(),
             rentItem.overdueDate(),
             returnItem.returnDate()
         );
@@ -103,7 +103,7 @@ public class RentalCardPersistenceMapper {
         return new RentItem(
             new RentalItem(entity.getItemNo(), entity.getItemTitle()),
             entity.getRentDate(),
-            entity.isOverdued(),
+            entity.isOverdue(),
             entity.getOverdueDate()
         );
     }
@@ -118,7 +118,7 @@ public class RentalCardPersistenceMapper {
         RentItem rentItem = new RentItem(
             new RentalItem(entity.getItemNo(), entity.getItemTitle()),
             entity.getRentDate(),
-            entity.isOverdued(),
+            entity.isOverdue(),
             entity.getOverdueDate()
         );
         return new ReturnItem(rentItem, entity.getReturnDate());

@@ -1,5 +1,7 @@
 package com.example.library.rental.domain.model;
 
+import com.example.library.rental.domain.model.policy.RentalLateFeePolicy;
+import com.example.library.rental.domain.model.policy.RentalLimitPolicy;
 import com.example.library.rental.domain.vo.RentalMember;
 import com.example.library.rental.domain.vo.RentalItem;
 import com.example.library.rental.domain.vo.LateFee;
@@ -100,7 +102,7 @@ public class RentalCard {
     public RentalCard overdueItem(RentalItem item) {
         RentItem rentItem = requireRentItem(item);
         int index = rentItemList.indexOf(rentItem);
-        rentItemList.set(index, rentItem.markOverdued());
+        rentItemList.set(index, rentItem.markOverdue());
         rentStatus = RentStatus.RENT_UNAVAILABLE;
         return this;
     }
@@ -125,7 +127,7 @@ public class RentalCard {
             return this;
         }
         rentItemList.remove(rentItem);
-        if (lateFee.point() == 0 && rentItemList.stream().noneMatch(RentItem::overdued)) {
+        if (lateFee.point() == 0 && rentItemList.stream().noneMatch(RentItem::overdue)) {
             rentStatus = RentStatus.RENT_AVAILABLE;
         }
         return this;
@@ -143,7 +145,7 @@ public class RentalCard {
         if (latePoint > 0) {
             lateFee = lateFee.removePoint(latePoint);
         }
-        rentStatus = returnItem.item().overdued() || lateFee.point() > 0
+        rentStatus = returnItem.item().overdue() || lateFee.point() > 0
             ? RentStatus.RENT_UNAVAILABLE
             : RentStatus.RENT_AVAILABLE;
         return this;
@@ -197,19 +199,19 @@ public class RentalCard {
         return RentalLateFeePolicy.DAILY.calculate(rentItem.overdueDate(), returnDate);
     }
 
-    public String getRentalCardNo() {
+    public String rentalCardNo() {
         return rentalCardNo;
     }
 
-    public RentalMember getMember() {
+    public RentalMember member() {
         return member;
     }
 
-    public RentStatus getRentStatus() {
+    public RentStatus rentStatus() {
         return rentStatus;
     }
 
-    public LateFee getLateFee() {
+    public LateFee lateFee() {
         return lateFee;
     }
 

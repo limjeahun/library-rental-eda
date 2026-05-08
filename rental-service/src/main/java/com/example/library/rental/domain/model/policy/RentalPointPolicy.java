@@ -1,4 +1,4 @@
-package com.example.library.rental.domain.model;
+package com.example.library.rental.domain.model.policy;
 
 /**
  * rental-service 대여 흐름에서 적용되는 포인트 정책입니다.

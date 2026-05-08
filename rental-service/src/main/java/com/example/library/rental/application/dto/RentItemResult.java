@@ -10,7 +10,7 @@ public record RentItemResult(
     Long itemId,
     String itemTitle,
     LocalDate rentDate,
-    boolean overdued,
+    boolean overdue,
     LocalDate overdueDate
 ) {
     public static RentItemResult from(RentItem rentItem) {
@@ -18,7 +18,7 @@ public record RentItemResult(
             rentItem.item().no(),
             rentItem.item().title(),
             rentItem.rentDate(),
-            rentItem.overdued(),
+            rentItem.overdue(),
             rentItem.overdueDate()
         );
     }

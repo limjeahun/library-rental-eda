@@ -11,7 +11,7 @@ public class ReturnItemJpaEmbeddable {
     private Long itemNo;
     private String itemTitle;
     private LocalDate rentDate;
-    private boolean overdued;
+    private boolean overdue;
     private LocalDate overdueDate;
     private LocalDate returnDate;
 
@@ -27,7 +27,7 @@ public class ReturnItemJpaEmbeddable {
      * @param itemNo 대여 또는 반납 항목의 도서 번호입니다.
      * @param itemTitle 대여 또는 반납 항목의 도서 제목입니다.
      * @param rentDate 저장하거나 복원할 대여일입니다.
-     * @param overdued 저장하거나 복원할 연체 여부입니다.
+     * @param overdue 저장하거나 복원할 연체 여부입니다.
      * @param overdueDate 저장하거나 복원할 반납 예정일입니다.
      * @param returnDate 도서가 실제로 반납된 날짜입니다.
      */
@@ -35,14 +35,14 @@ public class ReturnItemJpaEmbeddable {
         Long itemNo,
         String itemTitle,
         LocalDate rentDate,
-        boolean overdued,
+        boolean overdue,
         LocalDate overdueDate,
         LocalDate returnDate
     ) {
         this.itemNo = itemNo;
         this.itemTitle = itemTitle;
         this.rentDate = rentDate;
-        this.overdued = overdued;
+        this.overdue = overdue;
         this.overdueDate = overdueDate;
         this.returnDate = returnDate;
     }
@@ -79,8 +79,8 @@ public class ReturnItemJpaEmbeddable {
      *
      * @return 영속성 값에 연체 상태가 저장되어 있으면 true를 반환합니다.
      */
-    public boolean isOverdued() {
-        return overdued;
+    public boolean isOverdue() {
+        return overdue;
     }
 
     /**

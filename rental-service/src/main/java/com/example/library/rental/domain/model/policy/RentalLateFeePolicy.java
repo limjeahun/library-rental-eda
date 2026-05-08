@@ -1,4 +1,4 @@
-package com.example.library.rental.domain.model;
+package com.example.library.rental.domain.model.policy;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;

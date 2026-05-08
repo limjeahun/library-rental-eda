@@ -4,7 +4,7 @@ import com.example.library.common.event.PointUseReason;
 import com.example.library.rental.application.dto.ClearOverdueCommand;
 import com.example.library.rental.application.dto.CreateRentalCardCommand;
 import com.example.library.rental.application.dto.OverdueItemCommand;
-import com.example.library.rental.application.dto.PointUseCommandRequest;
+import com.example.library.rental.application.dto.PointUseCommandPayload;
 import com.example.library.rental.application.dto.RentItemCommand;
 import com.example.library.rental.application.dto.RentItemResult;
 import com.example.library.rental.application.dto.RentalCardResult;
@@ -35,9 +35,9 @@ import com.example.library.rental.domain.event.ItemReturnedDomainEvent;
 import com.example.library.rental.domain.event.OverdueClearCanceledDomainEvent;
 import com.example.library.rental.domain.event.OverdueClearedDomainEvent;
 import com.example.library.rental.domain.model.RentalCard;
-import com.example.library.rental.domain.model.RentalCompensationType;
-import com.example.library.rental.domain.model.RentalPointPolicy;
-import com.example.library.rental.domain.model.RentalSagaState;
+import com.example.library.rental.domain.model.policy.RentalPointPolicy;
+import com.example.library.rental.domain.model.saga.RentalCompensationType;
+import com.example.library.rental.domain.model.saga.RentalSagaState;
 import com.example.library.rental.domain.vo.RentalItem;
 import com.example.library.rental.domain.vo.RentalMember;
 import java.time.LocalDate;
@@ -164,15 +164,17 @@ public class RentalCardService implements CreateRentalCardUseCase, RentItemUseCa
      */
     @Override
     public RentalCardResult clearOverdue(ClearOverdueCommand command) {
-        RentalMember idName = rentalMember(command.userId(), command.userNm());
+        var member = rentalMember(command.userId(), command.userNm());
         long point = command.point();
-        String correlationId = UUID.randomUUID().toString();
-        RentalCard rentalCard = load(idName);
+
+        RentalCard rentalCard = load(member);
         long usedPoint = rentalCard.makeAvailableRental(point);
         RentalCard saved = saveRentalCardPort.save(rentalCard);
-        saveRentalSagaStatePort.save(RentalSagaState.startOverdue(correlationId, idName, usedPoint));
+
+        String correlationId = UUID.randomUUID().toString();
+        saveRentalSagaStatePort.save(RentalSagaState.startOverdue(correlationId, member, usedPoint));
         publishOverdueClearedPort.publishOverdueClearEvent(
-            new OverdueClearedDomainEvent(idName, usedPoint),
+            new OverdueClearedDomainEvent(member, usedPoint),
             correlationId
         );
         return RentalCardResult.from(saved);
@@ -230,32 +232,32 @@ public class RentalCardService implements CreateRentalCardUseCase, RentItemUseCa
     /**
      * 대여 참여 서비스 실패 결과에 대응해 대여를 취소하고 적립 포인트 차감 command를 발행합니다.
      *
-     * @param idName 대상 회원의 ID와 이름을 담은 공통 값 객체입니다.
+     * @param member 대상 회원의 ID와 이름을 담은 공통 값 객체입니다.
      * @param item 업무 대상 도서의 번호와 제목입니다.
      */
     @Override
-    public void cancelRentItem(RentalMember idName, RentalItem item, String correlationId) {
+    public void cancelRentItem(RentalMember member, RentalItem item, String correlationId) {
         if (!compensationIdempotencyPort.markCompensated(correlationId, RentalCompensationType.RENT_CANCEL)) {
             return;
         }
-        RentalCard rentalCard = load(idName);
+        RentalCard rentalCard = load(member);
         rentalCard.cancelRentItem(item);
         saveRentalCardPort.save(rentalCard);
         publishItemRentCanceledPort.publishRentCanceledEvent(
-            new ItemRentCanceledDomainEvent(idName, item, RentalPointPolicy.RENT.point()),
+            new ItemRentCanceledDomainEvent(member, item, RentalPointPolicy.RENT.point()),
             correlationId
         );
     }
 
     @Override
-    public void compensateRentPoint(RentalMember idName, String correlationId) {
+    public void compensateRentPoint(RentalMember member, String correlationId) {
         if (!compensationIdempotencyPort.markCompensated(correlationId, RentalCompensationType.RENT_POINT_USE)) {
             return;
         }
         publishPointUseCommandPort.publishPointUseCommand(
             createPointUseCommand(
                 correlationId,
-                idName,
+                member,
                 RentalPointPolicy.RENT.point(),
                 PointUseReason.RENT_COMPENSATION
             )
@@ -265,66 +267,88 @@ public class RentalCardService implements CreateRentalCardUseCase, RentItemUseCa
     /**
      * 반납 참여 서비스 실패 결과에 대응해 반납을 취소하고 적립 포인트 차감 command를 발행합니다.
      *
-     * @param idName 대상 회원의 ID와 이름을 담은 공통 값 객체입니다.
+     * @param member 대상 회원의 ID와 이름을 담은 공통 값 객체입니다.
      * @param item 업무 대상 도서의 번호와 제목입니다.
      * @param point 적립, 차감, 정산 또는 보상에 사용할 포인트 값입니다.
      */
     @Override
-    public void cancelReturnItem(RentalMember idName, RentalItem item, long point, String correlationId) {
+    public void cancelReturnItem(RentalMember member, RentalItem item, long point, String correlationId) {
         if (!compensationIdempotencyPort.markCompensated(correlationId, RentalCompensationType.RETURN_CANCEL)) {
             return;
         }
-        RentalCard rentalCard = load(idName);
+        RentalCard rentalCard = load(member);
         rentalCard.cancelReturnItem(item, point);
         saveRentalCardPort.save(rentalCard);
         publishItemReturnCanceledPort.publishReturnCanceledEvent(
-            new ItemReturnCanceledDomainEvent(idName, item, point),
+            new ItemReturnCanceledDomainEvent(member, item, point),
             correlationId
         );
     }
 
     @Override
-    public void compensateReturnPoint(RentalMember idName, long point, String correlationId) {
+    public void compensateReturnPoint(RentalMember member, long point, String correlationId) {
         if (!compensationIdempotencyPort.markCompensated(correlationId, RentalCompensationType.RETURN_POINT_USE)) {
             return;
         }
         publishPointUseCommandPort.publishPointUseCommand(
-            createPointUseCommand(correlationId, idName, point, PointUseReason.RETURN_COMPENSATION)
+            createPointUseCommand(correlationId, member, point, PointUseReason.RETURN_COMPENSATION)
         );
     }
 
     /**
-     * 연체 해제 참여 서비스 실패 결과에 대응해 대여카드의 연체 상태를 복구합니다.
+     * 연체 해제 참여 서비스 실패 결과에 대응해 대여카드의 연체 상태를 복구.
      *
-     * @param idName 대상 회원의 ID와 이름을 담은 공통 값 객체입니다.
-     * @param point 적립, 차감, 정산 또는 보상에 사용할 포인트 값입니다.
+     * @param member 대상 회원의 ID와 이름을 담은 공통 값 객체.
+     * @param point 적립, 차감, 정산 또는 보상에 사용할 포인트 값.
      */
     @Override
-    public void cancelMakeAvailableRental(RentalMember idName, long point, String correlationId) {
+    public void cancelMakeAvailableRental(RentalMember member, long point, String correlationId) {
         if (!compensationIdempotencyPort.markCompensated(
             correlationId,
             RentalCompensationType.OVERDUE_CLEAR_CANCEL
         )) {
             return;
         }
-        RentalCard rentalCard = load(idName);
+
+        RentalCard rentalCard = load(member);
         rentalCard.cancelMakeAvailableRental(point);
         saveRentalCardPort.save(rentalCard);
+
         publishOverdueClearCanceledPort.publishOverdueClearCanceledEvent(
-            new OverdueClearCanceledDomainEvent(idName, point),
+            new OverdueClearCanceledDomainEvent(member, point),
             correlationId
         );
     }
 
     /**
-     * 보상/변경 대상 대여카드를 조회하고 없으면 도메인 예외를 발생시킵니다.
+     * 보상/변경 대상 대여카드를 조회하고 없으면 도메인 예외를 발생.
      *
-     * @param idName 대상 회원의 ID와 이름을 담은 공통 값 객체입니다.
-     * @return 보상 또는 상태 변경 대상 대여카드를 반환합니다.
+     * @param idName 대상 회원의 ID와 이름을 담은 공통 값 객체.
+     * @return 보상 또는 상태 변경 대상 대여카드를 반환.
      */
     private RentalCard load(RentalMember idName) {
         return loadRentalCardPort.loadRentalCard(idName.id())
             .orElseThrow(() -> new IllegalArgumentException("대여카드가 없습니다."));
+    }
+
+    /**
+     * 보상 흐름에서 회원 서비스에 포인트 차감을 요청하는 command 메시지를 생성.
+     *
+     * @param member 대상 회원의 ID와 이름을 담은 공통 값 객체.
+     * @param point 적립, 차감, 정산 또는 보상에 사용할 포인트 값.
+     * @param reason 실패 결과나 보상 command 의 사유.
+     * @return 회원 서비스가 포인트를 차감할 수 있도록 회원 snapshot, 포인트, 사유를 담은 payload 를 반환.
+     */
+    private PointUseCommandPayload createPointUseCommand(
+        String correlationId,
+        RentalMember member,
+        long point,
+        PointUseReason reason
+    ) {
+        String commandCorrelationId = correlationId == null || correlationId.isBlank()
+            ? UUID.randomUUID().toString()
+            : correlationId;
+        return new PointUseCommandPayload(commandCorrelationId, member.id(), member.name(), point, reason);
     }
 
     private RentalMember rentalMember(String userId, String userNm) {
@@ -335,23 +359,4 @@ public class RentalCardService implements CreateRentalCardUseCase, RentItemUseCa
         return new RentalItem(itemNo, itemTitle);
     }
 
-    /**
-     * 보상 흐름에서 회원 서비스에 포인트 차감을 요청하는 command 메시지를 생성합니다.
-     *
-     * @param idName 대상 회원의 ID와 이름을 담은 공통 값 객체입니다.
-     * @param point 적립, 차감, 정산 또는 보상에 사용할 포인트 값입니다.
-     * @param reason 실패 결과나 보상 command의 사유입니다.
-     * @return 회원 서비스가 포인트를 차감할 수 있도록 회원, 포인트, 사유를 담은 PointUseCommand를 반환합니다.
-     */
-    private PointUseCommandRequest createPointUseCommand(
-        String correlationId,
-        RentalMember idName,
-        long point,
-        PointUseReason reason
-    ) {
-        String commandCorrelationId = correlationId == null || correlationId.isBlank()
-            ? UUID.randomUUID().toString()
-            : correlationId;
-        return new PointUseCommandRequest(commandCorrelationId, idName, point, reason);
-    }
 }

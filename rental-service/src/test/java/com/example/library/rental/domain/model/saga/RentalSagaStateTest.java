@@ -1,4 +1,4 @@
-package com.example.library.rental.domain.model;
+package com.example.library.rental.domain.model.saga;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

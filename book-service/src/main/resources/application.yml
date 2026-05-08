@@ -1,6 +1,14 @@
 server:
   port: 8081
 
+swagger:
+  title: Book Service API
+  description: Library book service API
+  version: v1.0.0
+  contact:
+    name: Library Team
+    email: support@example.com
+
 spring:
   application:
     name: book-service

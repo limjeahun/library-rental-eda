@@ -4,7 +4,7 @@ import com.example.library.rental.adapter.out.persistence.entity.RentalSagaState
 import com.example.library.rental.adapter.out.persistence.repository.RentalSagaStateJpaRepository;
 import com.example.library.rental.application.port.out.LoadRentalSagaStatePort;
 import com.example.library.rental.application.port.out.SaveRentalSagaStatePort;
-import com.example.library.rental.domain.model.RentalSagaState;
+import com.example.library.rental.domain.model.saga.RentalSagaState;
 import com.example.library.rental.domain.vo.RentalItem;
 import com.example.library.rental.domain.vo.RentalMember;
 import java.util.Optional;
@@ -12,7 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
 /**
- * rental-service SAGA 추적 상태를 JPA 엔티티로 저장하고 domain model로 복원하는 adapter입니다.
+ * rental-service SAGA 추적 상태를 저장하고 복원하는 adapter.
  */
 @Repository
 @RequiredArgsConstructor
@@ -35,8 +35,8 @@ public class RentalSagaStatePersistenceAdapter implements LoadRentalSagaStatePor
             state.correlationId(),
             state.sourceEventId(),
             state.sagaType(),
-            state.idName().id(),
-            state.idName().name(),
+            state.member().id(),
+            state.member().name(),
             item == null ? null : item.no(),
             item == null ? null : item.title(),
             state.point(),

@@ -1,6 +1,14 @@
 server:
   port: 8080
 
+swagger:
+  title: Rental Service API
+  description: Library rental service API
+  version: v1.0.0
+  contact:
+    name: Library Team
+    email: support@example.com
+
 spring:
   application:
     name: rental-service

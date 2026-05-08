@@ -64,15 +64,15 @@ class RentalCardPersistenceAdapterTest {
 
         logRentalCard("saved", saved);
         logRentalCard("loaded", loaded);
-        assertThat(loaded.getRentalCardNo()).isEqualTo(saved.getRentalCardNo());
-        assertThat(loaded.getMember()).isEqualTo(member);
-        assertThat(loaded.getRentStatus()).isEqualTo(RentStatus.RENT_UNAVAILABLE);
-        assertThat(loaded.getLateFee().point()).isEqualTo(20);
+        assertThat(loaded.rentalCardNo()).isEqualTo(saved.rentalCardNo());
+        assertThat(loaded.member()).isEqualTo(member);
+        assertThat(loaded.rentStatus()).isEqualTo(RentStatus.RENT_UNAVAILABLE);
+        assertThat(loaded.lateFee().point()).isEqualTo(20);
         assertThat(loaded.getRentItemList())
             .singleElement()
             .satisfies(rentItem -> {
                 assertThat(rentItem.item()).isEqualTo(stillRentedBook);
-                assertThat(rentItem.overdued()).isFalse();
+                assertThat(rentItem.overdue()).isFalse();
             });
         assertThat(loaded.getReturnItemList())
             .singleElement()
@@ -105,10 +105,10 @@ class RentalCardPersistenceAdapterTest {
         log.info(
             "{} rentalCardNo={} member={} status={} lateFee={} rentItemCount={} returnItemCount={} rentItems={} returnItems={}",
             scenario,
-            rentalCard.getRentalCardNo(),
-            rentalCard.getMember(),
-            rentalCard.getRentStatus(),
-            rentalCard.getLateFee().point(),
+            rentalCard.rentalCardNo(),
+            rentalCard.member(),
+            rentalCard.rentStatus(),
+            rentalCard.lateFee().point(),
             rentalCard.getRentItemList().size(),
             rentalCard.getReturnItemList().size(),
             rentalCard.getRentItemList(),

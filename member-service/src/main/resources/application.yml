@@ -1,6 +1,14 @@
 server:
   port: 8082
 
+swagger:
+  title: Member Service API
+  description: Library member service API
+  version: v1.0.0
+  contact:
+    name: Library Team
+    email: support@example.com
+
 spring:
   application:
     name: member-service

@@ -7,7 +7,7 @@ import com.example.library.common.event.ItemReturned;
 import com.example.library.common.event.OverdueCleared;
 import com.example.library.common.event.OverdueClearCanceled;
 import com.example.library.common.event.PointUseCommand;
-import com.example.library.rental.application.dto.PointUseCommandRequest;
+import com.example.library.rental.application.dto.PointUseCommandPayload;
 import com.example.library.rental.application.port.out.PublishItemRentCanceledPort;
 import com.example.library.rental.application.port.out.PublishItemRentedPort;
 import com.example.library.rental.application.port.out.PublishItemReturnCanceledPort;
@@ -50,8 +50,8 @@ public class RentalKafkaEventProducer implements PublishItemRentedPort, PublishI
             UUID.randomUUID().toString(),
             correlationId,
             Instant.now(),
-            event.idName().id(),
-            event.idName().name(),
+            event.member().id(),
+            event.member().name(),
             event.item().no(),
             event.item().title(),
             event.point()
@@ -104,17 +104,17 @@ public class RentalKafkaEventProducer implements PublishItemRentedPort, PublishI
     /**
      * 보상 흐름의 포인트 사용 command를 회원 서비스용 토픽으로 발행합니다.
      *
-     * @param command 포인트를 변경할 회원과 포인트 금액을 담은 command입니다.
+     * @param command 포인트를 변경할 회원 snapshot과 포인트 금액을 담은 command payload입니다.
      */
     @Override
-    public void publishPointUseCommand(PointUseCommandRequest command) {
+    public void publishPointUseCommand(PointUseCommandPayload command) {
         String eventId = UUID.randomUUID().toString();
         PointUseCommand message = new PointUseCommand(
             eventId,
             normalizeCorrelationId(command.correlationId(), eventId),
             Instant.now(),
-            command.idName().id(),
-            command.idName().name(),
+            command.memberId(),
+            command.memberName(),
             command.point(),
             command.reason()
         );

@@ -14,6 +14,7 @@ version = "0.0.1-SNAPSHOT"
 
 val springBootVersion = "3.3.7"
 val queryDslVersion = "5.0.0"
+val springDocVersion = "2.6.0"
 
 subprojects {
     group = rootProject.group
@@ -102,6 +103,7 @@ configure(serviceProjects) {
         "implementation"("org.springframework.boot:spring-boot-starter-security")
         "implementation"("org.springframework.boot:spring-boot-starter-data-redis")
         "implementation"("org.springframework.kafka:spring-kafka")
+        "implementation"("org.springdoc:springdoc-openapi-starter-webmvc-ui:$springDocVersion")
         "annotationProcessor"("org.springframework.boot:spring-boot-configuration-processor")
         "testImplementation"("org.springframework.boot:spring-boot-starter-test")
         "testImplementation"("org.springframework.kafka:spring-kafka-test")

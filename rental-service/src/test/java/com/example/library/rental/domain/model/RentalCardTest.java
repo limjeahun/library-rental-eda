@@ -22,7 +22,7 @@ class RentalCardTest {
 
         logRentalCard("rentItem", rentalCard);
         assertThat(rentalCard.getRentItemList()).hasSize(1);
-        assertThat(rentalCard.getRentStatus()).isEqualTo(RentStatus.RENT_AVAILABLE);
+        assertThat(rentalCard.rentStatus()).isEqualTo(RentStatus.RENT_AVAILABLE);
     }
 
     @Test
@@ -59,7 +59,7 @@ class RentalCardTest {
         logRentalCard("returnItem", rentalCard);
         assertThat(rentalCard.getRentItemList()).isEmpty();
         assertThat(rentalCard.getReturnItemList()).hasSize(1);
-        assertThat(rentalCard.getLateFee().point()).isZero();
+        assertThat(rentalCard.lateFee().point()).isZero();
     }
 
     @Test
@@ -70,8 +70,8 @@ class RentalCardTest {
         rentalCard.returnItem(item, LocalDate.now());
 
         logRentalCard("calculateLateFee", rentalCard);
-        assertThat(rentalCard.getLateFee().point()).isEqualTo(30);
-        assertThat(rentalCard.getRentStatus()).isEqualTo(RentStatus.RENT_UNAVAILABLE);
+        assertThat(rentalCard.lateFee().point()).isEqualTo(30);
+        assertThat(rentalCard.rentStatus()).isEqualTo(RentStatus.RENT_UNAVAILABLE);
     }
 
     @Test
@@ -83,8 +83,8 @@ class RentalCardTest {
         rentalCard.makeAvailableRental(20);
 
         logRentalCard("clearOverdue", rentalCard);
-        assertThat(rentalCard.getLateFee().point()).isZero();
-        assertThat(rentalCard.getRentStatus()).isEqualTo(RentStatus.RENT_AVAILABLE);
+        assertThat(rentalCard.lateFee().point()).isZero();
+        assertThat(rentalCard.rentStatus()).isEqualTo(RentStatus.RENT_AVAILABLE);
     }
 
     @Test
@@ -122,8 +122,8 @@ class RentalCardTest {
         rentalCard.cancelMakeAvailableRental(40);
 
         logRentalCard("cancelMakeAvailableRental", rentalCard);
-        assertThat(rentalCard.getLateFee().point()).isEqualTo(40);
-        assertThat(rentalCard.getRentStatus()).isEqualTo(RentStatus.RENT_UNAVAILABLE);
+        assertThat(rentalCard.lateFee().point()).isEqualTo(40);
+        assertThat(rentalCard.rentStatus()).isEqualTo(RentStatus.RENT_UNAVAILABLE);
     }
 
     @Test
@@ -142,11 +142,11 @@ class RentalCardTest {
 
         log.info(
             "createDomainEventWithoutIntegrationMetadata member={} RentalItem={} point={}",
-            event.idName(),
+            event.member(),
             event.item(),
             event.point()
         );
-        assertThat(event.idName()).isEqualTo(member());
+        assertThat(event.member()).isEqualTo(member());
         assertThat(event.item()).isEqualTo(item(1));
         assertThat(event.point()).isEqualTo(10);
     }
@@ -155,10 +155,10 @@ class RentalCardTest {
         log.info(
             "{} rentalCardNo={} member={} status={} lateFee={} rentItemCount={} returnItemCount={} rentItems={} returnItems={}",
             scenario,
-            rentalCard.getRentalCardNo(),
-            rentalCard.getMember(),
-            rentalCard.getRentStatus(),
-            rentalCard.getLateFee().point(),
+            rentalCard.rentalCardNo(),
+            rentalCard.member(),
+            rentalCard.rentStatus(),
+            rentalCard.lateFee().point(),
             rentalCard.getRentItemList().size(),
             rentalCard.getReturnItemList().size(),
             rentalCard.getRentItemList(),

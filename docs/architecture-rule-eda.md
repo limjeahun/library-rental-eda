@@ -435,7 +435,7 @@ public class Order {
 
 > **VO vs Entity 결정 가이드** (자료 기반):
 > 처음 설계 시 VO로 가정해도, **속성 중 하나라도 라이프사이클 동안 변경된다면 Entity로 재정의**한다.
-> 예: `OrderItem.overdued`(연체 여부)가 변경되는 순간 OrderItem은 Entity여야 한다.
+> 예: `OrderItem.overdue`(연체 여부)가 변경되는 순간 OrderItem은 Entity여야 한다.
 
 ### 2-2. Value Object
 
