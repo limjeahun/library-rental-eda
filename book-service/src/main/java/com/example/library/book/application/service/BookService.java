@@ -9,6 +9,10 @@ import com.example.library.book.application.port.in.MakeUnavailableBookUseCase;
 import com.example.library.book.application.port.out.LoadBookPort;
 import com.example.library.book.application.port.out.SaveBookPort;
 import com.example.library.book.domain.model.Book;
+import com.example.library.book.domain.model.Classfication;
+import com.example.library.book.domain.model.Location;
+import com.example.library.book.domain.model.Source;
+import com.example.library.book.domain.vo.BookDesc;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,7 +35,18 @@ public class BookService implements AddBookUseCase, BookQueryUseCase, MakeAvaila
      */
     @Override
     public BookResult addBook(AddBookCommand command) {
-        Book book = Book.enterBook(command.title(), command.desc(), command.classfication(), command.location());
+        Book book = Book.enterBook(
+            command.title(),
+            new BookDesc(
+                command.description(),
+                command.author(),
+                command.isbn(),
+                command.publicationDate(),
+                Source.valueOf(command.source())
+            ),
+            Classfication.valueOf(command.classfication()),
+            Location.valueOf(command.location())
+        );
         return BookResult.from(saveBookPort.save(book));
     }
 

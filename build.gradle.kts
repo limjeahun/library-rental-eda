@@ -15,6 +15,7 @@ version = "0.0.1-SNAPSHOT"
 val springBootVersion = "3.3.7"
 val queryDslVersion = "5.0.0"
 val springDocVersion = "2.6.0"
+val archUnitVersion = "1.4.2"
 
 subprojects {
     group = rootProject.group
@@ -68,6 +69,7 @@ project(":common-events") {
         "annotationProcessor"("jakarta.persistence:jakarta.persistence-api")
         "annotationProcessor"("jakarta.annotation:jakarta.annotation-api")
         "testImplementation"("org.springframework.boot:spring-boot-starter-test")
+        "testImplementation"("com.tngtech.archunit:archunit-junit5:$archUnitVersion")
     }
 }
 
@@ -107,6 +109,7 @@ configure(serviceProjects) {
         "annotationProcessor"("org.springframework.boot:spring-boot-configuration-processor")
         "testImplementation"("org.springframework.boot:spring-boot-starter-test")
         "testImplementation"("org.springframework.kafka:spring-kafka-test")
+        "testImplementation"("com.tngtech.archunit:archunit-junit5:$archUnitVersion")
     }
 }
 

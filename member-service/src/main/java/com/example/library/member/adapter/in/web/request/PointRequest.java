@@ -1,6 +1,5 @@
 package com.example.library.member.adapter.in.web.request;
 
-import com.example.library.member.domain.vo.MemberIdentity;
 import com.example.library.member.application.dto.ChangePointCommand;
 import jakarta.validation.constraints.PositiveOrZero;
 
@@ -18,6 +17,6 @@ public record PointRequest(
      * @return 회원 포인트 적립 command
      */
     public ChangePointCommand toCommand(String id) {
-        return new ChangePointCommand(new MemberIdentity(id, null), point);
+        return new ChangePointCommand(id, null, point);
     }
 }

@@ -1,0 +1,7 @@
+interface:
+  display_name: "Architecture Super Agent"
+  short_description: "프로젝트 아키텍처 규칙 적용 총괄"
+  default_prompt: "$architecture-super-agent 로 현재 요청을 아키텍처 규칙에 맞게 분류하고 필요한 리팩터링 스킬을 적용해줘."
+
+policy:
+  allow_implicit_invocation: true

@@ -13,11 +13,11 @@ import java.util.List;
  * 회원 식별 정보, 권한, 포인트를 관리하는 순수 도메인 모델입니다.
  */
 public class Member {
-    private Long memberNo;
-    private MemberIdentity idName;
-    private PassWord password;
-    private Email email;
-    private List<Authority> authorites = new ArrayList<>();
+    private final Long memberNo;
+    private final MemberIdentity idName;
+    private final PassWord password;
+    private final Email email;
+    private List<Authority> authorities = new ArrayList<>();
     private Point point;
 
     /**
@@ -27,15 +27,15 @@ public class Member {
      * @param idName 대상 회원의 ID와 이름을 담은 값 객체입니다.
      * @param password 저장하거나 검증할 비밀번호 값입니다.
      * @param email 저장하거나 검증할 이메일 값입니다.
-     * @param authorites 회원에게 부여된 권한 목록입니다.
+     * @param authorities 회원에게 부여된 권한 목록입니다.
      * @param point 적립, 차감, 정산 또는 보상에 사용할 포인트 값입니다.
      */
-    public Member(Long memberNo, MemberIdentity idName, PassWord password, Email email, List<Authority> authorites, Point point) {
+    public Member(Long memberNo, MemberIdentity idName, PassWord password, Email email, List<Authority> authorities, Point point) {
         this.memberNo = memberNo;
         this.idName = idName;
         this.password = password;
         this.email = email;
-        this.authorites = authorites;
+        this.authorities = authorities;
         this.point = point;
     }
 
@@ -81,7 +81,7 @@ public class Member {
      * @param authority 회원에게 부여할 권한 역할입니다.
      */
     public void addAuthority(Authority authority) {
-        this.authorites.add(authority);
+        this.authorities.add(authority);
     }
 
     /**
@@ -125,8 +125,8 @@ public class Member {
      *
      * @return 회원에게 부여된 권한 값 목록을 반환합니다.
      */
-    public List<Authority> getAuthorites() {
-        return Collections.unmodifiableList(authorites);
+    public List<Authority> getAuthorities() {
+        return Collections.unmodifiableList(authorities);
     }
 
     /**

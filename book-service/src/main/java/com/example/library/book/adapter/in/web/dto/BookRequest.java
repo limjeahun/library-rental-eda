@@ -1,10 +1,6 @@
 package com.example.library.book.adapter.in.web.dto;
 
 import com.example.library.book.application.dto.AddBookCommand;
-import com.example.library.book.domain.model.Classfication;
-import com.example.library.book.domain.model.Location;
-import com.example.library.book.domain.model.Source;
-import com.example.library.book.domain.vo.BookDesc;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.time.LocalDate;
@@ -27,9 +23,9 @@ public record BookRequest(
     @NotBlank String author,
     @NotBlank String isbn,
     @NotNull LocalDate publicationDate,
-    @NotNull Source source,
-    @NotNull Classfication classfication,
-    @NotNull Location location
+    @NotBlank String source,
+    @NotBlank String classfication,
+    @NotBlank String location
 ) {
     /**
      * web 요청 DTO를 도서 등록 application command로 변환합니다.
@@ -39,7 +35,11 @@ public record BookRequest(
     public AddBookCommand toCommand() {
         return new AddBookCommand(
             title,
-            new BookDesc(description, author, isbn, publicationDate, source),
+            description,
+            author,
+            isbn,
+            publicationDate,
+            source,
             classfication,
             location
         );

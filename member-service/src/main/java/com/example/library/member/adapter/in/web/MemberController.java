@@ -1,11 +1,9 @@
 package com.example.library.member.adapter.in.web;
 
 import com.example.library.common.core.web.BaseResponse;
-import com.example.library.member.domain.vo.MemberIdentity;
 import com.example.library.member.adapter.in.web.request.MemberRequest;
 import com.example.library.member.adapter.in.web.response.MemberResponse;
 import com.example.library.member.adapter.in.web.request.PointRequest;
-import com.example.library.member.application.dto.ChangePointCommand;
 import com.example.library.member.application.port.in.AddMemberUseCase;
 import com.example.library.member.application.port.in.MemberQueryUseCase;
 import com.example.library.member.application.port.in.SavePointUseCase;
@@ -27,16 +25,16 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/Member")
 @RequiredArgsConstructor
 public class MemberController {
-    private final AddMemberUseCase addMemberUseCase;
-    private final MemberQueryUseCase memberQueryUseCase;
-    private final SavePointUseCase savePointUseCase;
-    private final UsePointUseCase usePointUseCase;
+    private final AddMemberUseCase      addMemberUseCase;
+    private final MemberQueryUseCase    memberQueryUseCase;
+    private final SavePointUseCase      savePointUseCase;
+    private final UsePointUseCase       usePointUseCase;
 
     /**
-     * HTTP 요청 DTO를 회원 등록 command로 변환해 새 회원을 등록합니다.
+     * 새 회원 등록.
      *
-     * @param request 회원 ID, 이름, 이메일, 비밀번호를 담은 등록 요청 본문 DTO입니다.
-     * @return 클라이언트에 반환할 HTTP 응답 DTO를 반환합니다.
+     * @param request 회원 ID, 이름, 이메일, 비밀번호를 담은 등록 요청 본문 DTO.
+     * @return 클회원 정보 DTO.
      */
     @PostMapping("/")
     public ResponseEntity<BaseResponse<MemberResponse>> addMember(@Valid @RequestBody MemberRequest request) {
@@ -48,56 +46,56 @@ public class MemberController {
     }
 
     /**
-     * 회원 번호로 단건 회원을 조회합니다.
+     * 회원 번호로 단건 회원을 조회.
      *
-     * @param no 조회할 회원 번호입니다.
-     * @return 클라이언트에 반환할 HTTP 응답 DTO를 반환합니다.
+     * @param no 조회할 회원 번호.
+     * @return 회원 정보 DTO.
      */
     @GetMapping("/{no}")
     public ResponseEntity<BaseResponse<MemberResponse>> getMember(@PathVariable long no) {
-        return BaseResponse.ok(MemberResponse.from(memberQueryUseCase.getMember(no)))
-            .toResponseEntity();
-    }
-
-    /**
-     * 회원 로그인 ID로 단건 회원을 조회합니다.
-     *
-     * @param id 조회하거나 포인트를 변경할 회원 ID입니다.
-     * @return 클라이언트에 반환할 HTTP 응답 DTO를 반환합니다.
-     */
-    @GetMapping("/by-id/{id}")
-    public ResponseEntity<BaseResponse<MemberResponse>> getMemberById(@PathVariable String id) {
-        return BaseResponse.ok(MemberResponse.from(memberQueryUseCase.getMemberById(id)))
-            .toResponseEntity();
-    }
-
-    /**
-     * 지정 회원에게 포인트를 적립합니다.
-     *
-     * @param id 조회하거나 포인트를 변경할 회원 ID입니다.
-     * @param request 적립하거나 사용할 포인트 값을 담은 요청 본문 DTO입니다.
-     * @return 클라이언트에 반환할 HTTP 응답 DTO를 반환합니다.
-     */
-    @PostMapping("/{id}/points/save")
-    public ResponseEntity<BaseResponse<MemberResponse>> savePoint(@PathVariable String id, @Valid @RequestBody PointRequest request) {
         return BaseResponse.ok(
-            MemberResponse.from(
-                    savePointUseCase.savePoint(request.toCommand(id))
-            )
+                MemberResponse.from(memberQueryUseCase.getMember(no))
         ).toResponseEntity();
     }
 
     /**
-     * 지정 회원의 포인트를 사용합니다.
+     * 회원 로그인 ID로 단건 회원을 조회.
      *
-     * @param id 조회하거나 포인트를 변경할 회원 ID입니다.
-     * @param request 적립하거나 사용할 포인트 값을 담은 요청 본문 DTO입니다.
-     * @return 클라이언트에 반환할 HTTP 응답 DTO를 반환합니다.
+     * @param id 조회하거나 포인트를 변경할 회원 ID.
+     * @return 회원 정보 DTO.
+     */
+    @GetMapping("/by-id/{id}")
+    public ResponseEntity<BaseResponse<MemberResponse>> getMemberById(@PathVariable String id) {
+        return BaseResponse.ok(
+                MemberResponse.from(memberQueryUseCase.getMemberById(id))
+        ).toResponseEntity();
+    }
+
+    /**
+     * 지정 회원에게 포인트를 적립.
+     *
+     * @param id 조회하거나 포인트를 변경할 회원 ID.
+     * @param request 적립하거나 사용할 포인트 값을 담은 요청 본문 DTO.
+     * @return 회원 정보 DTO.
+     */
+    @PostMapping("/{id}/points/save")
+    public ResponseEntity<BaseResponse<MemberResponse>> savePoint(@PathVariable String id, @Valid @RequestBody PointRequest request) {
+        return BaseResponse.ok(
+                MemberResponse.from(savePointUseCase.savePoint(request.toCommand(id)))
+        ).toResponseEntity();
+    }
+
+    /**
+     * 지정 회원의 포인트를 사용.
+     *
+     * @param id 조회하거나 포인트를 변경할 회원 ID.
+     * @param request 적립하거나 사용할 포인트 값을 담은 요청 본문 DTO.
+     * @return 회원 정보 DTO.
      */
     @PostMapping("/{id}/points/use")
     public ResponseEntity<BaseResponse<MemberResponse>> usePoint(@PathVariable String id, @Valid @RequestBody PointRequest request) {
         return BaseResponse.ok(
-            MemberResponse.from(usePointUseCase.usePoint(new ChangePointCommand(new MemberIdentity(id, null), request.point())))
+            MemberResponse.from(usePointUseCase.usePoint(request.toCommand(id)))
         ).toResponseEntity();
     }
 }

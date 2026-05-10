@@ -14,7 +14,7 @@ class MemberTest {
         Member member = Member.registerMember(idName(), new PassWord("1111"), new Email("a@b.com"));
 
         assertThat(member.getIdName().id()).isEqualTo("jenny");
-        assertThat(member.getAuthorites()).hasSize(1);
+        assertThat(member.getAuthorities()).hasSize(1);
         assertThat(member.getPoint().point()).isZero();
     }
 
@@ -49,7 +49,7 @@ class MemberTest {
     void authoritiesAreNotExternallyMutable() {
         Member member = Member.registerMember(idName(), new PassWord("1111"), new Email("a@b.com"));
 
-        assertThatThrownBy(() -> member.getAuthorites().clear())
+        assertThatThrownBy(() -> member.getAuthorities().clear())
             .isInstanceOf(UnsupportedOperationException.class);
     }
 

@@ -16,7 +16,6 @@ import com.example.library.member.application.port.in.UsePointUseCase;
 import com.example.library.member.application.port.out.MemberFailurePolicyPort;
 import com.example.library.member.application.port.out.MessageIdempotencyPort;
 import com.example.library.member.application.port.out.PublishMemberEventResultPort;
-import com.example.library.member.domain.vo.MemberIdentity;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -52,7 +51,7 @@ public class MemberEventService implements HandleMemberEventUseCase {
             return;
         }
         try {
-            savePointUseCase.savePoint(new ChangePointCommand(memberIdentity(event.memberId(), event.memberName()), event.point()));
+            savePointUseCase.savePoint(new ChangePointCommand(event.memberId(), event.memberName(), event.point()));
             publishMemberEventResultPort.publish(result(event, EventType.RENT, SagaStep.MEMBER_SAVE_POINT, true, null));
         } catch (Exception ex) {
             log.error("member rent point save failed eventId={}", event.eventId(), ex);
@@ -77,7 +76,7 @@ public class MemberEventService implements HandleMemberEventUseCase {
             return;
         }
         try {
-            savePointUseCase.savePoint(new ChangePointCommand(memberIdentity(event.memberId(), event.memberName()), event.point()));
+            savePointUseCase.savePoint(new ChangePointCommand(event.memberId(), event.memberName(), event.point()));
             publishMemberEventResultPort.publish(EventResult.success(
                 event.eventId(),
                 event.correlationId(),
@@ -128,7 +127,7 @@ public class MemberEventService implements HandleMemberEventUseCase {
             if (failurePolicyPort.shouldFailOverdueClear()) {
                 throw new IllegalArgumentException("forced overdue_clear failure");
             }
-            usePointUseCase.usePoint(new ChangePointCommand(memberIdentity(event.memberId(), event.memberName()), event.point()));
+            usePointUseCase.usePoint(new ChangePointCommand(event.memberId(), event.memberName(), event.point()));
             publishMemberEventResultPort.publish(result(event, true, null));
         } catch (Exception ex) {
             log.error("overdue clear failed eventId={}", event.eventId(), ex);
@@ -153,7 +152,7 @@ public class MemberEventService implements HandleMemberEventUseCase {
             return;
         }
         try {
-            usePointUseCase.usePoint(new ChangePointCommand(memberIdentity(command.memberId(), command.memberName()), command.point()));
+            usePointUseCase.usePoint(new ChangePointCommand(command.memberId(), command.memberName(), command.point()));
         } catch (Exception ex) {
             log.error("point_use command failed eventId={} reason={}", command.eventId(), command.reason(), ex);
         }
@@ -227,7 +226,4 @@ public class MemberEventService implements HandleMemberEventUseCase {
         );
     }
 
-    private MemberIdentity memberIdentity(String memberId, String memberName) {
-        return new MemberIdentity(memberId, memberName);
-    }
 }

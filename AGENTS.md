@@ -7,6 +7,15 @@
 3. If `docs/architecture-rule-eda.md` conflicts with this file, this file wins.
 4. Preserve the target project structure and naming in this file unless the user explicitly asks for a refactor.
 
+## Architecture Super Agent
+
+- For broad architecture requests, "Super Agent" requests, or whole-project rule application, use the project-local `.agents/skills/architecture-super-agent` skill first.
+- Start broad checks with `.\.agents\skills\architecture-super-agent\scripts\Invoke-ArchitectureScan.ps1 -Root .` unless the task is a small single-file change.
+- Treat scan output as review leads, not automatic truth. Confirm each finding against this `AGENTS.md` before editing code.
+- Enforce stable architecture rules with the ArchUnit tests under each module's `src/test/java/.../architecture`.
+- When changing domain/application/adapter boundaries, run the relevant module's `HexagonalArchitectureTest`; when changing `common-events`, run `CommonEventsArchitectureTest`.
+- Route concrete slices to the existing project skills: EDA/SAGA improvements, common-events VO refactoring, web request/command/domain VO boundary, or class constant removal.
+
 ## Project Stack
 
 - Java application code is written in Java, not Kotlin.
@@ -200,5 +209,7 @@ RentalResultResponse.rentAccepted(
 ## Validation
 
 - Prefer targeted Gradle checks while developing.
+- For architecture-sensitive changes, run the matching ArchUnit test, for example `.\gradlew.bat :rental-service:test --tests com.example.library.rental.architecture.HexagonalArchitectureTest`.
+- For `common-events` contract changes, run `.\gradlew.bat :common-events:test --tests com.example.library.common.architecture.CommonEventsArchitectureTest`.
 - Use `.\gradlew.bat test` for full verification when practical.
 - Use module-level tests when the change is scoped to one service.

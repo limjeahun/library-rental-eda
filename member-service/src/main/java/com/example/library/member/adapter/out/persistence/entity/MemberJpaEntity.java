@@ -13,42 +13,66 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
+import lombok.Getter;
+
 import java.util.ArrayList;
 import java.util.List;
 
 /**
  * 회원 도메인 모델을 MariaDB에 저장하기 위한 JPA 엔티티입니다.
  */
+@Getter
 @Entity
 @Table(name = "members")
 public class MemberJpaEntity {
+    /**
+     *  회원 번호를 반환.
+     */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long memberNo;
 
+    /**
+     *  회원 로그인 ID를 반환.
+     */
     @Column(nullable = false, unique = true)
     private String memberId;
 
+    /**
+     *  회원 이름을 반환.
+     */
     @Column(nullable = false)
     private String memberName;
 
+    /**
+     *  저장된 비밀번호 값을 반환.
+     */
     @Column(nullable = false)
     private String password;
 
+    /**
+     *  회원 이메일을 반환.
+     */
     @Column(nullable = false)
     private String email;
 
+    /**
+     *  회원 권한 목록을 반환.
+     */
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "member_authorities", joinColumns = @JoinColumn(name = "member_no"))
     @Enumerated(EnumType.STRING)
     @Column(name = "role", nullable = false)
     private List<UserRole> roles = new ArrayList<>();
 
+    /**
+     *  회원 보유 포인트를 반환.
+     */
     @Column(nullable = false)
     private long point;
 
     /**
-     * JPA가 엔티티를 생성할 때 사용하는 기본 생성자입니다.
+     * JPA 가 엔티티를 생성할 때 사용하는 기본 생성자입니다.
      */
     protected MemberJpaEntity() {
     }
@@ -82,66 +106,4 @@ public class MemberJpaEntity {
         this.point = point;
     }
 
-    /**
-     * 회원 번호를 반환합니다.
-     *
-     * @return MariaDB member 테이블에서 부여한 회원 번호를 반환합니다.
-     */
-    public Long getMemberNo() {
-        return memberNo;
-    }
-
-    /**
-     * 회원 로그인 ID를 반환합니다.
-     *
-     * @return 대여카드 소유 회원 ID를 반환합니다.
-     */
-    public String getMemberId() {
-        return memberId;
-    }
-
-    /**
-     * 회원 이름을 반환합니다.
-     *
-     * @return 대여카드 소유 회원 이름을 반환합니다.
-     */
-    public String getMemberName() {
-        return memberName;
-    }
-
-    /**
-     * 저장된 비밀번호 값을 반환합니다.
-     *
-     * @return 저장된 회원 비밀번호 문자열을 반환합니다.
-     */
-    public String getPassword() {
-        return password;
-    }
-
-    /**
-     * 회원 이메일을 반환합니다.
-     *
-     * @return 저장된 회원 이메일 문자열을 반환합니다.
-     */
-    public String getEmail() {
-        return email;
-    }
-
-    /**
-     * 회원 권한 목록을 반환합니다.
-     *
-     * @return 저장된 회원 권한 역할 목록을 반환합니다.
-     */
-    public List<UserRole> getRoles() {
-        return roles;
-    }
-
-    /**
-     * 회원 보유 포인트를 반환합니다.
-     *
-     * @return 현재 저장된 포인트 금액을 반환합니다.
-     */
-    public long getPoint() {
-        return point;
-    }
 }

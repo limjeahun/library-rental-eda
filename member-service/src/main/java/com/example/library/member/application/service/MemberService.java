@@ -1,6 +1,5 @@
 package com.example.library.member.application.service;
 
-import com.example.library.member.domain.vo.MemberIdentity;
 import com.example.library.member.application.dto.AddMemberCommand;
 import com.example.library.member.application.dto.ChangePointCommand;
 import com.example.library.member.application.dto.MemberResult;
@@ -12,9 +11,14 @@ import com.example.library.member.application.port.out.LoadMemberByIdNamePort;
 import com.example.library.member.application.port.out.LoadMemberPort;
 import com.example.library.member.application.port.out.SaveMemberPort;
 import com.example.library.member.domain.model.Member;
+import com.example.library.member.domain.vo.Email;
+import com.example.library.member.domain.vo.MemberIdentity;
+import com.example.library.member.domain.vo.PassWord;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.NoSuchElementException;
 
 /**
  * 회원 등록, 조회, 포인트 적립/사용 흐름을 조율하는 서비스.
@@ -36,23 +40,26 @@ public class MemberService implements AddMemberUseCase, MemberQueryUseCase, Save
     @Override
     public MemberResult addMember(AddMemberCommand command) {
         Member member = Member.registerMember(
-                command.idName(),
-                command.passWord(),
-                command.email()
+                new MemberIdentity(command.id(), command.name()),
+                new PassWord(command.passWord()),
+                new Email(command.email())
         );
         return MemberResult.from(saveMemberPort.saveMember(member));
     }
 
     /**
-     * 회원 번호로 회원을 조회합니다.
+     * 회원 번호로 회원을 조회.
      *
-     * @param memberNo 조회할 회원 번호입니다.
-     * @return 회원 번호에 해당하는 회원 결과 DTO를 반환합니다.
+     * @param memberNo 조회할 회원 번호.
+     * @return 회원 번호에 해당하는 회원 결과 DTO 반환.
      */
     @Override
     @Transactional(readOnly = true)
     public MemberResult getMember(long memberNo) {
-        return MemberResult.from(loadMemberPort.loadMember(memberNo));
+        return MemberResult.from(
+                loadMemberPort.loadMember(memberNo)
+                        .orElseThrow(() -> new NoSuchElementException("회원을 찾을 수 없습니다: " + memberNo))
+        );
     }
 
     /**
@@ -64,18 +71,22 @@ public class MemberService implements AddMemberUseCase, MemberQueryUseCase, Save
     @Override
     @Transactional(readOnly = true)
     public MemberResult getMemberById(String id) {
-        return MemberResult.from(loadMemberByIdNamePort.loadMemberByIdName(new MemberIdentity(id, null)));
+        return MemberResult.from(
+                loadMemberByIdNamePort.loadMemberByIdName(new MemberIdentity(id, null))
+                        .orElseThrow(() -> new NoSuchElementException("회원을 찾을 수 없습니다: " + id))
+        );
     }
 
     /**
-     * 회원 포인트를 적립하고 저장 결과를 반환합니다.
+     * 회원 포인트를 적립하고 저장 결과를 반환.
      *
-     * @param command 포인트를 변경할 회원과 포인트 금액을 담은 command 입니다.
-     * @return 적립 후 보유 포인트 잔액을 반환합니다.
+     * @param command 포인트를 변경할 회원과 포인트 금액을 담은 command.
+     * @return 적립 후 보유 포인트 잔액을 반환.
      */
     @Override
     public MemberResult savePoint(ChangePointCommand command) {
-        Member member = loadMemberByIdNamePort.loadMemberByIdName(command.idName());
+        var member = loadMemberByIdNamePort.loadMemberByIdName(new MemberIdentity(command.memberId(), command.memberName()))
+                .orElseThrow(() -> new NoSuchElementException("회원을 찾을 수 없습니다: " + command.memberId()));
         member.savePoint(command.point());
         return MemberResult.from(saveMemberPort.saveMember(member));
     }
@@ -83,12 +94,13 @@ public class MemberService implements AddMemberUseCase, MemberQueryUseCase, Save
     /**
      * 회원 포인트를 사용하고 저장 결과를 반환합니다.
      *
-     * @param command 포인트를 변경할 회원과 포인트 금액을 담은 command입니다.
+     * @param command 포인트를 변경할 회원과 포인트 금액을 담은 command.
      * @return 차감 후 보유 포인트 잔액을 반환합니다.
      */
     @Override
     public MemberResult usePoint(ChangePointCommand command) {
-        Member member = loadMemberByIdNamePort.loadMemberByIdName(command.idName());
+        var member = loadMemberByIdNamePort.loadMemberByIdName(new MemberIdentity(command.memberId(), command.memberName()))
+                .orElseThrow(() -> new NoSuchElementException("회원을 찾을 수 없습니다: " + command.memberId()));
         member.usePoint(command.point());
         return MemberResult.from(saveMemberPort.saveMember(member));
     }
