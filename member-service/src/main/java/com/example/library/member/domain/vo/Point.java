@@ -1,7 +1,7 @@
 package com.example.library.member.domain.vo;
 
 /**
- * 회원 포인트의 적립과 사용 규칙을 캡슐화하는 값 객체입니다.
+ * 회원 포인트의 적립과 사용 규칙을 캡슐화하는 값 객체.
  */
 public record Point(long point) {
     public Point {
