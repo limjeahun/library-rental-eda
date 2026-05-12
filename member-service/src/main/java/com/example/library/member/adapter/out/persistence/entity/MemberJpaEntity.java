@@ -19,7 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 회원 도메인 모델을 MariaDB에 저장하기 위한 JPA 엔티티입니다.
+ * 회원 도메인 모델을 MariaDB에 저장하기 위한 JPA 엔티티.
  */
 @Getter
 @Entity
@@ -59,7 +59,7 @@ public class MemberJpaEntity {
     /**
      *  회원 권한 목록을 반환.
      */
-    @ElementCollection(fetch = FetchType.EAGER)
+    @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(name = "member_authorities", joinColumns = @JoinColumn(name = "member_no"))
     @Enumerated(EnumType.STRING)
     @Column(name = "role", nullable = false)

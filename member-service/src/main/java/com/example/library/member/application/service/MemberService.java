@@ -27,9 +27,9 @@ import java.util.NoSuchElementException;
 @Transactional
 @RequiredArgsConstructor
 public class MemberService implements AddMemberUseCase, MemberQueryUseCase, SavePointUseCase, UsePointUseCase {
-    private final LoadMemberPort loadMemberPort;
+    private final LoadMemberPort         loadMemberPort;
     private final LoadMemberByIdNamePort loadMemberByIdNamePort;
-    private final SaveMemberPort saveMemberPort;
+    private final SaveMemberPort         saveMemberPort;
 
     /**
      * 회원 등록 후 저장 결과를 반환합니다.

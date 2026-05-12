@@ -40,7 +40,7 @@ public class SwaggerConfig {
     private String contactEmail;
 
     /**
-     * Swagger UI에서 사용할 OpenAPI 메타데이터와 인증 스키마를 구성합니다.
+     * Swagger UI 에서 사용할 OpenAPI 메타데이터와 인증 스키마를 구성합니다.
      *
      * @return 서비스별 OpenAPI 설정 객체를 반환합니다.
      */

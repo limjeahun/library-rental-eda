@@ -17,10 +17,10 @@ import org.springframework.stereotype.Component;
 @Component
 public class MemberPersistenceMapper {
     /**
-     * 회원 도메인 모델을 JPA 저장용 엔티티로 변환합니다.
+     * 회원 도메인 모델을 JPA 저장용 엔티티로 변환.
      *
-     * @param member 저장하거나 응답으로 변환할 회원 도메인 모델입니다.
-     * @return 저장소 계층에서 사용할 JPA 모델을 반환합니다.
+     * @param member 저장하거나 응답으로 변환할 회원 도메인 모델.
+     * @return 저장소 계층에서 사용할 JPA 모델을 반환.
      */
     public MemberJpaEntity toJpaEntity(Member member) {
         List<UserRole> roles = member.getAuthorities().stream()
@@ -39,10 +39,10 @@ public class MemberPersistenceMapper {
     }
 
     /**
-     * JPA 엔티티를 회원 도메인 모델로 복원합니다.
+     * JPA 엔티티를 회원 도메인 모델로 복원.
      *
-     * @param entity 도메인 모델로 변환할 저장소 엔티티입니다.
-     * @return 영속성 모델에서 복원한 도메인 모델을 반환합니다.
+     * @param entity 도메인 모델로 변환할 저장소 엔티티.
+     * @return 영속성 모델에서 복원한 도메인 모델을 반환.
      */
     public Member toDomain(MemberJpaEntity entity) {
         List<Authority> authorities = entity.getRoles().stream()

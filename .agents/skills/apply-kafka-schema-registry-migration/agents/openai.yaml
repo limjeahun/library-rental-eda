@@ -1,0 +1,7 @@
+interface:
+  display_name: "Kafka Schema Registry 전환"
+  short_description: "Kafka 메시지를 Schema Registry 계약으로 전환"
+  default_prompt: "$apply-kafka-schema-registry-migration 를 사용해서 Kafka JSON/ObjectMapper 메시지 계약을 Schema Registry 기반으로 전환해줘."
+
+policy:
+  allow_implicit_invocation: true

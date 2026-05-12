@@ -3,6 +3,7 @@ package com.example.library.member.domain.model;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.example.library.member.domain.vo.Authority;
 import com.example.library.member.domain.vo.MemberIdentity;
 import com.example.library.member.domain.vo.Email;
 import com.example.library.member.domain.vo.PassWord;

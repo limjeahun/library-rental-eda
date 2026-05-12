@@ -35,7 +35,7 @@ public class Member {
     /**
      *  회원 권한 목록.
      */
-    private List<Authority> authorities = new ArrayList<>();
+    private final List<Authority> authorities;
     /**
      *  회원 포인트 값 객체를 반환합니다.
      */
