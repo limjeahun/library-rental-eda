@@ -1,8 +1,8 @@
 package com.example.library.bestbook.config;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig;
+import io.confluent.kafka.serializers.KafkaAvroDeserializer;
+import io.confluent.kafka.serializers.KafkaAvroDeserializerConfig;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -16,7 +16,7 @@ import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 
 /**
- * 인기 도서 read model 갱신용 Kafka consumer와 JSON 메시지 변환을 위한 Spring Bean 설정입니다.
+ * 인기 도서 read model 갱신용 Kafka consumer와 Avro Schema Registry 메시지 변환을 위한 Spring Bean 설정입니다.
  */
 @EnableKafka
 @Configuration
@@ -28,48 +28,40 @@ public class KafkaConfig {
     }
 
     /**
-     * 문자열 본문를 수신하는 Kafka consumer factory를 생성합니다.
+     * Schema Registry Avro 본문을 수신하는 Kafka consumer factory를 생성합니다.
      *
      * @return Kafka consumer 생성을 위한 factory를 반환합니다.
      */
     @Bean
-    public ConsumerFactory<String, String> consumerFactory() {
+    public ConsumerFactory<String, Object> consumerFactory() {
         Map<String, Object> props = new HashMap<>();
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers());
         props.put(ConsumerConfig.GROUP_ID_CONFIG, kafkaProperties.getConsumer().getGroupId());
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaAvroDeserializer.class);
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        props.put(AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, schemaRegistryUrl());
+        props.put(KafkaAvroDeserializerConfig.SPECIFIC_AVRO_READER_CONFIG, true);
         return new DefaultKafkaConsumerFactory<>(props);
     }
 
     /**
-     *
-     *
      * @KafkaListener가 사용할 listener container factory를 제공합니다.
      *
      * @return Kafka listener container factory를 반환합니다.
      */
     @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory() {
-        ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory<>();
+    public ConcurrentKafkaListenerContainerFactory<String, Object> kafkaListenerContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory<String, Object> factory = new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(consumerFactory());
         return factory;
     }
 
-    /**
-     * Kafka consumer가 대여 이벤트 JSON을 Java 객체로 변환할 때 사용할 ObjectMapper를 제공합니다.
-     *
-     * @return Java Time 모듈과 역직렬화 옵션이 적용된 ObjectMapper를 반환합니다.
-     */
-    @Bean
-    public ObjectMapper objectMapper() {
-        return new ObjectMapper()
-            .registerModule(new JavaTimeModule())
-            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-    }
-
     private String bootstrapServers() {
         return String.join(",", kafkaProperties.getBootstrapServers());
+    }
+
+    private String schemaRegistryUrl() {
+        return kafkaProperties.getProperties().get(AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG);
     }
 }

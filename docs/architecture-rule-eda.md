@@ -17,6 +17,10 @@
 규칙의 적용 방식을 설명하기 위한 **참고 예시(Reference Example)**이다.
 실제 프로젝트에서는 도메인 용어, 팀 네이밍 컨벤션, 비즈니스 요구사항에 맞게 자유롭게 변경한다.
 
+`library-rental-eda`에서는 Kafka wire payload를 Schema Registry 기반 Avro generated class로 전송할 수 있다.
+이 경우 Java record는 application boundary용 메시지 facade로 유지하고, generated Avro class는 Kafka adapter 또는 schema mapper 내부에서만 사용한다.
+Domain/Application 계층은 Schema Registry, Kafka serializer/deserializer, Avro generated class에 직접 의존하지 않는다.
+
 | 구분 | 설명 |
 |------|------|
 | **반드시 지켜야 할 것** | Hexagonal 계층 분리, 의존성 방향, Port/Adapter 패턴, Aggregate 경계, 계층별 DTO 분리, 변환 메서드 규칙, 동기/비동기 분리, Event vs Command 분리, record 사용, 보상 트랜잭션 규칙, 금지 사항 |

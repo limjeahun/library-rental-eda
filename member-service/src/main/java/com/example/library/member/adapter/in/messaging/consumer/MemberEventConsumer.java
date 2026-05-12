@@ -1,16 +1,19 @@
 package com.example.library.member.adapter.in.messaging.consumer;
 
+import com.example.library.common.event.AvroMessageMapper;
 import com.example.library.common.event.ItemRented;
 import com.example.library.common.event.ItemReturned;
 import com.example.library.common.event.OverdueCleared;
 import com.example.library.common.event.PointUseCommand;
+import com.example.library.common.event.schema.ItemRentedMessage;
+import com.example.library.common.event.schema.ItemReturnedMessage;
+import com.example.library.common.event.schema.OverdueClearedMessage;
+import com.example.library.common.event.schema.PointUseCommandMessage;
 import com.example.library.member.application.port.in.HandleMemberEventUseCase;
 import com.example.library.member.config.KafkaConsumerProcessingProperties;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
@@ -22,20 +25,19 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @RequiredArgsConstructor
 public class MemberEventConsumer {
-    private final ObjectMapper                      objectMapper;
     private final StringRedisTemplate               redisTemplate;
     private final HandleMemberEventUseCase          handleMemberEventUseCase;
     private final KafkaConsumerProcessingProperties processingProperties;
 
     /**
-     * 대여 이벤트 JSON 을 ItemRented 로 읽고, Redis 에 eventId를 기록한 뒤 회원에게 대여 포인트를 적립합니다.
+     * 대여 이벤트 Avro 메시지를 ItemRented 로 변환한 뒤 회원에게 대여 포인트를 적립합니다.
      *
-     * @param record rental-rent 토픽에서 수신한 대여 이벤트 원본 메시지.
-     * @throws Exception JSON 역직렬화, Redis 중복 기록, 회원 포인트 적립 중 오류가 발생할 때 전달.
+     * @param message rental-rent 토픽에서 수신한 대여 이벤트 메시지.
+     * @throws Exception Redis 중복 기록, 회원 포인트 적립 중 오류가 발생할 때 전달.
      */
     @KafkaListener(topics = "${app.kafka.topics.rental-rent}", groupId = "${spring.kafka.consumer.group-id}")
-    public void consumeRent(ConsumerRecord<String, String> record) throws Exception {
-        ItemRented event = objectMapper.readValue(record.value(), ItemRented.class);
+    public void consumeRent(ItemRentedMessage message) throws Exception {
+        ItemRented event = AvroMessageMapper.toItemRented(message);
         // Redis processing lock
         switch (tryAcquireProcessingLock(event.eventId())) {
             case CLAIMED -> {
@@ -54,14 +56,14 @@ public class MemberEventConsumer {
     }
 
     /**
-     * 반납 이벤트 JSON을 ItemReturned로 읽고, Redis에 eventId를 기록한 뒤 회원에게 반납 포인트를 적립합니다.
+     * 반납 이벤트 Avro 메시지를 ItemReturned로 변환한 뒤 회원에게 반납 포인트를 적립합니다.
      *
-     * @param record rental-return 토픽에서 수신한 반납 이벤트 원본 메시지입니다.
-     * @throws Exception JSON 역직렬화, Redis 중복 기록, 회원 포인트 적립 중 오류가 발생할 때 전달됩니다.
+     * @param message rental-return 토픽에서 수신한 반납 이벤트 메시지입니다.
+     * @throws Exception Redis 중복 기록, 회원 포인트 적립 중 오류가 발생할 때 전달됩니다.
      */
     @KafkaListener(topics = "${app.kafka.topics.rental-return}", groupId = "${spring.kafka.consumer.group-id}")
-    public void consumeReturn(ConsumerRecord<String, String> record) throws Exception {
-        ItemReturned event = objectMapper.readValue(record.value(), ItemReturned.class);
+    public void consumeReturn(ItemReturnedMessage message) throws Exception {
+        ItemReturned event = AvroMessageMapper.toItemReturned(message);
         // Redis processing lock
         switch (tryAcquireProcessingLock(event.eventId())) {
             case CLAIMED -> {
@@ -80,14 +82,14 @@ public class MemberEventConsumer {
     }
 
     /**
-     * 연체 해제 이벤트 JSON을 OverdueCleared로 읽고, Redis에 eventId를 기록한 뒤 회원 포인트를 연체료만큼 차감합니다.
+     * 연체 해제 이벤트 Avro 메시지를 OverdueCleared로 변환한 뒤 회원 포인트를 연체료만큼 차감합니다.
      *
-     * @param record overdue-clear 토픽에서 수신한 연체 해제 이벤트 원본 메시지입니다.
-     * @throws Exception JSON 역직렬화, Redis 중복 기록, 회원 포인트 차감 중 오류가 발생할 때 전달됩니다.
+     * @param message overdue-clear 토픽에서 수신한 연체 해제 이벤트 메시지입니다.
+     * @throws Exception Redis 중복 기록, 회원 포인트 차감 중 오류가 발생할 때 전달됩니다.
      */
     @KafkaListener(topics = "${app.kafka.topics.overdue-clear}", groupId = "${spring.kafka.consumer.group-id}")
-    public void consumeClear(ConsumerRecord<String, String> record) throws Exception {
-        OverdueCleared event = objectMapper.readValue(record.value(), OverdueCleared.class);
+    public void consumeClear(OverdueClearedMessage message) throws Exception {
+        OverdueCleared event = AvroMessageMapper.toOverdueCleared(message);
         // Redis processing lock
         switch (tryAcquireProcessingLock(event.eventId())) {
             case CLAIMED -> {
@@ -106,14 +108,14 @@ public class MemberEventConsumer {
     }
 
     /**
-     * 포인트 차감 command JSON을 PointUseCommand로 읽고, Redis에 eventId를 기록한 뒤 보상 대상 포인트를 차감합니다.
+     * 포인트 차감 command Avro 메시지를 PointUseCommand로 변환한 뒤 보상 대상 포인트를 차감합니다.
      *
-     * @param record point-use 토픽에서 수신한 포인트 차감 command 원본 메시지입니다.
-     * @throws Exception JSON 역직렬화, Redis 중복 기록, 회원 포인트 차감 중 오류가 발생할 때 전달됩니다.
+     * @param message point-use 토픽에서 수신한 포인트 차감 command 메시지입니다.
+     * @throws Exception Redis 중복 기록, 회원 포인트 차감 중 오류가 발생할 때 전달됩니다.
      */
     @KafkaListener(topics = "${app.kafka.topics.point-use}", groupId = "${spring.kafka.consumer.group-id}")
-    public void consumeUsePoint(ConsumerRecord<String, String> record) throws Exception {
-        PointUseCommand command = objectMapper.readValue(record.value(), PointUseCommand.class);
+    public void consumeUsePoint(PointUseCommandMessage message) throws Exception {
+        PointUseCommand command = AvroMessageMapper.toPointUseCommand(message);
         // Redis processing lock
         switch (tryAcquireProcessingLock(command.eventId())) {
             case CLAIMED -> {

@@ -19,7 +19,7 @@
 ## Project Stack
 
 - Java application code is written in Java, not Kotlin.
-- The project uses Java 21, Gradle Wrapper 8.5, Spring Boot 3.3.7, MariaDB, MongoDB, Redis, and Kafka KRaft.
+- The project uses Java 21, Gradle Wrapper 8.5, Spring Boot 3.3.7, MariaDB, MongoDB, Redis, Kafka KRaft, Confluent Schema Registry, and Avro.
 - `book-service`, `member-service`, and `rental-service` use MariaDB with Spring Data JPA.
 - `bestbook-service` is an event-maintained read model and uses MongoDB with Spring Data MongoDB.
 - The Gradle root project is `library-rental-eda`.
@@ -119,8 +119,11 @@ For `common-events`, keep shared contracts under:
 
 ```text
 com.example.library.common/
-└── event/
+├── event/
+└── event/schema/      # generated Avro classes only
 ```
+
+Schema source files belong under `common-events/src/main/avro`.
 
 Do not create `common.vo` for service domain value objects.
 If a message-only nested value type is truly necessary, place it under a message-specific package or name it explicitly as a message payload type, and do not use it from service domain models.
@@ -137,7 +140,7 @@ If a message-only nested value type is truly necessary, place it under a message
 - Application services should create service domain value objects from application Command or Query values immediately before invoking domain models.
 - Application Command and Query records should prefer primitive or simple use-case input fields over domain value object fields unless the use case is purely internal and has no adapter-facing input.
 - Persistence Entity/Document and domain model conversion belongs in `adapter/out/persistence` mapper classes.
-- Shared Kafka message records from `common-events` must not define service-specific conversion methods such as `toRentalCommand()` or `toMemberCommand()`.
+- Shared Kafka message records or generated schema classes from `common-events` must not define service-specific conversion methods such as `toRentalCommand()` or `toMemberCommand()`.
 - Kafka consumers or adapter-local messaging mappers convert shared Kafka messages to application commands.
 - Kafka producers or adapter-local messaging mappers convert local domain/application events or results to shared Kafka messages.
 - Domain models and domain value objects must not define `toResponse()`, `toCommonEvent()`, or `toJpaEntity()`.
@@ -181,7 +184,8 @@ RentalResultResponse.rentAccepted(
 - Domain events express facts that already happened.
 - Result events express command processing outcomes.
 - Service-local domain events belong under `domain/event`; shared Kafka integration events belong under `common-events`.
-- Shared event, command, and result contracts in `common-events` should be Java records and should be accessed with record accessors.
+- Shared event, command, and result contracts in `common-events` should keep Java record facades for application boundaries and Avro generated classes for Kafka wire payloads.
+- Java records should be accessed with record accessors. Generated Avro classes may use generated JavaBean-style accessors inside Kafka adapters or schema mappers only.
 - Prefer primitive or simple snapshot fields in shared Kafka message records over shared domain VO fields.
 - Service-local domain/application code should convert to and from shared Kafka message records at adapter boundaries.
 - Use `eventId` as the unique message identifier for idempotent consumer checks.

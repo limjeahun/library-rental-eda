@@ -1,7 +1,7 @@
 package com.example.library.book.adapter.out.persistence.entity;
 
 import com.example.library.book.domain.model.BookStatus;
-import com.example.library.book.domain.model.Classfication;
+import com.example.library.book.domain.model.Classification;
 import com.example.library.book.domain.model.Location;
 import com.example.library.book.domain.model.Source;
 import jakarta.persistence.Column;
@@ -45,7 +45,7 @@ public class BookJpaEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private Classfication classfication;
+    private Classification classification;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -71,7 +71,7 @@ public class BookJpaEntity {
      * @param isbn 등록하거나 저장할 도서 ISBN입니다.
      * @param publicationDate 등록하거나 저장할 도서 발행일입니다.
      * @param source 등록하거나 저장할 도서 입수 경로입니다.
-     * @param classfication 등록하거나 저장할 도서 분류입니다.
+     * @param classification 등록하거나 저장할 도서 분류입니다.
      * @param bookStatus 저장하거나 복원할 도서 상태입니다.
      * @param location 등록하거나 저장할 도서 소장 지점입니다.
      */
@@ -83,7 +83,7 @@ public class BookJpaEntity {
         String isbn,
         LocalDate publicationDate,
         Source source,
-        Classfication classfication,
+        Classification classification,
         BookStatus bookStatus,
         Location location
     ) {
@@ -94,7 +94,7 @@ public class BookJpaEntity {
         this.isbn = isbn;
         this.publicationDate = publicationDate;
         this.source = source;
-        this.classfication = classfication;
+        this.classification = classification;
         this.bookStatus = bookStatus;
         this.location = location;
     }
@@ -167,8 +167,8 @@ public class BookJpaEntity {
      *
      * @return 도서 분류 값을 반환합니다.
      */
-    public Classfication getClassfication() {
-        return classfication;
+    public Classification getClassification() {
+        return classification;
     }
 
     /**

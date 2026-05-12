@@ -1,0 +1,21 @@
+{
+  "type": "record",
+  "name": "EventResultMessage",
+  "namespace": "com.example.library.common.event.schema",
+  "fields": [
+    { "name": "eventId", "type": "string" },
+    { "name": "correlationId", "type": "string" },
+    { "name": "sourceEventId", "type": "string" },
+    { "name": "occurredAt", "type": "long" },
+    { "name": "eventType", "type": "string" },
+    { "name": "participant", "type": "string" },
+    { "name": "step", "type": "string" },
+    { "name": "successed", "type": "boolean" },
+    { "name": "memberId", "type": "string" },
+    { "name": "memberName", "type": "string" },
+    { "name": "itemNo", "type": ["null", "long"], "default": null },
+    { "name": "itemTitle", "type": ["null", "string"], "default": null },
+    { "name": "point", "type": "long" },
+    { "name": "reason", "type": ["null", "string"], "default": null }
+  ]
+}

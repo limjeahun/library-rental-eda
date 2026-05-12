@@ -1,5 +1,6 @@
 package com.example.library.rental.adapter.out.messaging;
 
+import com.example.library.common.event.AvroMessageMapper;
 import com.example.library.common.event.ItemRentCanceled;
 import com.example.library.common.event.ItemRented;
 import com.example.library.common.event.ItemReturnCanceled;
@@ -59,7 +60,7 @@ public class RentalKafkaEventProducer implements PublishItemRentedPort, PublishI
         kafkaTemplate.send(
                 topicProperties.rentalRent(),
                 message.correlationId(),
-                message
+                AvroMessageMapper.toItemRentedMessage(message)
         );
     }
 
@@ -80,7 +81,11 @@ public class RentalKafkaEventProducer implements PublishItemRentedPort, PublishI
             event.item().title(),
             event.point()
         );
-        kafkaTemplate.send(topicProperties.rentalReturn(), message.correlationId(), message);
+        kafkaTemplate.send(
+            topicProperties.rentalReturn(),
+            message.correlationId(),
+            AvroMessageMapper.toItemReturnedMessage(message)
+        );
     }
 
     /**
@@ -98,7 +103,11 @@ public class RentalKafkaEventProducer implements PublishItemRentedPort, PublishI
             event.idName().name(),
             event.point()
         );
-        kafkaTemplate.send(topicProperties.overdueClear(), message.correlationId(), message);
+        kafkaTemplate.send(
+            topicProperties.overdueClear(),
+            message.correlationId(),
+            AvroMessageMapper.toOverdueClearedMessage(message)
+        );
     }
 
     /**
@@ -118,7 +127,11 @@ public class RentalKafkaEventProducer implements PublishItemRentedPort, PublishI
             command.point(),
             command.reason()
         );
-        kafkaTemplate.send(topicProperties.pointUse(), message.correlationId(), message);
+        kafkaTemplate.send(
+            topicProperties.pointUse(),
+            message.correlationId(),
+            AvroMessageMapper.toPointUseCommandMessage(message)
+        );
     }
 
     @Override
@@ -133,7 +146,11 @@ public class RentalKafkaEventProducer implements PublishItemRentedPort, PublishI
             event.item().title(),
             event.point()
         );
-        kafkaTemplate.send(topicProperties.rentCancel(), message.correlationId(), message);
+        kafkaTemplate.send(
+            topicProperties.rentCancel(),
+            message.correlationId(),
+            AvroMessageMapper.toItemRentCanceledMessage(message)
+        );
     }
 
     @Override
@@ -148,7 +165,11 @@ public class RentalKafkaEventProducer implements PublishItemRentedPort, PublishI
             event.item().title(),
             event.point()
         );
-        kafkaTemplate.send(topicProperties.returnCancel(), message.correlationId(), message);
+        kafkaTemplate.send(
+            topicProperties.returnCancel(),
+            message.correlationId(),
+            AvroMessageMapper.toItemReturnCanceledMessage(message)
+        );
     }
 
     @Override
@@ -164,7 +185,11 @@ public class RentalKafkaEventProducer implements PublishItemRentedPort, PublishI
             event.idName().name(),
             event.point()
         );
-        kafkaTemplate.send(topicProperties.overdueClearCancel(), message.correlationId(), message);
+        kafkaTemplate.send(
+            topicProperties.overdueClearCancel(),
+            message.correlationId(),
+            AvroMessageMapper.toOverdueClearCanceledMessage(message)
+        );
     }
 
     private String normalizeCorrelationId(String correlationId, String eventId) {

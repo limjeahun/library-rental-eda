@@ -1,0 +1,13 @@
+{
+  "type": "record",
+  "name": "OverdueClearedMessage",
+  "namespace": "com.example.library.common.event.schema",
+  "fields": [
+    { "name": "eventId", "type": "string" },
+    { "name": "correlationId", "type": "string" },
+    { "name": "occurredAt", "type": "long" },
+    { "name": "memberId", "type": "string" },
+    { "name": "memberName", "type": "string" },
+    { "name": "point", "type": "long" }
+  ]
+}

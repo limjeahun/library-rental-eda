@@ -1,13 +1,13 @@
 package com.example.library.rental.adapter.in.messaging.consumer;
 
+import com.example.library.common.event.AvroMessageMapper;
 import com.example.library.common.event.EventResult;
+import com.example.library.common.event.schema.EventResultMessage;
 import com.example.library.rental.application.port.in.HandleRentalResultUseCase;
 import com.example.library.rental.config.KafkaConsumerProcessingProperties;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
@@ -19,20 +19,19 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @RequiredArgsConstructor
 public class RentalEventConsumer {
-    private final ObjectMapper objectMapper;
     private final StringRedisTemplate redisTemplate;
     private final HandleRentalResultUseCase handleRentalResultUseCase;
     private final KafkaConsumerProcessingProperties processingProperties;
 
     /**
-     * 도서/회원 서비스 결과 이벤트 JSON 을 EventResult 로 읽고, 실패 결과이면 RENT/RETURN/OVERDUE 유형에 맞는 보상 처리를 실행합니다.
+     * 도서/회원 서비스 결과 이벤트 Avro 메시지를 EventResult로 변환하고 보상 처리를 실행합니다.
      *
-     * @param record Kafka 에서 수신한 원본 ConsumerRecord 메시지입니다.
-     * @throws Exception Kafka 메시지 JSON 역직렬화 또는 실제 업무 처리 중 오류가 발생할 때 전달됩니다.
+     * @param message Kafka 에서 수신한 결과 이벤트 메시지입니다.
+     * @throws Exception 실제 업무 처리 중 오류가 발생할 때 전달됩니다.
      */
     @KafkaListener(topics = "${app.kafka.topics.rental-result}", groupId = "${spring.kafka.consumer.group-id}")
-    public void consumeRentalResult(ConsumerRecord<String, String> record) throws Exception {
-        EventResult result = objectMapper.readValue(record.value(), EventResult.class);
+    public void consumeRentalResult(EventResultMessage message) throws Exception {
+        EventResult result = AvroMessageMapper.toEventResult(message);
         if (!claimProcessing(result.eventId())) {
             log.info("skip already processing rental_result eventId={}", result.eventId());
             return;

@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS books (
     isbn VARCHAR(255) NOT NULL COMMENT '도서 ISBN',
     publication_date DATE NOT NULL COMMENT '도서 출판일',
     source ENUM('DONATION', 'SUPPLY') NOT NULL COMMENT '도서 입수 경로',
-    classfication ENUM('ARTS', 'COMPUTER', 'LITERATURE') NOT NULL COMMENT '도서 분류',
+    classification ENUM('ARTS', 'COMPUTER', 'LITERATURE') NOT NULL COMMENT '도서 분류',
     book_status ENUM('ENTERED', 'AVAILABLE', 'UNAVAILABLE') NOT NULL COMMENT '도서 대여 상태',
     location ENUM('JEONGJA', 'PANGYO') NOT NULL COMMENT '도서 소장 지점',
     PRIMARY KEY (no)

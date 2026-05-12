@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 class BookTest {
     @Test
     void enterBook() {
-        Book book = Book.enterBook("도서", desc(), Classfication.LITERATURE, Location.JEONGJA);
+        Book book = Book.enterBook("도서", desc(), Classification.LITERATURE, Location.JEONGJA);
 
         assertThat(book.getTitle()).isEqualTo("도서");
         assertThat(book.getBookStatus()).isEqualTo(BookStatus.ENTERED);
@@ -17,7 +17,7 @@ class BookTest {
 
     @Test
     void makeAvailable() {
-        Book book = Book.enterBook("도서", desc(), Classfication.LITERATURE, Location.JEONGJA);
+        Book book = Book.enterBook("도서", desc(), Classification.LITERATURE, Location.JEONGJA);
 
         book.makeAvailable();
 
@@ -26,7 +26,7 @@ class BookTest {
 
     @Test
     void makeUnAvailable() {
-        Book book = Book.enterBook("도서", desc(), Classfication.LITERATURE, Location.JEONGJA);
+        Book book = Book.enterBook("도서", desc(), Classification.LITERATURE, Location.JEONGJA);
 
         book.makeUnAvailable();
 

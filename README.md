@@ -4,6 +4,7 @@
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3.7-6DB33F?style=flat&logo=spring-boot&logoColor=white)
 ![Gradle](https://img.shields.io/badge/Gradle-8.5-02303A?style=flat&logo=gradle&logoColor=white)
 ![Apache Kafka](https://img.shields.io/badge/Apache%20Kafka-3.9.0-231F20?style=flat&logo=apache-kafka&logoColor=white)
+![Schema Registry](https://img.shields.io/badge/Schema%20Registry-7.7.1-0078D4?style=flat)
 ![MariaDB](https://img.shields.io/badge/MariaDB-11.4-003545?style=flat&logo=mariadb&logoColor=white)
 ![MongoDB](https://img.shields.io/badge/MongoDB-7.0-47A248?style=flat&logo=mongodb&logoColor=white)
 ![Redis](https://img.shields.io/badge/Redis-7.4-DC382D?style=flat&logo=redis&logoColor=white)
@@ -23,7 +24,7 @@ Java 21, Spring Boot 3.3.7, Gradle Kotlin DSL 기반의 사내 도서관 대여 
 - `rental-service`는 실패 Result Event를 구독해 대여카드 상태를 되돌리고, 필요한 경우 `point_use` Command Message를 추가 발행합니다.
 - Redis는 Kafka Consumer 멱등성 키 저장소로 사용합니다.
 - `bestbook-service`는 `rental_rent` 이벤트로 유지되는 MongoDB read model입니다.
-- `common-events`는 서비스 간 공유 메시지 계약을 담습니다.
+- `common-events`는 서비스 간 공유 메시지 계약과 Avro schema를 담습니다.
 - `common-core`는 공통 성공/오류 응답 포맷과 웹 예외 처리를 제공합니다.
 - Outbox, DLQ/DLT, 커스텀 Kafka Retry/Backoff, 분산 추적, SAGA Orchestration은 현재 구현하지 않습니다.
 
@@ -32,7 +33,7 @@ Java 21, Spring Boot 3.3.7, Gradle Kotlin DSL 기반의 사내 도서관 대여 
 | 모듈 | 실행 포트 | 저장소 | 역할 |
 | --- | ---: | --- | --- |
 | `common-core` | - | - | 공통 API 응답 `BaseResponse`, 공통 웹 예외 처리, `ErrorCode`, `ErrorResponse`, Spring Boot auto-configuration |
-| `common-events` | - | - | Kafka Event, Command, Result, Protocol Enum 계약 |
+| `common-events` | - | - | Kafka Event, Command, Result, Protocol Enum 계약과 Avro schema/generated message |
 | `member-service` | `8082` | MariaDB `member_db` | 회원 등록/조회, 포인트 적립/사용, 연체 해제 포인트 차감, 보상 포인트 차감 |
 | `book-service` | `8081` | MariaDB `book_db` | 도서 등록/조회, 대여 시 이용 불가, 반납 시 이용 가능 |
 | `rental-service` | `8080` | MariaDB `rental_db` | 대여카드 생성, 도서 대여/반납, 연체, 연체 해제, 보상 트랜잭션 |
@@ -63,6 +64,7 @@ flowchart LR
     Rental -->|ItemReturned| K2[(Kafka rental_return)]
     Rental -->|OverdueCleared| K3[(Kafka overdue_clear)]
     Rental -->|PointUseCommand| K5[(Kafka point_use)]
+    SR[(Schema Registry<br/>localhost:8085)]
 
     K1 --> Book
     K1 --> Member
@@ -80,6 +82,10 @@ flowchart LR
     Member -. idempotency .-> Redis
     Rental -. idempotency .-> Redis
     BestBook -. idempotency .-> Redis
+    Book -. schema .-> SR
+    Member -. schema .-> SR
+    Rental -. schema .-> SR
+    BestBook -. schema .-> SR
 ```
 
 ## 아키텍처 원칙
@@ -137,7 +143,7 @@ com.example.library.{service}/
 ### 도메인 enum 위치
 
 - Aggregate 상태나 도메인 분류를 표현하는 enum은 `domain.model`에 둡니다.
-- 예: `RentStatus`, `BookStatus`, `Classfication`, `Location`, `Source`, `UserRole`
+- 예: `RentStatus`, `BookStatus`, `Classification`, `Location`, `Source`, `UserRole`
 - 서비스 간 공유 메시지의 프로토콜 enum은 `common-events`에 둡니다. 예: `EventType`
 - 웹 요청, 저장소 매핑, 외부 프로토콜에만 필요한 enum은 해당 adapter 패키지에 둡니다.
 
@@ -158,7 +164,9 @@ com.example.library.{service}/
 | Enum | `Participant` | 결과를 발행한 참여 서비스 구분 | `BOOK`, `MEMBER` |
 | Enum | `SagaStep` | 결과가 어느 참여 단계의 응답인지 구분 | `BOOK_MAKE_UNAVAILABLE`, `BOOK_MAKE_AVAILABLE`, `MEMBER_SAVE_POINT`, `MEMBER_USE_POINT` |
 
-`common-events`의 메시지는 Java `record`입니다. 서비스 도메인 VO는 `common-events`에 두지 않고 각 서비스의 `domain/vo`에 둡니다. Kafka 메시지에는 서비스 간 전달에 필요한 `memberId`, `memberName`, `itemNo`, `itemTitle` 같은 snapshot field를 둡니다.
+`common-events`의 application boundary 메시지는 Java `record`입니다. Kafka wire payload의 source of truth는 `common-events/src/main/avro/*.avsc`이며, generated class는 `com.example.library.common.event.schema` 패키지에 생성됩니다. 서비스 도메인 VO는 `common-events`에 두지 않고 각 서비스의 `domain/vo`에 둡니다. Kafka 메시지에는 서비스 간 전달에 필요한 `memberId`, `memberName`, `itemNo`, `itemTitle` 같은 snapshot field를 둡니다.
+
+Kafka adapter는 Schema Registry Avro payload와 Java record facade 사이를 `AvroMessageMapper`로 변환합니다. Domain/Application 계층은 generated Avro class, Schema Registry, Kafka serializer/deserializer에 직접 의존하지 않습니다.
 
 `eventId`는 개별 Kafka 메시지를 식별하며 Consumer 멱등성 판단에 사용합니다. `correlationId`는 같은 비동기 업무 흐름을 묶는 추적 키입니다. `rental-service`가 대여, 반납, 연체 해제 use case를 시작할 때 `correlationId`를 만들고, 참여 서비스의 `EventResult`와 보상용 `PointUseCommand`는 같은 `correlationId`를 유지합니다. 보상 command를 새로 발행할 때도 command 자체의 `eventId`는 새로 만들고 `correlationId`만 원래 흐름 값을 이어갑니다.
 
@@ -215,8 +223,13 @@ com.example.library.{service}/
 | `overdue_clear` | `rental-service` | `member-service` | `OverdueCleared` | 연체 해제 포인트 차감 요청 |
 | `rental_result` | `book-service`, `member-service` | `rental-service` | `EventResult` | 참여 서비스 처리 결과 회신 |
 | `point_use` | `rental-service` | `member-service` | `PointUseCommand` | 보상 흐름에서 포인트 차감 요청 |
+| `rent_cancel` | `rental-service` | `book-service`, `bestbook-service` | `ItemRentCanceled` | 대여 보상 완료 후 대여 반영 되돌림 |
+| `return_cancel` | `rental-service` | `book-service` | `ItemReturnCanceled` | 반납 보상 완료 후 반납 반영 되돌림 |
+| `overdue_clear_cancel` | `rental-service` | - | `OverdueClearCanceled` | 연체 해제 보상 완료 사실 전파용 예비 토픽 |
 
-Kafka 메시지는 JSON 문자열로 송수신하고, Consumer는 `ObjectMapper`로 공유 메시지 클래스로 역직렬화합니다.
+Kafka 메시지는 Confluent Schema Registry 기반 Avro payload로 송수신합니다. Producer는 `KafkaAvroSerializer`, Consumer는 `KafkaAvroDeserializer`와 `specific.avro.reader=true`를 사용하며, Java type header나 `ObjectMapper.readValue(...)`에 의존하지 않습니다. 로컬 Schema Registry URL은 `http://localhost:8085`입니다.
+
+현재 전환은 로컬 개발 목적의 big-bang 방식입니다. 기존 JSON payload가 남아 있는 토픽을 그대로 읽으면 Avro deserializer가 실패할 수 있으므로, 전환 후 smoke test 전에는 기존 토픽 데이터를 비우거나 consumer group offset을 초기화하거나 새 로컬 Kafka 볼륨으로 시작합니다.
 
 ## REST API 개요
 
@@ -584,6 +597,7 @@ docker compose up -d
 - MongoDB `localhost:27017`
 - Redis `localhost:6379`
 - Kafka KRaft `localhost:9092`
+- Schema Registry `localhost:8085`
 - Kafka 초기 토픽 생성 컨테이너
 
 ### 2. 서비스 실행
@@ -621,7 +635,7 @@ curl -X POST http://localhost:8082/api/Member/ \
 ```bash
 curl -X POST http://localhost:8081/api/book \
   -H "Content-Type: application/json" \
-  -d '{"title":"누구를 위하여 종은 울리나","description":"고전 소설","author":"어니스트 헤밍웨이","isbn":"9780000000001","publicationDate":"2023-02-11","source":"SUPPLY","classfication":"LITERATURE","location":"JEONGJA"}'
+  -d '{"title":"누구를 위하여 종은 울리나","description":"고전 소설","author":"어니스트 헤밍웨이","isbn":"9780000000001","publicationDate":"2023-02-11","source":"SUPPLY","classification":"LITERATURE","location":"JEONGJA"}'
 ```
 
 ### 3. 대여카드 생성
@@ -747,7 +761,7 @@ curl -X POST http://localhost:8080/api/rental-cards/clear-overdue \
 - `domain.model` Aggregate/child model/domain enum과 `domain.vo` 불변 값 객체 분리
 - 서비스 간 직접 HTTP 호출 없는 Kafka EDA
 - Domain Event, Command Message, Result Event 구분
-- `common-events` 메시지 계약과 단순 VO의 Java `record` 전환
+- `common-events` 메시지 계약의 Java `record` facade와 Avro Schema Registry wire payload 전환
 - Record 타입의 canonical accessor 사용
 - `eventId` 기반 멱등성, `correlationId` 기반 비동기 흐름 추적
 - Result Event 기반 Choreography 보상 트랜잭션
@@ -800,7 +814,7 @@ macOS/Linux에서는 `.\gradlew.bat` 대신 `./gradlew`를 사용합니다.
 
 처음 코드를 읽는다면 다음 순서가 가장 자연스럽습니다.
 
-1. `common-events/src/main/java/com/example/library/common/{event,vo}`
+1. `common-events/src/main/java/com/example/library/common/event`와 `common-events/src/main/avro`
 2. `rental-service/src/main/java/com/example/library/rental/domain/model`
 3. `rental-service/src/main/java/com/example/library/rental/domain/vo`
 4. `rental-service/src/main/java/com/example/library/rental/application/service/RentalCardService.java`

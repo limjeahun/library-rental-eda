@@ -1,5 +1,6 @@
 package com.example.library.member.adapter.out.messaging;
 
+import com.example.library.common.event.AvroMessageMapper;
 import com.example.library.common.event.EventResult;
 import com.example.library.member.application.port.out.PublishMemberEventResultPort;
 import org.springframework.beans.factory.annotation.Value;
@@ -29,6 +30,6 @@ public class MemberKafkaEventProducer implements PublishMemberEventResultPort {
      */
     @Override
     public void publish(EventResult result) {
-        kafkaTemplate.send(rentalResultTopic, result.correlationId(), result);
+        kafkaTemplate.send(rentalResultTopic, result.correlationId(), AvroMessageMapper.toEventResultMessage(result));
     }
 }

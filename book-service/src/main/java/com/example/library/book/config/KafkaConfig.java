@@ -1,8 +1,9 @@
 package com.example.library.book.config;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig;
+import io.confluent.kafka.serializers.KafkaAvroDeserializer;
+import io.confluent.kafka.serializers.KafkaAvroDeserializerConfig;
+import io.confluent.kafka.serializers.KafkaAvroSerializer;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -19,10 +20,9 @@ import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
-import org.springframework.kafka.support.serializer.JsonSerializer;
 
 /**
- * Kafka producer/consumer 팩토리와 메시지 JSON 처리를 위한 Spring Bean 설정입니다.
+ * Kafka producer/consumer 팩토리와 Avro Schema Registry 메시지 처리를 위한 Spring Bean 설정입니다.
  */
 @EnableKafka
 @Configuration
@@ -34,7 +34,7 @@ public class KafkaConfig {
     }
 
     /**
-     * 공통 이벤트를 JSON 값으로 발행하기 위한 producer factory를 생성합니다.
+     * 공통 이벤트를 Avro 값으로 발행하기 위한 producer factory를 생성합니다.
      *
      * @return Kafka producer 생성을 위한 factory를 반환합니다.
      */
@@ -43,8 +43,8 @@ public class KafkaConfig {
         Map<String, Object> props = new HashMap<>();
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers());
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
-        props.put(JsonSerializer.ADD_TYPE_INFO_HEADERS, false);
+        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, KafkaAvroSerializer.class);
+        props.put(AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, schemaRegistryUrl());
         return new DefaultKafkaProducerFactory<>(props);
     }
 
@@ -59,48 +59,40 @@ public class KafkaConfig {
     }
 
     /**
-     * 문자열 본문를 수신하는 Kafka consumer factory를 생성합니다.
+     * Schema Registry Avro 본문을 수신하는 Kafka consumer factory를 생성합니다.
      *
      * @return Kafka consumer 생성을 위한 factory를 반환합니다.
      */
     @Bean
-    public ConsumerFactory<String, String> consumerFactory() {
+    public ConsumerFactory<String, Object> consumerFactory() {
         Map<String, Object> props = new HashMap<>();
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers());
         props.put(ConsumerConfig.GROUP_ID_CONFIG, kafkaProperties.getConsumer().getGroupId());
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaAvroDeserializer.class);
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        props.put(AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, schemaRegistryUrl());
+        props.put(KafkaAvroDeserializerConfig.SPECIFIC_AVRO_READER_CONFIG, true);
         return new DefaultKafkaConsumerFactory<>(props);
     }
 
     /**
-     *
-     *
      * @KafkaListener가 사용할 listener container factory를 제공합니다.
      *
      * @return Kafka listener container factory를 반환합니다.
      */
     @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory() {
-        ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory<>();
+    public ConcurrentKafkaListenerContainerFactory<String, Object> kafkaListenerContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory<String, Object> factory = new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(consumerFactory());
         return factory;
     }
 
-    /**
-     * Kafka consumer가 공통 이벤트 JSON을 Java 객체로 변환할 때 사용할 ObjectMapper를 제공합니다.
-     *
-     * @return Java Time 모듈과 역직렬화 옵션이 적용된 ObjectMapper를 반환합니다.
-     */
-    @Bean
-    public ObjectMapper objectMapper() {
-        return new ObjectMapper()
-            .registerModule(new JavaTimeModule())
-            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-    }
-
     private String bootstrapServers() {
         return String.join(",", kafkaProperties.getBootstrapServers());
+    }
+
+    private String schemaRegistryUrl() {
+        return kafkaProperties.getProperties().get(AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG);
     }
 }

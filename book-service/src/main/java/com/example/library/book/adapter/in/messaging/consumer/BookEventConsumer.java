@@ -2,15 +2,18 @@ package com.example.library.book.adapter.in.messaging.consumer;
 
 import com.example.library.book.application.port.in.HandleBookRentalEventUseCase;
 import com.example.library.book.config.KafkaConsumerProcessingProperties;
+import com.example.library.common.event.AvroMessageMapper;
 import com.example.library.common.event.ItemRentCanceled;
 import com.example.library.common.event.ItemRented;
 import com.example.library.common.event.ItemReturnCanceled;
 import com.example.library.common.event.ItemReturned;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.example.library.common.event.schema.ItemRentCanceledMessage;
+import com.example.library.common.event.schema.ItemRentedMessage;
+import com.example.library.common.event.schema.ItemReturnCanceledMessage;
+import com.example.library.common.event.schema.ItemReturnedMessage;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
@@ -22,20 +25,19 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @RequiredArgsConstructor
 public class BookEventConsumer {
-    private final ObjectMapper objectMapper;
     private final StringRedisTemplate redisTemplate;
     private final HandleBookRentalEventUseCase handleBookRentalEventUseCase;
     private final KafkaConsumerProcessingProperties processingProperties;
 
     /**
-     * 대여 이벤트 JSON을 ItemRented로 읽고, Redis에 eventId를 기록한 뒤 도서를 UNAVAILABLE로 바꾸는 처리를 실행합니다.
+     * 대여 이벤트 Avro 메시지를 ItemRented로 변환하고 도서를 UNAVAILABLE로 바꾸는 처리를 실행합니다.
      *
-     * @param record rental-rent 토픽에서 수신한 대여 이벤트 원본 메시지입니다.
-     * @throws Exception JSON 역직렬화, Redis 중복 기록, 도서 상태 변경 중 오류가 발생할 때 전달됩니다.
+     * @param message rental-rent 토픽에서 수신한 대여 이벤트 메시지입니다.
+     * @throws Exception Redis 중복 기록, 도서 상태 변경 중 오류가 발생할 때 전달됩니다.
      */
     @KafkaListener(topics = "${app.kafka.topics.rental-rent}", groupId = "${spring.kafka.consumer.group-id}")
-    public void consumeRent(ConsumerRecord<String, String> record) throws Exception {
-        ItemRented event = objectMapper.readValue(record.value(), ItemRented.class);
+    public void consumeRent(ItemRentedMessage message) throws Exception {
+        ItemRented event = AvroMessageMapper.toItemRented(message);
         if (!claimProcessing(event.eventId())) {
             log.info("skip already processing book rent eventId={}", event.eventId());
             return;
@@ -48,14 +50,14 @@ public class BookEventConsumer {
     }
 
     /**
-     * 반납 이벤트 JSON을 ItemReturned로 읽고, Redis에 eventId를 기록한 뒤 도서를 AVAILABLE로 되돌리는 처리를 실행합니다.
+     * 반납 이벤트 Avro 메시지를 ItemReturned로 변환하고 도서를 AVAILABLE로 되돌리는 처리를 실행합니다.
      *
-     * @param record rental-return 토픽에서 수신한 반납 이벤트 원본 메시지입니다.
-     * @throws Exception JSON 역직렬화, Redis 중복 기록, 도서 상태 변경 중 오류가 발생할 때 전달됩니다.
+     * @param message rental-return 토픽에서 수신한 반납 이벤트 메시지입니다.
+     * @throws Exception Redis 중복 기록, 도서 상태 변경 중 오류가 발생할 때 전달됩니다.
      */
     @KafkaListener(topics = "${app.kafka.topics.rental-return}", groupId = "${spring.kafka.consumer.group-id}")
-    public void consumeReturn(ConsumerRecord<String, String> record) throws Exception {
-        ItemReturned event = objectMapper.readValue(record.value(), ItemReturned.class);
+    public void consumeReturn(ItemReturnedMessage message) throws Exception {
+        ItemReturned event = AvroMessageMapper.toItemReturned(message);
         if (!claimProcessing(event.eventId())) {
             log.info("skip already processing book return eventId={}", event.eventId());
             return;
@@ -68,8 +70,8 @@ public class BookEventConsumer {
     }
 
     @KafkaListener(topics = "${app.kafka.topics.rent-cancel}", groupId = "${spring.kafka.consumer.group-id}")
-    public void consumeRentCanceled(ConsumerRecord<String, String> record) throws Exception {
-        ItemRentCanceled event = objectMapper.readValue(record.value(), ItemRentCanceled.class);
+    public void consumeRentCanceled(ItemRentCanceledMessage message) throws Exception {
+        ItemRentCanceled event = AvroMessageMapper.toItemRentCanceled(message);
         if (!claimProcessing(event.eventId())) {
             log.info("skip already processing book rent cancel eventId={}", event.eventId());
             return;
@@ -82,8 +84,8 @@ public class BookEventConsumer {
     }
 
     @KafkaListener(topics = "${app.kafka.topics.return-cancel}", groupId = "${spring.kafka.consumer.group-id}")
-    public void consumeReturnCanceled(ConsumerRecord<String, String> record) throws Exception {
-        ItemReturnCanceled event = objectMapper.readValue(record.value(), ItemReturnCanceled.class);
+    public void consumeReturnCanceled(ItemReturnCanceledMessage message) throws Exception {
+        ItemReturnCanceled event = AvroMessageMapper.toItemReturnCanceled(message);
         if (!claimProcessing(event.eventId())) {
             log.info("skip already processing book return cancel eventId={}", event.eventId());
             return;

@@ -182,7 +182,7 @@
 | `Book` | Entity | 도서번호, 제목, 상세, 분류, 상태, 위치 |
 | `BookDesc` | VO | 설명, 저자, ISBN, 출판일, 출처 |
 | `Source` | Enum | `DONATION`, `SUPPLY` |
-| `Classfication` | Enum | `ARTS`, `COMPUTER`, `LITERATURE` |
+| `Classification` | Enum | `ARTS`, `COMPUTER`, `LITERATURE` |
 | `BookStatus` | Enum | `ENTERED`, `AVAILABLE`, `UNAVAILABLE` |
 | `Location` | Enum | `JEONGJA`, `PANGYO` |
 
@@ -646,7 +646,7 @@ AGENTS.md 기준으로 다음은 구현하지 않는다.
 
 원문에는 학습용 코드와 슬라이드 작성 과정에서 생긴 것으로 보이는 오탈자와 불일치가 있다. 그대로 구현하지 말고 의도 기준으로 보정한다.
 
-- `Ouput`, `Retrun`, `cancle`, `setSuccessed`, `OverdueCleard`, `Classfication`, `MogoDB` 등 오탈자가 반복된다.
+- `Ouput`, `Retrun`, `cancle`, `setSuccessed`, `OverdueCleard`, 도서 분류 enum 표기 오류, `MogoDB` 등 오탈자가 반복된다.
 - 도서 서비스의 `makeUnavailabe` 예시 코드가 `AVAILABLE`로 설정되는 부분이 있으나, 문맥상 `UNAVAILABLE`이 맞다.
 - 대여 가능 체크에서 요구사항은 5권 이내인데 예시 코드는 `size() > 5` 조건을 사용한다. 6번째 대여를 막으려면 구현 시 `>= 5`를 검토해야 한다.
 - `RentalCardOuputPort.loadRentalCard` 반환 타입이 설명과 코드 사이에서 `RentalCard`와 `Optional<RentalCard>`로 혼재한다.

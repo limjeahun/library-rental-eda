@@ -1,8 +1,8 @@
-package com.example.library.book.adapter.in.web.dto;
+package com.example.library.book.adapter.in.web.response;
 
 import com.example.library.book.application.dto.BookResult;
 import com.example.library.book.domain.model.BookStatus;
-import com.example.library.book.domain.model.Classfication;
+import com.example.library.book.domain.model.Classification;
 import com.example.library.book.domain.model.Location;
 import com.example.library.book.domain.model.Source;
 import java.time.LocalDate;
@@ -17,7 +17,7 @@ import java.time.LocalDate;
  * @param isbn 등록하거나 저장할 도서 ISBN입니다.
  * @param publicationDate 등록하거나 저장할 도서 발행일입니다.
  * @param source 등록하거나 저장할 도서 입수 경로입니다.
- * @param classfication 등록하거나 저장할 도서 분류입니다.
+ * @param classification 등록하거나 저장할 도서 분류입니다.
  * @param bookStatus 저장하거나 복원할 도서 상태입니다.
  * @param location 등록하거나 저장할 도서 소장 지점입니다.
  */
@@ -29,7 +29,7 @@ public record BookResponse(
     String isbn,
     LocalDate publicationDate,
     Source source,
-    Classfication classfication,
+    Classification classification,
     BookStatus bookStatus,
     Location location
 ) {
@@ -48,7 +48,7 @@ public record BookResponse(
             result.isbn(),
             result.publicationDate(),
             result.source(),
-            result.classfication(),
+            result.classification(),
             result.bookStatus(),
             result.location()
         );

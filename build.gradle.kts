@@ -1,12 +1,14 @@
 import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.api.tasks.testing.Test
 import org.gradle.jvm.toolchain.JavaLanguageVersion
+import com.github.davidmc24.gradle.plugin.avro.AvroExtension
 import io.spring.gradle.dependencymanagement.dsl.DependencyManagementExtension
 
 plugins {
     java
     id("org.springframework.boot") version "3.3.7" apply false
     id("io.spring.dependency-management") version "1.1.7" apply false
+    id("com.github.davidmc24.gradle.plugin.avro") version "1.9.1" apply false
 }
 
 group = "com.example.library"
@@ -16,6 +18,8 @@ val springBootVersion = "3.3.7"
 val queryDslVersion = "5.0.0"
 val springDocVersion = "2.6.0"
 val archUnitVersion = "1.4.2"
+val avroVersion = "1.11.3"
+val confluentVersion = "7.7.1"
 
 subprojects {
     group = rootProject.group
@@ -60,10 +64,17 @@ subprojects {
 
 project(":common-events") {
     apply(plugin = "java-library")
+    apply(plugin = "com.github.davidmc24.gradle.plugin.avro")
+
+    extensions.configure<AvroExtension>("avro") {
+        isCreateSetters.set(false)
+        stringType.set("String")
+    }
 
     dependencies {
         "api"("jakarta.persistence:jakarta.persistence-api")
         "api"("com.querydsl:querydsl-core:$queryDslVersion")
+        "api"("org.apache.avro:avro:$avroVersion")
         "implementation"("org.springframework.boot:spring-boot-starter-validation")
         "annotationProcessor"("com.querydsl:querydsl-apt:$queryDslVersion:jakarta")
         "annotationProcessor"("jakarta.persistence:jakarta.persistence-api")
@@ -105,6 +116,7 @@ configure(serviceProjects) {
         "implementation"("org.springframework.boot:spring-boot-starter-security")
         "implementation"("org.springframework.boot:spring-boot-starter-data-redis")
         "implementation"("org.springframework.kafka:spring-kafka")
+        "implementation"("io.confluent:kafka-avro-serializer:$confluentVersion")
         "implementation"("org.springdoc:springdoc-openapi-starter-webmvc-ui:$springDocVersion")
         "annotationProcessor"("org.springframework.boot:spring-boot-configuration-processor")
         "testImplementation"("org.springframework.boot:spring-boot-starter-test")

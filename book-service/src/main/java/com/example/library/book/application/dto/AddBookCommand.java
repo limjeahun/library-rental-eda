@@ -11,7 +11,7 @@ import java.time.LocalDate;
  * @param isbn 등록하거나 저장할 도서 ISBN입니다.
  * @param publicationDate 등록하거나 저장할 도서 발행일입니다.
  * @param source 등록하거나 저장할 도서 입수 경로입니다.
- * @param classfication 등록하거나 저장할 도서 분류입니다.
+ * @param classification 등록하거나 저장할 도서 분류입니다.
  * @param location 등록하거나 저장할 도서 소장 지점입니다.
  */
 public record AddBookCommand(
@@ -21,7 +21,7 @@ public record AddBookCommand(
     String isbn,
     LocalDate publicationDate,
     String source,
-    String classfication,
+    String classification,
     String location
 ) {
 }

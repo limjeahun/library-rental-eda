@@ -25,7 +25,7 @@ public class BookPersistenceMapper {
             book.getDesc().isbn(),
             book.getDesc().publicationDate(),
             book.getDesc().source(),
-            book.getClassfication(),
+            book.getClassification(),
             book.getBookStatus(),
             book.getLocation()
         );
@@ -48,7 +48,7 @@ public class BookPersistenceMapper {
                 entity.getPublicationDate(),
                 entity.getSource()
             ),
-            entity.getClassfication(),
+            entity.getClassification(),
             entity.getBookStatus(),
             entity.getLocation()
         );

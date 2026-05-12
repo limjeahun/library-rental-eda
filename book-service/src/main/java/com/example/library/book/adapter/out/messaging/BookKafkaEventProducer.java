@@ -1,6 +1,7 @@
 package com.example.library.book.adapter.out.messaging;
 
 import com.example.library.book.application.port.out.PublishBookRentalResultPort;
+import com.example.library.common.event.AvroMessageMapper;
 import com.example.library.common.event.EventResult;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -29,6 +30,6 @@ public class BookKafkaEventProducer implements PublishBookRentalResultPort {
      */
     @Override
     public void publish(EventResult result) {
-        kafkaTemplate.send(rentalResultTopic, result.correlationId(), result);
+        kafkaTemplate.send(rentalResultTopic, result.correlationId(), AvroMessageMapper.toEventResultMessage(result));
     }
 }
