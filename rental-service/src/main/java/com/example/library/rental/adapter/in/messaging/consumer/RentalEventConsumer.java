@@ -13,7 +13,7 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
 /**
- * 도서 서비스와 회원 서비스가 보낸 처리 결과 이벤트를 받아 실패한 대여 흐름의 보상 처리를 실행하는 Kafka 수신 컴포넌트입니다.
+ * 도서 서비스와 회원 서비스가 보낸 처리 결과 이벤트를 받아 실패한 대여 흐름의 보상 처리를 실행하는 Kafka 수신 컴포넌트.
  */
 @Component
 @Slf4j
@@ -32,34 +32,62 @@ public class RentalEventConsumer {
     @KafkaListener(topics = "${app.kafka.topics.rental-result}", groupId = "${spring.kafka.consumer.group-id}")
     public void consumeRentalResult(EventResultMessage message) throws Exception {
         EventResult result = AvroMessageMapper.toEventResult(message);
-        if (!claimProcessing(result.eventId())) {
-            log.info("skip already processing rental_result eventId={}", result.eventId());
-            return;
-        }
-        try {
-            handleRentalResultUseCase.handle(result);
-        } finally {
-            releaseProcessing(result.eventId());
+        handleWithProcessingLock(
+                result.eventId(),
+                "rental result",
+                () -> handleRentalResultUseCase.handle(result)
+        );
+    }
+
+    /**
+     * Redis processing lock handle
+     * @param eventId 이벤트 식별자
+     * @param logMessage already processing log message
+     * @param handler 이벤트 handler
+     * @throws Exception 예외 전파
+     */
+    private void handleWithProcessingLock(String eventId, String logMessage, MessageHandler handler) throws Exception {
+        switch (tryAcquireProcessingLock(eventId)) {
+            case CLAIMED -> {
+                try {
+                    handler.handle();
+                } catch (Exception ex) {
+                    releaseProcessing(eventId);
+                    throw ex;
+                }
+            }
+            case ALREADY_PROCESSING -> log.info("skip already processing {} eventId={}", logMessage, eventId);
         }
     }
 
     /**
      * Redis 에 처리 이력을 기록해 동일 결과 이벤트가 다시 처리되지 않도록 합니다.
      *
-     * @param eventId 멱등성 판단과 추적에 사용할 이벤트 식별자.
-     * @return 새로 처리할 수 있는 이벤트이면 true, 이미 처리된 이벤트이면 false 를 반환.
+     * @param eventId 이벤트 식별자.
+     * @return 새로 처리할 수 있는 이벤트이면 CLAIMED, 이미 처리된 이벤트이면 ALREADY_PROCESSING 를 반환.
      */
-    private boolean claimProcessing(String eventId) {
+    private ProcessingClaimResult tryAcquireProcessingLock(String eventId) {
         String key = processingKey(eventId);
         return Boolean.TRUE.equals(
             redisTemplate.opsForValue().setIfAbsent(key, UUID.randomUUID().toString(), processingProperties.ttl())
-        );
+        ) ? ProcessingClaimResult.CLAIMED : ProcessingClaimResult.ALREADY_PROCESSING;
     }
 
+    /**
+     * Redis processing lock Key 생성 제거.
+     *
+     * @param eventId 이벤트 식별자.
+     */
     private void releaseProcessing(String eventId) {
         redisTemplate.delete(processingKey(eventId));
     }
 
+    /**
+     * Redis processing lock Key 생성.
+     *
+     * @param eventId 이벤트 식별자.
+     * @return  Redis processing lock Key.
+     */
     private String processingKey(String eventId) {
         return "processing:rental:" + eventId;
     }

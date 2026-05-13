@@ -80,13 +80,13 @@ public class MemberJpaEntity {
     /**
      * 저장소 어댑터가 도메인 모델의 현재 상태를 JPA 엔티티로 옮길 때 사용합니다.
      *
-     * @param memberNo 조회할 회원 번호입니다.
-     * @param memberId 조회할 회원 로그인 ID입니다.
-     * @param memberName 저장할 회원 이름입니다.
-     * @param password 저장하거나 검증할 비밀번호 값입니다.
-     * @param email 저장하거나 검증할 이메일 값입니다.
-     * @param roles 회원에게 부여된 권한 목록입니다.
-     * @param point 적립, 차감, 정산 또는 보상에 사용할 포인트 값입니다.
+     * @param memberNo 회원 번호.
+     * @param memberId 회원 로그인 ID.
+     * @param memberName 회원 이름.
+     * @param password 비밀번호.
+     * @param email 이메일.
+     * @param roles 회원에게 부여된 권한 목록.
+     * @param point 적립, 차감, 정산 또는 보상에 사용할 포인트.
      */
     public MemberJpaEntity(
         Long memberNo,

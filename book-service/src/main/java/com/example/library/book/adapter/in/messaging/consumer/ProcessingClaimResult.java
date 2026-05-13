@@ -1,4 +1,4 @@
-package com.example.library.member.adapter.in.messaging.consumer;
+package com.example.library.book.adapter.in.messaging.consumer;
 
 /**
  * Redis processing lock 점유 시도 결과.

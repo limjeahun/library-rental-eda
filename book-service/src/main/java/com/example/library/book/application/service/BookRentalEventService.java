@@ -3,7 +3,6 @@ package com.example.library.book.application.service;
 import com.example.library.book.application.port.in.HandleBookRentalEventUseCase;
 import com.example.library.book.application.port.in.MakeAvailableBookUseCase;
 import com.example.library.book.application.port.in.MakeUnavailableBookUseCase;
-import com.example.library.book.application.port.out.BookRentalFailurePolicyPort;
 import com.example.library.book.application.port.out.MessageIdempotencyPort;
 import com.example.library.book.application.port.out.PublishBookRentalResultPort;
 import com.example.library.common.event.EventResult;
@@ -31,7 +30,6 @@ public class BookRentalEventService implements HandleBookRentalEventUseCase {
     private final MakeUnavailableBookUseCase makeUnavailableBookUseCase;
     private final PublishBookRentalResultPort publishBookRentalResultPort;
     private final MessageIdempotencyPort messageIdempotencyPort;
-    private final BookRentalFailurePolicyPort failurePolicyPort;
 
     /**
      * 도서 대여 이벤트를 처리해 도서를 대여 불가능 상태로 바꾸고 결과 이벤트를 발행합니다.
@@ -50,9 +48,6 @@ public class BookRentalEventService implements HandleBookRentalEventUseCase {
             return;
         }
         try {
-            if (failurePolicyPort.shouldFailRent()) {
-                throw new IllegalArgumentException("forced rental_rent failure");
-            }
             makeUnavailableBookUseCase.makeUnavailable(event.itemNo());
             publishBookRentalResultPort.publish(EventResult.success(
                 event.eventId(),
@@ -101,9 +96,6 @@ public class BookRentalEventService implements HandleBookRentalEventUseCase {
             return;
         }
         try {
-            if (failurePolicyPort.shouldFailReturn()) {
-                throw new IllegalArgumentException("forced rental_return failure");
-            }
             makeAvailableBookUseCase.makeAvailable(event.itemNo());
             publishBookRentalResultPort.publish(EventResult.success(
                 event.eventId(),

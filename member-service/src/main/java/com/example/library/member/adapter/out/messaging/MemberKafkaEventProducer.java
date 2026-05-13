@@ -8,7 +8,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
 /**
- * 연체 해제 포인트 차감 성공/실패 EventResult를 rental-result 토픽으로 발행하는 Kafka 발행 컴포넌트입니다.
+ * 연체 해제 포인트 차감 성공/실패 EventResult 를 rental-result 토픽으로 발행하는 Kafka 발행 컴포넌트.
  */
 @Component
 public class MemberKafkaEventProducer implements PublishMemberEventResultPort {

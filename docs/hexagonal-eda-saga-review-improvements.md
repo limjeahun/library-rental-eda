@@ -592,28 +592,14 @@ application service가 config 패키지나 Spring 설정 주입에 직접 의존
 
 ### 개선안
 
-장애 주입이나 테스트용 실패 정책을 application port로 분리한다.
-
-예상 구조:
-
-```text
-application/
-  port/
-    out/
-      BookRentalFailurePolicyPort.java
-adapter/
-  out/
-    policy/
-      PropertyBookRentalFailurePolicyAdapter.java
-config/
-  BookFailureProperties.java
-```
+운영 application service에서 장애 주입이나 테스트용 실패 정책을 제거한다.
 
 적용 방향:
 
-- application service는 `BookRentalFailurePolicyPort`만 의존한다.
-- adapter/config 쪽에서 properties를 읽어 policy port 구현체를 제공한다.
-- member-service의 `@Value` 직접 주입도 같은 방식으로 제거한다.
+- `BookRentalEventService`와 `MemberEventService`는 강제 실패 설정을 조회하지 않는다.
+- `BookRentalFailurePolicyPort`, `MemberFailurePolicyPort`, property 기반 failure policy adapter, failure properties는 제거한다.
+- 실패 Result Event 발행은 application service 테스트에서 의존 use case를 mock/fake로 실패시켜 검증한다.
+- 로컬 SAGA 장애 주입이 다시 필요하면 production service 흐름에 넣지 말고 별도 profile 또는 test-only fixture로 격리한다.
 
 ## P2. rental-service DTO 분리 일관화
 

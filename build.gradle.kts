@@ -20,6 +20,8 @@ val springDocVersion = "2.6.0"
 val archUnitVersion = "1.4.2"
 val avroVersion = "1.11.3"
 val confluentVersion = "7.7.1"
+val mapstructVersion = "1.6.3"
+val lombokMapstructBindingVersion = "0.2.0"
 
 subprojects {
     group = rootProject.group
@@ -133,6 +135,14 @@ configure(relationalServiceProjects) {
         "annotationProcessor"("com.querydsl:querydsl-apt:$queryDslVersion:jakarta")
         "annotationProcessor"("jakarta.persistence:jakarta.persistence-api")
         "annotationProcessor"("jakarta.annotation:jakarta.annotation-api")
+    }
+}
+
+project(":book-service") {
+    dependencies {
+        "implementation"("org.mapstruct:mapstruct:$mapstructVersion")
+        "annotationProcessor"("org.mapstruct:mapstruct-processor:$mapstructVersion")
+        "annotationProcessor"("org.projectlombok:lombok-mapstruct-binding:$lombokMapstructBindingVersion")
     }
 }
 

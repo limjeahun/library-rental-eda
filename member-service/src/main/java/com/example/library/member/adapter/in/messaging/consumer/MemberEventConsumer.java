@@ -19,7 +19,7 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
 /**
- * 대여/반납 이벤트와 연체 해제/포인트 차감 메시지를 받아 회원 포인트를 적립하거나 차감하는 Kafka 수신 컴포넌트입니다.
+ * 대여/반납 이벤트와 연체 해제/포인트 차감 메시지를 받아 회원 포인트를 적립하거나 차감하는 Kafka 수신 컴포넌트.
  */
 @Component
 @Slf4j
@@ -38,25 +38,15 @@ public class MemberEventConsumer {
     @KafkaListener(topics = "${app.kafka.topics.rental-rent}", groupId = "${spring.kafka.consumer.group-id}")
     public void consumeRent(ItemRentedMessage message) throws Exception {
         ItemRented event = AvroMessageMapper.toItemRented(message);
-        // Redis processing lock
-        switch (tryAcquireProcessingLock(event.eventId())) {
-            case CLAIMED -> {
-                try {
-                    handleMemberEventUseCase.handleRent(event);
-                }catch (Exception ex) {
-                    releaseProcessing(event.eventId());
-                    throw ex;
-                }
-            }
-            case ALREADY_PROCESSING -> {
-                log.info("skip already processing member rent eventId={}", event.eventId());
-                return;
-            }
-        }
+        handleWithProcessingLock(
+                event.eventId(),
+                "member rent",
+                () -> handleMemberEventUseCase.handleRent(event)
+        );
     }
 
     /**
-     * 반납 이벤트 Avro 메시지를 ItemReturned로 변환한 뒤 회원에게 반납 포인트를 적립합니다.
+     * 반납 이벤트 Avro 메시지를 ItemReturned 로 변환한 뒤 회원에게 반납 포인트를 적립합니다.
      *
      * @param message rental-return 토픽에서 수신한 반납 이벤트 메시지입니다.
      * @throws Exception Redis 중복 기록, 회원 포인트 적립 중 오류가 발생할 때 전달됩니다.
@@ -64,21 +54,11 @@ public class MemberEventConsumer {
     @KafkaListener(topics = "${app.kafka.topics.rental-return}", groupId = "${spring.kafka.consumer.group-id}")
     public void consumeReturn(ItemReturnedMessage message) throws Exception {
         ItemReturned event = AvroMessageMapper.toItemReturned(message);
-        // Redis processing lock
-        switch (tryAcquireProcessingLock(event.eventId())) {
-            case CLAIMED -> {
-                try {
-                    handleMemberEventUseCase.handleReturn(event);
-                }catch (Exception ex) {
-                    releaseProcessing(event.eventId());
-                    throw ex;
-                }
-            }
-            case ALREADY_PROCESSING -> {
-                log.info("skip already processing member return eventId={}", event.eventId());
-                return;
-            }
-        }
+        handleWithProcessingLock(
+                event.eventId(),
+                "member return",
+                () -> handleMemberEventUseCase.handleReturn(event)
+        );
     }
 
     /**
@@ -90,21 +70,11 @@ public class MemberEventConsumer {
     @KafkaListener(topics = "${app.kafka.topics.overdue-clear}", groupId = "${spring.kafka.consumer.group-id}")
     public void consumeClear(OverdueClearedMessage message) throws Exception {
         OverdueCleared event = AvroMessageMapper.toOverdueCleared(message);
-        // Redis processing lock
-        switch (tryAcquireProcessingLock(event.eventId())) {
-            case CLAIMED -> {
-                try {
-                    handleMemberEventUseCase.handleOverdueClear(event);
-                }catch (Exception ex) {
-                    releaseProcessing(event.eventId());
-                    throw ex;
-                }
-            }
-            case ALREADY_PROCESSING -> {
-                log.info("skip already processing overdue clear eventId={}", event.eventId());
-                return;
-            }
-        }
+        handleWithProcessingLock(
+                event.eventId(),
+                "overdue clear",
+                () -> handleMemberEventUseCase.handleOverdueClear(event)
+        );
     }
 
     /**
@@ -116,20 +86,31 @@ public class MemberEventConsumer {
     @KafkaListener(topics = "${app.kafka.topics.point-use}", groupId = "${spring.kafka.consumer.group-id}")
     public void consumeUsePoint(PointUseCommandMessage message) throws Exception {
         PointUseCommand command = AvroMessageMapper.toPointUseCommand(message);
-        // Redis processing lock
-        switch (tryAcquireProcessingLock(command.eventId())) {
+        handleWithProcessingLock(
+                command.eventId(),
+                "point use",
+                () -> handleMemberEventUseCase.handlePointUse(command)
+        );
+    }
+
+    /**
+     * Redis processing lock handle
+     * @param eventId 이벤트 식별자
+     * @param message already processing message
+     * @param handler 이벤트 handler
+     * @throws Exception 예외 전파
+     */
+    private void handleWithProcessingLock(String eventId, String message, MessageHandler handler) throws Exception {
+        switch (tryAcquireProcessingLock(eventId)) {
             case CLAIMED -> {
                 try {
-                    handleMemberEventUseCase.handlePointUse(command);
-                }catch (Exception ex) {
-                    releaseProcessing(command.eventId());
+                    handler.handle();
+                } catch (Exception ex) {
+                    releaseProcessing(eventId);
                     throw ex;
                 }
             }
-            case ALREADY_PROCESSING -> {
-                log.info("skip already processing point_use eventId={}", command.eventId());
-                return;
-            }
+            case ALREADY_PROCESSING -> log.info("skip already processing {} eventId={}", message, eventId);
         }
     }
 
@@ -164,4 +145,5 @@ public class MemberEventConsumer {
     private String processingKey(String eventId) {
         return "processing:member:" + eventId;
     }
+
 }

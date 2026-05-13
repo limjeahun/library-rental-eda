@@ -710,47 +710,18 @@ curl -X POST http://localhost:8080/api/rental-cards/clear-overdue \
 
 ## 실패와 보상 검증
 
-### Book 대여 처리 실패
-
-`book-service`를 실패 플래그와 함께 실행합니다.
+운영 코드에는 강제 실패 플래그를 두지 않습니다. 실패 결과 발행은 application service 테스트에서 의존 use case를 mock으로 실패시켜 검증합니다.
 
 ```powershell
-.\gradlew.bat :book-service:bootRun --args="--app.failure.force-rent-fail=true"
+.\gradlew.bat :book-service:test --tests com.example.library.book.application.service.BookRentalEventServiceTest
+.\gradlew.bat :member-service:test --tests com.example.library.member.application.service.MemberEventServiceTest
 ```
 
-그 뒤 대여 API를 호출하면 다음 흐름이 발생합니다.
+검증 기준:
 
-1. `rental-service`는 대여카드에 도서를 추가하고 `ItemRented`를 발행합니다.
-2. `book-service`는 강제 실패를 발생시키고 `EventResult(RENT, false)`를 발행합니다.
-3. `rental-service`는 `cancelRentItem(...)`으로 대여를 취소합니다.
-4. `rental-service`는 `PointUseCommand(RENT_COMPENSATION)`을 발행합니다.
-5. `member-service`는 `point_use`를 소비해 보상 포인트를 차감합니다.
-
-### Book 반납 처리 실패
-
-```powershell
-.\gradlew.bat :book-service:bootRun --args="--app.failure.force-return-fail=true"
-```
-
-반납 API를 호출하면 다음 흐름이 발생합니다.
-
-1. `rental-service`는 도서를 반납 목록으로 이동하고 `ItemReturned`를 발행합니다.
-2. `book-service`는 강제 실패를 발생시키고 `EventResult(RETURN, false)`를 발행합니다.
-3. `rental-service`는 `cancelReturnItem(...)`으로 반납을 되돌립니다.
-4. `rental-service`는 `PointUseCommand(RETURN_COMPENSATION)`을 발행합니다.
-5. `member-service`는 보상 포인트를 차감합니다.
-
-### Member 연체 해제 처리 실패
-
-```powershell
-.\gradlew.bat :member-service:bootRun --args="--app.failure.force-overdue-clear-fail=true"
-```
-
-연체 해제 API를 호출하면 다음 흐름이 발생합니다.
-
-1. `rental-service`는 연체료를 제거하고 대여 가능 상태로 바꾼 뒤 `OverdueCleared`를 발행합니다.
-2. `member-service`는 강제 실패를 발생시키고 `EventResult(OVERDUE, false)`를 발행합니다.
-3. `rental-service`는 `cancelMakeAvailableRental(...)`으로 연체료와 대여 정지 상태를 복구합니다.
+1. `BookRentalEventService`는 도서 상태 변경 use case가 실패하면 `EventResult(RENT/RETURN, false)`를 발행합니다.
+2. `MemberEventService`는 포인트 차감 use case가 실패하면 `EventResult(OVERDUE, false)`를 발행합니다.
+3. `rental-service`는 실패 Result Event를 수신해 해당 SAGA 상태와 보상 흐름을 처리합니다.
 
 ## 현재 구현 범위와 의도적 제외 항목
 

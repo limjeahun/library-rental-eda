@@ -3,33 +3,27 @@ package com.example.library.book.adapter.out.persistence.mapper;
 import com.example.library.book.adapter.out.persistence.entity.BookJpaEntity;
 import com.example.library.book.domain.model.Book;
 import com.example.library.book.domain.vo.BookDesc;
-import org.springframework.stereotype.Component;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.ReportingPolicy;
 
 /**
  * 도서 도메인 모델과 JPA 엔티티 사이의 변환을 담당합니다.
  */
-@Component
-public class BookPersistenceMapper {
+@Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.ERROR)
+public interface BookPersistenceMapper {
     /**
      * 도메인 도서를 JPA 저장용 엔티티로 변환합니다.
      *
      * @param book 저장하거나 응답 DTO로 변환할 도서 도메인 모델입니다.
      * @return 저장소 계층에서 사용할 JPA 모델을 반환합니다.
      */
-    public BookJpaEntity toJpaEntity(Book book) {
-        return new BookJpaEntity(
-            book.getNo(),
-            book.getTitle(),
-            book.getDesc().description(),
-            book.getDesc().author(),
-            book.getDesc().isbn(),
-            book.getDesc().publicationDate(),
-            book.getDesc().source(),
-            book.getClassification(),
-            book.getBookStatus(),
-            book.getLocation()
-        );
-    }
+    @Mapping(target = "description", source = "desc.description")
+    @Mapping(target = "author", source = "desc.author")
+    @Mapping(target = "isbn", source = "desc.isbn")
+    @Mapping(target = "publicationDate", source = "desc.publicationDate")
+    @Mapping(target = "source", source = "desc.source")
+    BookJpaEntity toJpaEntity(Book book);
 
     /**
      * JPA 엔티티를 도메인 도서 모델로 복원합니다.
@@ -37,7 +31,7 @@ public class BookPersistenceMapper {
      * @param entity 도메인 모델로 변환할 저장소 엔티티입니다.
      * @return JPA 엔티티에서 복원한 도서 도메인 모델을 반환합니다.
      */
-    public Book toDomain(BookJpaEntity entity) {
+    default Book toDomain(BookJpaEntity entity) {
         return new Book(
             entity.getNo(),
             entity.getTitle(),
