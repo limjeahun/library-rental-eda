@@ -1,14 +1,28 @@
 package com.example.library.bestbook.domain.model;
 
 import com.example.library.bestbook.domain.vo.BestBookItem;
+import lombok.Getter;
 
 /**
  * 대여 이벤트를 기반으로 누적되는 인기 도서 read model 도메인 모델입니다.
  */
+@Getter
 public class BestBook {
-    private Long id;
-    private Long itemNo;
-    private String itemTitle;
+    /**
+     *  인기 도서 read model 식별자.
+     */
+    private final Long id;
+    /**
+     *  도서 번호.
+     */
+    private final Long itemNo;
+    /**
+     *  도서 제목.
+     */
+    private final String itemTitle;
+    /**
+     *  누적 대여 횟수.
+     */
     private long rentCount;
 
     /**
@@ -80,39 +94,4 @@ public class BestBook {
         return this.rentCount;
     }
 
-    /**
-     * 인기 도서 read model 식별자를 반환합니다.
-     *
-     * @return 인기 도서 read model 식별자를 반환합니다.
-     */
-    public Long getId() {
-        return id;
-    }
-
-    /**
-     * 도서 번호를 반환합니다.
-     *
-     * @return 인기 도서로 집계된 도서 번호를 반환합니다.
-     */
-    public Long getItemNo() {
-        return itemNo;
-    }
-
-    /**
-     * 도서 제목을 반환합니다.
-     *
-     * @return 인기 도서로 집계된 도서 제목을 반환합니다.
-     */
-    public String getItemTitle() {
-        return itemTitle;
-    }
-
-    /**
-     * 누적 대여 횟수를 반환합니다.
-     *
-     * @return 증가 후 누적 대여 횟수를 반환합니다.
-     */
-    public long getRentCount() {
-        return rentCount;
-    }
 }

@@ -4,18 +4,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
-import com.example.library.book.application.port.in.MakeAvailableBookUseCase;
-import com.example.library.book.application.port.in.MakeUnavailableBookUseCase;
+import com.example.library.book.application.dto.BookRentalEventCommand;
+import com.example.library.book.application.dto.BookRentalEventResult;
+import com.example.library.book.application.port.out.LoadBookPort;
 import com.example.library.book.application.port.out.MessageIdempotencyPort;
 import com.example.library.book.application.port.out.PublishBookRentalResultPort;
-import com.example.library.common.event.EventResult;
+import com.example.library.book.application.port.out.SaveBookPort;
 import com.example.library.common.event.EventType;
 import com.example.library.common.event.InboundMessageType;
-import com.example.library.common.event.ItemRented;
-import com.example.library.common.event.ItemReturned;
 import com.example.library.common.event.Participant;
 import com.example.library.common.event.SagaStep;
-import java.time.Instant;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -26,10 +24,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class BookRentalEventServiceTest {
     @Mock
-    private MakeAvailableBookUseCase makeAvailableBookUseCase;
+    private LoadBookPort loadBookPort;
 
     @Mock
-    private MakeUnavailableBookUseCase makeUnavailableBookUseCase;
+    private SaveBookPort saveBookPort;
 
     @Mock
     private PublishBookRentalResultPort publishBookRentalResultPort;
@@ -41,21 +39,21 @@ class BookRentalEventServiceTest {
     private BookRentalEventService service;
 
     @Test
-    void rentFailureIsPublishedWhenUnavailableUseCaseFails() {
-        ItemRented event = rentedEvent();
+    void rentFailureIsPublishedWhenLoadBookFails() {
+        BookRentalEventCommand command = rentedCommand();
         given(messageIdempotencyPort.markProcessed(
-            event.eventId(),
-            event.correlationId(),
+            command.eventId(),
+            command.correlationId(),
             InboundMessageType.ITEM_RENTED
         )).willReturn(true);
-        given(makeUnavailableBookUseCase.makeUnavailable(event.itemNo()))
+        given(loadBookPort.loadBook(command.itemNo()))
             .willThrow(new IllegalArgumentException("book unavailable failed"));
 
-        service.handleRent(event);
+        service.handleRent(command);
 
-        EventResult result = publishedResult();
-        assertThat(result.sourceEventId()).isEqualTo(event.eventId());
-        assertThat(result.correlationId()).isEqualTo(event.correlationId());
+        BookRentalEventResult result = publishedResult();
+        assertThat(result.sourceEventId()).isEqualTo(command.eventId());
+        assertThat(result.correlationId()).isEqualTo(command.correlationId());
         assertThat(result.eventType()).isEqualTo(EventType.RENT);
         assertThat(result.participant()).isEqualTo(Participant.BOOK);
         assertThat(result.step()).isEqualTo(SagaStep.BOOK_MAKE_UNAVAILABLE);
@@ -64,21 +62,21 @@ class BookRentalEventServiceTest {
     }
 
     @Test
-    void returnFailureIsPublishedWhenAvailableUseCaseFails() {
-        ItemReturned event = returnedEvent();
+    void returnFailureIsPublishedWhenLoadBookFails() {
+        BookRentalEventCommand command = returnedCommand();
         given(messageIdempotencyPort.markProcessed(
-            event.eventId(),
-            event.correlationId(),
+            command.eventId(),
+            command.correlationId(),
             InboundMessageType.ITEM_RETURNED
         )).willReturn(true);
-        given(makeAvailableBookUseCase.makeAvailable(event.itemNo()))
+        given(loadBookPort.loadBook(command.itemNo()))
             .willThrow(new IllegalArgumentException("book available failed"));
 
-        service.handleReturn(event);
+        service.handleReturn(command);
 
-        EventResult result = publishedResult();
-        assertThat(result.sourceEventId()).isEqualTo(event.eventId());
-        assertThat(result.correlationId()).isEqualTo(event.correlationId());
+        BookRentalEventResult result = publishedResult();
+        assertThat(result.sourceEventId()).isEqualTo(command.eventId());
+        assertThat(result.correlationId()).isEqualTo(command.correlationId());
         assertThat(result.eventType()).isEqualTo(EventType.RETURN);
         assertThat(result.participant()).isEqualTo(Participant.BOOK);
         assertThat(result.step()).isEqualTo(SagaStep.BOOK_MAKE_AVAILABLE);
@@ -86,17 +84,16 @@ class BookRentalEventServiceTest {
         assertThat(result.reason()).isEqualTo("book available failed");
     }
 
-    private EventResult publishedResult() {
-        ArgumentCaptor<EventResult> captor = ArgumentCaptor.forClass(EventResult.class);
+    private BookRentalEventResult publishedResult() {
+        ArgumentCaptor<BookRentalEventResult> captor = ArgumentCaptor.forClass(BookRentalEventResult.class);
         verify(publishBookRentalResultPort).publish(captor.capture());
         return captor.getValue();
     }
 
-    private ItemRented rentedEvent() {
-        return new ItemRented(
+    private BookRentalEventCommand rentedCommand() {
+        return new BookRentalEventCommand(
             "event-1",
             "correlation-1",
-            Instant.parse("2026-05-13T00:00:00Z"),
             "member-1",
             "회원1",
             1L,
@@ -105,11 +102,10 @@ class BookRentalEventServiceTest {
         );
     }
 
-    private ItemReturned returnedEvent() {
-        return new ItemReturned(
+    private BookRentalEventCommand returnedCommand() {
+        return new BookRentalEventCommand(
             "event-2",
             "correlation-2",
-            Instant.parse("2026-05-13T00:00:00Z"),
             "member-1",
             "회원1",
             1L,

@@ -1,19 +1,34 @@
 package com.example.library.rental.application.service;
 
-import com.example.library.common.event.EventResult;
 import com.example.library.common.event.EventType;
 import com.example.library.common.event.InboundMessageType;
 import com.example.library.common.event.Participant;
-import com.example.library.rental.application.port.in.CompensationUseCase;
+import com.example.library.common.event.PointUseReason;
+import com.example.library.rental.application.dto.PointUseCommandPayload;
+import com.example.library.rental.application.dto.RentalResultCommand;
 import com.example.library.rental.application.port.in.HandleRentalResultUseCase;
+import com.example.library.rental.application.port.out.CompensationIdempotencyPort;
+import com.example.library.rental.application.port.out.LoadRentalCardPort;
 import com.example.library.rental.application.port.out.LoadRentalSagaStatePort;
 import com.example.library.rental.application.port.out.MessageIdempotencyPort;
+import com.example.library.rental.application.port.out.PublishItemRentCanceledPort;
+import com.example.library.rental.application.port.out.PublishItemReturnCanceledPort;
+import com.example.library.rental.application.port.out.PublishOverdueClearCanceledPort;
+import com.example.library.rental.application.port.out.PublishPointUseCommandPort;
+import com.example.library.rental.application.port.out.SaveRentalCardPort;
 import com.example.library.rental.application.port.out.SaveRentalSagaStatePort;
+import com.example.library.rental.domain.event.ItemRentCanceledDomainEvent;
+import com.example.library.rental.domain.event.ItemReturnCanceledDomainEvent;
+import com.example.library.rental.domain.event.OverdueClearCanceledDomainEvent;
+import com.example.library.rental.domain.model.RentalCard;
+import com.example.library.rental.domain.model.policy.RentalPointPolicy;
+import com.example.library.rental.domain.model.saga.RentalCompensationType;
 import com.example.library.rental.domain.model.saga.RentalSagaParticipant;
 import com.example.library.rental.domain.model.saga.RentalSagaState;
 import com.example.library.rental.domain.model.saga.RentalSagaType;
 import com.example.library.rental.domain.vo.RentalItem;
 import com.example.library.rental.domain.vo.RentalMember;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -26,44 +41,50 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 @RequiredArgsConstructor
 public class RentalResultService implements HandleRentalResultUseCase {
-    private final CompensationUseCase       compensationUseCase;
-    private final MessageIdempotencyPort    messageIdempotencyPort;
-    private final LoadRentalSagaStatePort   loadRentalSagaStatePort;
-    private final SaveRentalSagaStatePort   saveRentalSagaStatePort;
+    private final MessageIdempotencyPort          messageIdempotencyPort;
+    private final LoadRentalSagaStatePort         loadRentalSagaStatePort;
+    private final SaveRentalSagaStatePort         saveRentalSagaStatePort;
+    private final LoadRentalCardPort              loadRentalCardPort;
+    private final SaveRentalCardPort              saveRentalCardPort;
+    private final PublishPointUseCommandPort      publishPointUseCommandPort;
+    private final PublishItemRentCanceledPort     publishItemRentCanceledPort;
+    private final PublishItemReturnCanceledPort   publishItemReturnCanceledPort;
+    private final PublishOverdueClearCanceledPort publishOverdueClearCanceledPort;
+    private final CompensationIdempotencyPort     compensationIdempotencyPort;
 
     /**
      * 성공 결과는 기록만 하고, 실패 결과는 이벤트 타입별 보상 흐름으로 분기.
      *
-     * @param result 처리하거나 발행할 result event 메시지.
+     * @param command 처리할 참여 서비스 결과 application command.
      */
     @Override
     @Transactional
-    public void handle(EventResult result) {
+    public void handle(RentalResultCommand command) {
         if (!messageIdempotencyPort.markProcessed(
-            result.eventId(),
-            result.correlationId(),
+            command.eventId(),
+            command.correlationId(),
             InboundMessageType.EVENT_RESULT
         )) {
-            log.info("skip already processed rental_result eventId={}", result.eventId());
+            log.info("skip already processed rental_result eventId={}", command.eventId());
             return;
         }
 
-        RentalSagaState state = loadRentalSagaStatePort.loadByCorrelationId(result.correlationId())
-            .orElseGet(() -> fallbackState(result));
+        RentalSagaState state = loadRentalSagaStatePort.loadByCorrelationId(command.correlationId())
+            .orElseGet(() -> fallbackState(command));
         state.recordParticipantResult(
-            result.sourceEventId(),
-            toSagaParticipant(result.participant()),
-            result.successed()
+            command.sourceEventId(),
+            toSagaParticipant(command.participant()),
+            command.successed()
         );
         saveRentalSagaStatePort.save(state);
 
         if (!state.hasFailure()) {
             log.info(
                 "participant success eventType={} participant={} step={} eventId={}",
-                result.eventType(),
-                result.participant(),
-                result.step(),
-                result.eventId()
+                command.eventType(),
+                command.participant(),
+                command.step(),
+                command.eventId()
             );
             return;
         }
@@ -72,31 +93,31 @@ public class RentalResultService implements HandleRentalResultUseCase {
         saveRentalSagaStatePort.save(state);
     }
 
-    private RentalSagaState fallbackState(EventResult result) {
-        RentalMember member = new RentalMember(result.memberId(), result.memberName());
-        RentalItem item = result.itemNo() == null ? null : new RentalItem(result.itemNo(), result.itemTitle());
-        return switch (toSagaType(result.eventType())) {
-            case RENT -> RentalSagaState.startRent(result.correlationId(), member, item, result.point());
-            case RETURN -> RentalSagaState.startReturn(result.correlationId(), member, item, result.point());
-            case OVERDUE -> RentalSagaState.startOverdue(result.correlationId(), member, result.point());
+    private RentalSagaState fallbackState(RentalResultCommand command) {
+        RentalMember member = new RentalMember(command.memberId(), command.memberName());
+        RentalItem item = command.itemNo() == null ? null : new RentalItem(command.itemNo(), command.itemTitle());
+        return switch (toSagaType(command.eventType())) {
+            case RENT -> RentalSagaState.startRent(command.correlationId(), member, item, command.point());
+            case RETURN -> RentalSagaState.startReturn(command.correlationId(), member, item, command.point());
+            case OVERDUE -> RentalSagaState.startOverdue(command.correlationId(), member, command.point());
         };
     }
 
     private void compensate(RentalSagaState state) {
         switch (state.sagaType()) {
             case RENT -> {
-                compensationUseCase.cancelRentItem(state.member(), state.item(), state.correlationId());
+                cancelRentItem(state.member(), state.item(), state.correlationId());
                 if (state.isMemberSuccess()) {
-                    compensationUseCase.compensateRentPoint(state.member(), state.correlationId());
+                    compensateRentPoint(state.member(), state.correlationId());
                 }
             }
             case RETURN -> {
-                compensationUseCase.cancelReturnItem(state.member(), state.item(), state.point(), state.correlationId());
+                cancelReturnItem(state.member(), state.item(), state.point(), state.correlationId());
                 if (state.isMemberSuccess()) {
-                    compensationUseCase.compensateReturnPoint(state.member(), state.point(), state.correlationId());
+                    compensateReturnPoint(state.member(), state.point(), state.correlationId());
                 }
             }
-            case OVERDUE -> compensationUseCase.cancelMakeAvailableRental(
+            case OVERDUE -> cancelMakeAvailableRental(
                 state.member(),
                 state.point(),
                 state.correlationId()
@@ -117,5 +138,89 @@ public class RentalResultService implements HandleRentalResultUseCase {
             case BOOK -> RentalSagaParticipant.BOOK;
             case MEMBER -> RentalSagaParticipant.MEMBER;
         };
+    }
+
+    private void cancelRentItem(RentalMember member, RentalItem item, String correlationId) {
+        if (!compensationIdempotencyPort.markCompensated(correlationId, RentalCompensationType.RENT_CANCEL)) {
+            return;
+        }
+        RentalCard rentalCard = load(member);
+        rentalCard.cancelRentItem(item);
+        saveRentalCardPort.save(rentalCard);
+        publishItemRentCanceledPort.publishRentCanceledEvent(
+            new ItemRentCanceledDomainEvent(member, item, RentalPointPolicy.RENT.point()),
+            correlationId
+        );
+    }
+
+    private void compensateRentPoint(RentalMember member, String correlationId) {
+        if (!compensationIdempotencyPort.markCompensated(correlationId, RentalCompensationType.RENT_POINT_USE)) {
+            return;
+        }
+        publishPointUseCommandPort.publishPointUseCommand(
+            createPointUseCommand(
+                correlationId,
+                member,
+                RentalPointPolicy.RENT.point(),
+                PointUseReason.RENT_COMPENSATION
+            )
+        );
+    }
+
+    private void cancelReturnItem(RentalMember member, RentalItem item, long point, String correlationId) {
+        if (!compensationIdempotencyPort.markCompensated(correlationId, RentalCompensationType.RETURN_CANCEL)) {
+            return;
+        }
+        RentalCard rentalCard = load(member);
+        rentalCard.cancelReturnItem(item, point);
+        saveRentalCardPort.save(rentalCard);
+        publishItemReturnCanceledPort.publishReturnCanceledEvent(
+            new ItemReturnCanceledDomainEvent(member, item, point),
+            correlationId
+        );
+    }
+
+    private void compensateReturnPoint(RentalMember member, long point, String correlationId) {
+        if (!compensationIdempotencyPort.markCompensated(correlationId, RentalCompensationType.RETURN_POINT_USE)) {
+            return;
+        }
+        publishPointUseCommandPort.publishPointUseCommand(
+            createPointUseCommand(correlationId, member, point, PointUseReason.RETURN_COMPENSATION)
+        );
+    }
+
+    private void cancelMakeAvailableRental(RentalMember member, long point, String correlationId) {
+        if (!compensationIdempotencyPort.markCompensated(
+            correlationId,
+            RentalCompensationType.OVERDUE_CLEAR_CANCEL
+        )) {
+            return;
+        }
+
+        RentalCard rentalCard = load(member);
+        rentalCard.cancelMakeAvailableRental(point);
+        saveRentalCardPort.save(rentalCard);
+
+        publishOverdueClearCanceledPort.publishOverdueClearCanceledEvent(
+            new OverdueClearCanceledDomainEvent(member, point),
+            correlationId
+        );
+    }
+
+    private RentalCard load(RentalMember idName) {
+        return loadRentalCardPort.loadRentalCard(idName.id())
+            .orElseThrow(() -> new IllegalArgumentException("대여카드가 없습니다."));
+    }
+
+    private PointUseCommandPayload createPointUseCommand(
+        String correlationId,
+        RentalMember member,
+        long point,
+        PointUseReason reason
+    ) {
+        String commandCorrelationId = correlationId == null || correlationId.isBlank()
+            ? UUID.randomUUID().toString()
+            : correlationId;
+        return new PointUseCommandPayload(commandCorrelationId, member.id(), member.name(), point, reason);
     }
 }

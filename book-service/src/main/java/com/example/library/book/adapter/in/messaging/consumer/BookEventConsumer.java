@@ -1,5 +1,7 @@
 package com.example.library.book.adapter.in.messaging.consumer;
 
+import com.example.library.book.application.dto.BookRentalCancelCommand;
+import com.example.library.book.application.dto.BookRentalEventCommand;
 import com.example.library.book.application.port.in.HandleBookRentalEventUseCase;
 import com.example.library.book.config.KafkaConsumerProcessingProperties;
 import com.example.library.common.event.AvroMessageMapper;
@@ -30,9 +32,13 @@ public class BookEventConsumer {
     private final KafkaConsumerProcessingProperties processingProperties;
 
     /**
-     * 대여 이벤트, 도서를 UNAVAILABLE 로 바꾸는 처리를 실행.
+     * 대여 이벤트를 받아 도서를 UNAVAILABLE 상태로 변경합니다.
      *
-     * @param message rental-rent 토픽에서 수신한 대여 이벤트 메시지입니다.
+     * <p>수신 토픽: {@code rental_rent} ({@code app.kafka.topics.rental-rent})
+     * <p>메시지 타입: {@link ItemRented}
+     * <p>발신: rental-service ({@code RentalKafkaEventProducer#publishRentalEvent})
+     *
+     * @param message rental_rent 토픽에서 수신한 대여 이벤트 메시지입니다.
      * @throws Exception Redis 중복 기록, 도서 상태 변경 중 오류가 발생할 때 전달됩니다.
      */
     @KafkaListener(topics = "${app.kafka.topics.rental-rent}", groupId = "${spring.kafka.consumer.group-id}")
@@ -41,14 +47,18 @@ public class BookEventConsumer {
         handleWithProcessingLock(
                 event.eventId(),
                 "book rent",
-                () -> handleBookRentalEventUseCase.handleRent(event)
+                () -> handleBookRentalEventUseCase.handleRent(toCommand(event))
         );
     }
 
     /**
-     * 반납 이벤트, 도서를 AVAILABLE 로 되돌리는 처리를 실행.
+     * 반납 이벤트를 받아 도서를 AVAILABLE 상태로 변경합니다.
      *
-     * @param message rental-return 토픽에서 수신한 반납 이벤트 메시지입니다.
+     * <p>수신 토픽: {@code rental_return} ({@code app.kafka.topics.rental-return})
+     * <p>메시지 타입: {@link ItemReturned}
+     * <p>발신: rental-service ({@code RentalKafkaEventProducer#publishReturnEvent})
+     *
+     * @param message rental_return 토픽에서 수신한 반납 이벤트 메시지입니다.
      * @throws Exception Redis 중복 기록, 도서 상태 변경 중 오류가 발생할 때 전달됩니다.
      */
     @KafkaListener(topics = "${app.kafka.topics.rental-return}", groupId = "${spring.kafka.consumer.group-id}")
@@ -57,14 +67,18 @@ public class BookEventConsumer {
         handleWithProcessingLock(
                 event.eventId(),
                 "book return",
-                () -> handleBookRentalEventUseCase.handleReturn(event)
+                () -> handleBookRentalEventUseCase.handleReturn(toCommand(event))
         );
     }
 
     /**
-     * 대여 취소 보상 이벤트, 도서를 AVAILABLE 로 되돌리는 처리를 실행.
+     * 대여 취소 보상 이벤트를 받아 도서를 AVAILABLE 상태로 되돌립니다.
      *
-     * @param message rent-cancel 토픽에서 수신한 대여 취소 이벤트 메시지입니다.
+     * <p>수신 토픽: {@code rent_cancel} ({@code app.kafka.topics.rent-cancel})
+     * <p>메시지 타입: {@link ItemRentCanceled}
+     * <p>발신: rental-service ({@code RentalKafkaEventProducer#publishRentCanceledEvent})
+     *
+     * @param message rent_cancel 토픽에서 수신한 대여 취소 이벤트 메시지입니다.
      * @throws Exception Redis 중복 기록, 도서 상태 변경 중 오류가 발생할 때 전달됩니다.
      */
     @KafkaListener(topics = "${app.kafka.topics.rent-cancel}", groupId = "${spring.kafka.consumer.group-id}")
@@ -73,14 +87,18 @@ public class BookEventConsumer {
         handleWithProcessingLock(
                 event.eventId(),
                 "book rent cancel",
-                () -> handleBookRentalEventUseCase.handleRentCanceled(event)
+                () -> handleBookRentalEventUseCase.handleRentCanceled(toCommand(event))
         );
     }
 
     /**
-     * 반납 취소 보상 이벤트, 도서를 UNAVAILABLE 로 되돌리는 처리를 실행.
+     * 반납 취소 보상 이벤트를 받아 도서를 UNAVAILABLE 상태로 되돌립니다.
      *
-     * @param message return-cancel 토픽에서 수신한 반납 취소 이벤트 메시지입니다.
+     * <p>수신 토픽: {@code return_cancel} ({@code app.kafka.topics.return-cancel})
+     * <p>메시지 타입: {@link ItemReturnCanceled}
+     * <p>발신: rental-service ({@code RentalKafkaEventProducer#publishReturnCanceledEvent})
+     *
+     * @param message return_cancel 토픽에서 수신한 반납 취소 이벤트 메시지입니다.
      * @throws Exception Redis 중복 기록, 도서 상태 변경 중 오류가 발생할 때 전달됩니다.
      */
     @KafkaListener(topics = "${app.kafka.topics.return-cancel}", groupId = "${spring.kafka.consumer.group-id}")
@@ -89,8 +107,64 @@ public class BookEventConsumer {
         handleWithProcessingLock(
                 event.eventId(),
                 "book return",
-                () -> handleBookRentalEventUseCase.handleReturnCanceled(event)
+                () -> handleBookRentalEventUseCase.handleReturnCanceled(toCommand(event))
         );
+    }
+
+    /**
+     * 대여 이벤트 메시지의 도서/회원 snapshot 과 메시지 식별 값을 도서 상태 변경 command 로 변환합니다.
+     *
+     * @param event common-events 대여 이벤트 record 입니다.
+     * @return 도서를 대여 불가능 상태로 변경하기 위한 application command 를 반환합니다.
+     */
+    private BookRentalEventCommand toCommand(ItemRented event) {
+        return new BookRentalEventCommand(
+            event.eventId(),
+            event.correlationId(),
+            event.memberId(),
+            event.memberName(),
+            event.itemNo(),
+            event.itemTitle(),
+            event.point()
+        );
+    }
+
+    /**
+     * 반납 이벤트 메시지의 도서/회원 snapshot 과 메시지 식별 값을 도서 상태 변경 command 로 변환합니다.
+     *
+     * @param event common-events 반납 이벤트 record 입니다.
+     * @return 도서를 대여 가능 상태로 변경하기 위한 application command 를 반환합니다.
+     */
+    private BookRentalEventCommand toCommand(ItemReturned event) {
+        return new BookRentalEventCommand(
+            event.eventId(),
+            event.correlationId(),
+            event.memberId(),
+            event.memberName(),
+            event.itemNo(),
+            event.itemTitle(),
+            event.point()
+        );
+    }
+
+    /**
+     * 대여 취소 이벤트 메시지의 도서 번호와 메시지 식별 값을 도서 보상 command 로 변환합니다.
+     *
+     * @param event common-events 대여 취소 이벤트 record 입니다.
+     * @return 도서를 대여 가능 상태로 되돌리기 위한 application command 를 반환합니다.
+     */
+    private BookRentalCancelCommand toCommand(ItemRentCanceled event) {
+        return new BookRentalCancelCommand(event.eventId(), event.correlationId(), event.itemNo());
+    }
+
+    /**
+     * 반납 취소 이벤트 메시지의 도서 번호와 메시지 식별 값을 도서 보상 command 로 변환합니다.
+     *
+     * @param event common-events 반납 취소 이벤트 record 입니다.
+     * @return 도서를 대여 불가능 상태로 되돌리기 위한 application command 를 반환합니다.
+     */
+    private BookRentalCancelCommand toCommand(ItemReturnCanceled event) {
+        return new BookRentalCancelCommand(event.eventId(), event.correlationId(), event.itemNo());
     }
 
     /**

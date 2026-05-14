@@ -3,6 +3,7 @@ package com.example.library.rental.adapter.in.messaging.consumer;
 import com.example.library.common.event.AvroMessageMapper;
 import com.example.library.common.event.EventResult;
 import com.example.library.common.event.schema.EventResultMessage;
+import com.example.library.rental.application.dto.RentalResultCommand;
 import com.example.library.rental.application.port.in.HandleRentalResultUseCase;
 import com.example.library.rental.config.KafkaConsumerProcessingProperties;
 import java.util.UUID;
@@ -24,9 +25,14 @@ public class RentalEventConsumer {
     private final KafkaConsumerProcessingProperties processingProperties;
 
     /**
-     * 도서/회원 서비스 결과 이벤트 Avro 메시지를 EventResult로 변환하고 보상 처리를 실행합니다.
+     * 도서/회원 서비스 결과 이벤트를 받아 대여 흐름의 보상 처리를 실행합니다.
      *
-     * @param message Kafka 에서 수신한 결과 이벤트 메시지입니다.
+     * <p>수신 토픽: {@code rental_result} ({@code app.kafka.topics.rental-result})
+     * <p>메시지 타입: {@link EventResult}
+     * <p>발신: book-service ({@code BookKafkaEventProducer#publish}),
+     * member-service ({@code MemberKafkaEventProducer#publish})
+     *
+     * @param message rental_result 토픽에서 수신한 결과 이벤트 메시지입니다.
      * @throws Exception 실제 업무 처리 중 오류가 발생할 때 전달됩니다.
      */
     @KafkaListener(topics = "${app.kafka.topics.rental-result}", groupId = "${spring.kafka.consumer.group-id}")
@@ -35,7 +41,31 @@ public class RentalEventConsumer {
         handleWithProcessingLock(
                 result.eventId(),
                 "rental result",
-                () -> handleRentalResultUseCase.handle(result)
+                () -> handleRentalResultUseCase.handle(toCommand(result))
+        );
+    }
+
+    /**
+     * 참여 서비스 결과 이벤트의 workflow metadata 와 업무 snapshot 을 보상 판단 command 로 변환합니다.
+     *
+     * @param result common-events 참여 서비스 결과 이벤트 record 입니다.
+     * @return 대여 흐름의 성공/실패 기록과 보상 여부를 판단하기 위한 application command 를 반환합니다.
+     */
+    private RentalResultCommand toCommand(EventResult result) {
+        return new RentalResultCommand(
+            result.eventId(),
+            result.correlationId(),
+            result.sourceEventId(),
+            result.eventType(),
+            result.participant(),
+            result.step(),
+            result.successed(),
+            result.memberId(),
+            result.memberName(),
+            result.itemNo(),
+            result.itemTitle(),
+            result.point(),
+            result.reason()
         );
     }
 

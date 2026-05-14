@@ -1,7 +1,7 @@
 package com.example.library.bestbook.adapter.in.web;
 
-import com.example.library.bestbook.adapter.in.web.dto.BestBookRegisterRequest;
-import com.example.library.bestbook.adapter.in.web.dto.BestBookResponse;
+import com.example.library.bestbook.adapter.in.web.request.BestBookRegisterRequest;
+import com.example.library.bestbook.adapter.in.web.response.BestBookResponse;
 import com.example.library.bestbook.application.port.in.BestBookQueryUseCase;
 import com.example.library.bestbook.application.port.in.RecordBestBookRentUseCase;
 import com.example.library.common.core.web.BaseResponse;
@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 인기 도서 read model 목록/단건 조회와 수동 대여 집계 테스트 요청을 처리하는 REST 컨트롤러입니다.
+ * 인기 도서 read model 목록/단건 조회와 수동 대여 집계 테스트 요청을 처리하는 REST 컨트롤러.
  */
 @RestController
 @RequestMapping("/api/books")
@@ -28,15 +28,17 @@ public class BestBookController {
     private final RecordBestBookRentUseCase recordBestBookRentUseCase;
 
     /**
-     * 모든 인기 도서 read model을 조회합니다.
+     * 모든 인기 도서를 조회.
      *
-     * @return 누적 대여 횟수가 기록된 인기 도서 결과 목록을 반환합니다.
+     * @return 누적 대여 횟수가 기록된 인기 도서 결과 목록을 반환.
      */
     @GetMapping
     public ResponseEntity<BaseResponse<List<BestBookResponse>>> getAllBooks() {
-        return BaseResponse.ok(bestBookQueryUseCase.getAllBooks().stream()
-            .map(BestBookResponse::from)
-            .toList()).toResponseEntity();
+        return BaseResponse.ok(
+                bestBookQueryUseCase.getAllBooks().stream()
+                        .map(BestBookResponse::from)
+                        .toList()
+        ).toResponseEntity();
     }
 
     /**

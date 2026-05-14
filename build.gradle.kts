@@ -149,5 +149,8 @@ project(":book-service") {
 project(":bestbook-service") {
     dependencies {
         "implementation"("org.springframework.boot:spring-boot-starter-data-mongodb")
+        "implementation"("org.mapstruct:mapstruct:$mapstructVersion")
+        "annotationProcessor"("org.mapstruct:mapstruct-processor:$mapstructVersion")
+        "annotationProcessor"("org.projectlombok:lombok-mapstruct-binding:$lombokMapstructBindingVersion")
     }
 }

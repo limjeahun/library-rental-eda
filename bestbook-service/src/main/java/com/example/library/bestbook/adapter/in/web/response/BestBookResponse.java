@@ -1,9 +1,9 @@
-package com.example.library.bestbook.adapter.in.web.dto;
+package com.example.library.bestbook.adapter.in.web.response;
 
 import com.example.library.bestbook.application.dto.BestBookResult;
 
 /**
- * 인기 도서 API 응답으로 반환하는 HTTP DTO입니다.
+ * 인기 도서 API 응답으로 반환하는 HTTP DTO.
  *
  * @param id 조회하거나 저장할 인기 도서 read model 식별자입니다.
  * @param itemNo 인기 도서 집계 대상 도서 번호입니다.
@@ -12,10 +12,10 @@ import com.example.library.bestbook.application.dto.BestBookResult;
  */
 public record BestBookResponse(Long id, Long itemNo, String itemTitle, long rentCount) {
     /**
-     * application 결과 DTO를 HTTP 응답 DTO로 변환합니다.
+     * 인기 도서 application 결과 DTO 를 HTTP 응답 DTO 로 변환.
      *
      * @param result 처리하거나 발행할 result event 메시지입니다.
-     * @return 클라이언트에 반환할 HTTP 응답 DTO를 반환합니다.
+     * @return 클라이언트에 반환할 HTTP 응답 DTO 를 반환합니다.
      */
     public static BestBookResponse from(BestBookResult result) {
         return new BestBookResponse(result.id(), result.itemNo(), result.itemTitle(), result.rentCount());

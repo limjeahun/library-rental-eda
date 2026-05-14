@@ -31,20 +31,19 @@ public interface BookPersistenceMapper {
      * @param entity 도메인 모델로 변환할 저장소 엔티티입니다.
      * @return JPA 엔티티에서 복원한 도서 도메인 모델을 반환합니다.
      */
-    default Book toDomain(BookJpaEntity entity) {
-        return new Book(
-            entity.getNo(),
-            entity.getTitle(),
-            new BookDesc(
-                entity.getDescription(),
-                entity.getAuthor(),
-                entity.getIsbn(),
-                entity.getPublicationDate(),
-                entity.getSource()
-            ),
-            entity.getClassification(),
-            entity.getBookStatus(),
-            entity.getLocation()
-        );
-    }
+    @Mapping(target = "desc", source = ".")
+    Book toDomain(BookJpaEntity entity);
+
+    /**
+     * JPA 엔티티의 flat 도서 상세 필드를 도메인 상세 값 객체로 변환합니다.
+     *
+     * @param entity 도서 상세 필드를 담은 저장소 엔티티입니다.
+     * @return 도서 상세 값 객체를 반환합니다.
+     */
+    @Mapping(target = "description", source = "description")
+    @Mapping(target = "author", source = "author")
+    @Mapping(target = "isbn", source = "isbn")
+    @Mapping(target = "publicationDate", source = "publicationDate")
+    @Mapping(target = "source", source = "source")
+    BookDesc toBookDesc(BookJpaEntity entity);
 }

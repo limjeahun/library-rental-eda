@@ -66,6 +66,27 @@ public class Book {
     }
 
     /**
+     * 도서 모델 재구성
+     *
+     * @param no 도서 번호.
+     * @param title 도서 제목.
+     * @param desc 도서 상세 설명.
+     * @param classification 도서 분류.
+     * @param bookStatus 도서 상태.
+     * @param location 도서 소장 지점.
+     * @return Book Model
+     */
+    public static Book reconstitute(
+            Long no,
+            String title,
+            BookDesc desc,
+            Classification classification,
+            BookStatus bookStatus,
+            Location location
+    ) {
+        return new Book(no, title, desc, classification, bookStatus, location);
+    }
+    /**
      * 도서를 대여 가능한 상태로 변경합니다.
      *
      * @return AVAILABLE 상태로 변경된 현재 도서 도메인 모델을 반환합니다.
