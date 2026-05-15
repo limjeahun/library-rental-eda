@@ -8,7 +8,7 @@ import com.example.library.common.event.ItemReturned;
 import com.example.library.common.event.OverdueCleared;
 import com.example.library.common.event.OverdueClearCanceled;
 import com.example.library.common.event.PointUseCommand;
-import com.example.library.rental.application.dto.PointUseCommandPayload;
+import com.example.library.common.event.PointUseReason;
 import com.example.library.rental.application.port.out.PublishItemRentCanceledPort;
 import com.example.library.rental.application.port.out.PublishItemRentedPort;
 import com.example.library.rental.application.port.out.PublishItemReturnCanceledPort;
@@ -23,6 +23,7 @@ import com.example.library.rental.domain.event.ItemReturnCanceledDomainEvent;
 import com.example.library.rental.domain.event.ItemReturnedDomainEvent;
 import com.example.library.rental.domain.event.OverdueClearCanceledDomainEvent;
 import com.example.library.rental.domain.event.OverdueClearedDomainEvent;
+import com.example.library.rental.domain.vo.RentalMember;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -90,8 +91,8 @@ public class RentalKafkaEventProducer implements PublishItemRentedPort, PublishI
             UUID.randomUUID().toString(),
             correlationId,
             Instant.now(),
-            event.idName().id(),
-            event.idName().name(),
+            event.member().id(),
+            event.member().name(),
             event.item().no(),
             event.item().title(),
             event.point()
@@ -120,8 +121,8 @@ public class RentalKafkaEventProducer implements PublishItemRentedPort, PublishI
             UUID.randomUUID().toString(),
             correlationId,
             Instant.now(),
-            event.idName().id(),
-            event.idName().name(),
+            event.member().id(),
+            event.member().name(),
             event.point()
         );
         kafkaTemplate.send(
@@ -132,26 +133,59 @@ public class RentalKafkaEventProducer implements PublishItemRentedPort, PublishI
     }
 
     /**
-     * 보상 흐름에서 회원 포인트를 차감하기 위한 {@link PointUseCommand} command 를 발행합니다.
+     * 대여 실패 보상으로 회원에게 적립된 대여 포인트 차감 command 를 발행합니다.
      *
      * <p>발행 토픽: {@code point_use} ({@code app.kafka.topics.point-use})
      * <p>메시지 타입: {@link PointUseCommand}
      * <p>수신: member-service ({@code MemberEventConsumer#consumeUsePoint})
-     * <p>의미: 대여 흐름 보상 과정에서 회원에게 이미 적립된 포인트를 되돌리도록 요청하는 command 입니다.
+     * <p>의미: 대여 흐름 보상 과정에서 회원에게 이미 적립된 대여 포인트를 되돌리도록 요청하는 command 입니다.
      *
-     * @param command 포인트를 변경할 회원 snapshot 과 포인트 금액을 담은 command payload 입니다.
+     * @param member 포인트를 차감할 회원 snapshot 입니다.
+     * @param point 차감할 대여 포인트입니다.
+     * @param correlationId 대여 흐름 전체를 추적하는 상관관계 ID입니다.
      */
     @Override
-    public void publishPointUseCommand(PointUseCommandPayload command) {
+    public void publishRentPointUseCommand(RentalMember member, long point, String correlationId) {
         String eventId = UUID.randomUUID().toString();
         PointUseCommand message = new PointUseCommand(
             eventId,
-            normalizeCorrelationId(command.correlationId(), eventId),
+            normalizeCorrelationId(correlationId, eventId),
             Instant.now(),
-            command.memberId(),
-            command.memberName(),
-            command.point(),
-            command.reason()
+            member.id(),
+            member.name(),
+            point,
+            PointUseReason.RENT_COMPENSATION
+        );
+        kafkaTemplate.send(
+            topicProperties.pointUse(),
+            message.correlationId(),
+            AvroMessageMapper.toPointUseCommandMessage(message)
+        );
+    }
+
+    /**
+     * 반납 실패 보상으로 회원에게 적립된 반납 포인트 차감 command 를 발행합니다.
+     *
+     * <p>발행 토픽: {@code point_use} ({@code app.kafka.topics.point-use})
+     * <p>메시지 타입: {@link PointUseCommand}
+     * <p>수신: member-service ({@code MemberEventConsumer#consumeUsePoint})
+     * <p>의미: 반납 흐름 보상 과정에서 회원에게 이미 적립된 반납 포인트를 되돌리도록 요청하는 command 입니다.
+     *
+     * @param member 포인트를 차감할 회원 snapshot 입니다.
+     * @param point 차감할 반납 포인트입니다.
+     * @param correlationId 반납 흐름 전체를 추적하는 상관관계 ID입니다.
+     */
+    @Override
+    public void publishReturnPointUseCommand(RentalMember member, long point, String correlationId) {
+        String eventId = UUID.randomUUID().toString();
+        PointUseCommand message = new PointUseCommand(
+            eventId,
+            normalizeCorrelationId(correlationId, eventId),
+            Instant.now(),
+            member.id(),
+            member.name(),
+            point,
+            PointUseReason.RETURN_COMPENSATION
         );
         kafkaTemplate.send(
             topicProperties.pointUse(),
@@ -178,8 +212,8 @@ public class RentalKafkaEventProducer implements PublishItemRentedPort, PublishI
             UUID.randomUUID().toString(),
             correlationId,
             Instant.now(),
-            event.idName().id(),
-            event.idName().name(),
+            event.member().id(),
+            event.member().name(),
             event.item().no(),
             event.item().title(),
             event.point()
@@ -208,8 +242,8 @@ public class RentalKafkaEventProducer implements PublishItemRentedPort, PublishI
             UUID.randomUUID().toString(),
             correlationId,
             Instant.now(),
-            event.idName().id(),
-            event.idName().name(),
+            event.member().id(),
+            event.member().name(),
             event.item().no(),
             event.item().title(),
             event.point()
@@ -241,8 +275,8 @@ public class RentalKafkaEventProducer implements PublishItemRentedPort, PublishI
             UUID.randomUUID().toString(),
             correlationId,
             Instant.now(),
-            event.idName().id(),
-            event.idName().name(),
+            event.member().id(),
+            event.member().name(),
             event.point()
         );
         kafkaTemplate.send(

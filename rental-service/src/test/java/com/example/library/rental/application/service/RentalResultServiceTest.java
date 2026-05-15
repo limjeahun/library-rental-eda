@@ -8,9 +8,7 @@ import static org.mockito.Mockito.verify;
 import com.example.library.common.event.EventType;
 import com.example.library.common.event.InboundMessageType;
 import com.example.library.common.event.Participant;
-import com.example.library.common.event.PointUseReason;
 import com.example.library.common.event.SagaStep;
-import com.example.library.rental.application.dto.PointUseCommandPayload;
 import com.example.library.rental.application.dto.RentalResultCommand;
 import com.example.library.rental.application.port.out.CompensationIdempotencyPort;
 import com.example.library.rental.application.port.out.LoadRentalCardPort;
@@ -126,17 +124,15 @@ class RentalResultServiceTest {
         ArgumentCaptor<ItemRentCanceledDomainEvent> eventCaptor =
             ArgumentCaptor.forClass(ItemRentCanceledDomainEvent.class);
         verify(publishItemRentCanceledPort).publishRentCanceledEvent(eventCaptor.capture(), eq(CORRELATION_ID));
-        assertThat(eventCaptor.getValue().idName()).isEqualTo(member);
+        assertThat(eventCaptor.getValue().member()).isEqualTo(member);
         assertThat(eventCaptor.getValue().item()).isEqualTo(item);
         assertThat(eventCaptor.getValue().point()).isEqualTo(RentalPointPolicy.RENT.point());
 
-        ArgumentCaptor<PointUseCommandPayload> commandCaptor = ArgumentCaptor.forClass(PointUseCommandPayload.class);
-        verify(publishPointUseCommandPort).publishPointUseCommand(commandCaptor.capture());
-        assertThat(commandCaptor.getValue().correlationId()).isEqualTo(CORRELATION_ID);
-        assertThat(commandCaptor.getValue().memberId()).isEqualTo(member.id());
-        assertThat(commandCaptor.getValue().memberName()).isEqualTo(member.name());
-        assertThat(commandCaptor.getValue().point()).isEqualTo(RentalPointPolicy.RENT.point());
-        assertThat(commandCaptor.getValue().reason()).isEqualTo(PointUseReason.RENT_COMPENSATION);
+        verify(publishPointUseCommandPort).publishRentPointUseCommand(
+            eq(member),
+            eq(RentalPointPolicy.RENT.point()),
+            eq(CORRELATION_ID)
+        );
     }
 
     private RentalMember member() {

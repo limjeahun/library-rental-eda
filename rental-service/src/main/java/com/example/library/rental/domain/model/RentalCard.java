@@ -1,7 +1,15 @@
 package com.example.library.rental.domain.model;
 
+import com.example.library.rental.domain.event.ItemRentCanceledDomainEvent;
+import com.example.library.rental.domain.event.ItemRentedDomainEvent;
+import com.example.library.rental.domain.event.ItemReturnCanceledDomainEvent;
+import com.example.library.rental.domain.event.ItemReturnedDomainEvent;
+import com.example.library.rental.domain.event.OverdueClearCanceledDomainEvent;
+import com.example.library.rental.domain.event.OverdueClearedDomainEvent;
+import com.example.library.rental.domain.event.RentalDomainEvent;
 import com.example.library.rental.domain.model.policy.RentalLateFeePolicy;
 import com.example.library.rental.domain.model.policy.RentalLimitPolicy;
+import com.example.library.rental.domain.model.policy.RentalPointPolicy;
 import com.example.library.rental.domain.vo.RentalMember;
 import com.example.library.rental.domain.vo.RentalItem;
 import com.example.library.rental.domain.vo.LateFee;
@@ -21,6 +29,7 @@ public class RentalCard {
     private LateFee lateFee;
     private final List<RentItem> rentItemList;
     private final List<ReturnItem> returnItemList;
+    private final List<RentalDomainEvent> domainEvents = new ArrayList<>();
 
     public RentalCard(String rentalCardNo, RentalMember member, RentStatus rentStatus, LateFee lateFee) {
         this(rentalCardNo, member, rentStatus, lateFee, List.of(), List.of());
@@ -84,6 +93,10 @@ public class RentalCard {
             throw new IllegalArgumentException("이미 대여 중인 도서입니다.");
         }
         rentItemList.add(RentItem.createRentalItem(item));
+
+        registerDomainEvent(
+                new ItemRentedDomainEvent(member, item, RentalPointPolicy.RENT.point())
+        );
     }
 
     public RentalCard returnItem(RentalItem item, LocalDate returnDate) {
@@ -96,6 +109,10 @@ public class RentalCard {
             rentStatus = RentStatus.RENT_UNAVAILABLE;
         }
         returnItemList.add(ReturnItem.createReturnItem(rentItem, returnDate));
+
+        registerDomainEvent(
+                new ItemReturnedDomainEvent(member, item, RentalPointPolicy.RETURN.point())
+        );
         return this;
     }
 
@@ -118,6 +135,10 @@ public class RentalCard {
         if (lateFee.point() == 0) {
             rentStatus = RentStatus.RENT_AVAILABLE;
         }
+
+        registerDomainEvent(
+                new OverdueClearedDomainEvent(member, point)
+        );
         return point;
     }
 
@@ -130,6 +151,9 @@ public class RentalCard {
         if (lateFee.point() == 0 && rentItemList.stream().noneMatch(RentItem::overdue)) {
             rentStatus = RentStatus.RENT_AVAILABLE;
         }
+        registerDomainEvent(
+            new ItemRentCanceledDomainEvent(member, item, RentalPointPolicy.RENT.point())
+        );
         return this;
     }
 
@@ -148,6 +172,9 @@ public class RentalCard {
         rentStatus = returnItem.item().overdue() || lateFee.point() > 0
             ? RentStatus.RENT_UNAVAILABLE
             : RentStatus.RENT_AVAILABLE;
+        registerDomainEvent(
+            new ItemReturnCanceledDomainEvent(member, item, point)
+        );
         return this;
     }
 
@@ -157,6 +184,9 @@ public class RentalCard {
         }
         lateFee = lateFee.addPoint(point);
         rentStatus = RentStatus.RENT_UNAVAILABLE;
+        registerDomainEvent(
+            new OverdueClearCanceledDomainEvent(member, point)
+        );
         return point;
     }
 
@@ -166,6 +196,10 @@ public class RentalCard {
             throw new IllegalArgumentException("대여 중인 도서가 아닙니다.");
         }
         return rentItem;
+    }
+
+    private void registerDomainEvent(RentalDomainEvent event) {
+        domainEvents.add(event);
     }
 
     /**
@@ -217,6 +251,12 @@ public class RentalCard {
 
     public List<RentItem> getRentItemList() {
         return List.copyOf(rentItemList);
+    }
+
+    public List<RentalDomainEvent> pullDomainEvents() {
+        List<RentalDomainEvent> events = List.copyOf(domainEvents);
+        domainEvents.clear();
+        return events;
     }
 
     public List<ReturnItem> getReturnItemList() {

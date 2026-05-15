@@ -1,0 +1,4 @@
+interface:
+  display_name: "Aggregate Domain Events"
+  short_description: "Refactor aggregate-raised domain events"
+  default_prompt: "Use $apply-aggregate-domain-events-refactoring to refactor member-service and book-service so aggregates raise service-local domain event records, application services pull them after save, outbound ports receive domain events plus correlationId, and messaging adapters convert them to common-events."

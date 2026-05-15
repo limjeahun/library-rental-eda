@@ -23,6 +23,7 @@ import com.example.library.rental.application.port.out.SaveRentalSagaStatePort;
 import com.example.library.rental.domain.event.ItemRentedDomainEvent;
 import com.example.library.rental.domain.event.ItemReturnedDomainEvent;
 import com.example.library.rental.domain.event.OverdueClearedDomainEvent;
+import com.example.library.rental.domain.event.RentalDomainEvent;
 import com.example.library.rental.domain.model.RentalCard;
 import com.example.library.rental.domain.model.policy.RentalPointPolicy;
 import com.example.library.rental.domain.model.saga.RentalSagaState;
@@ -85,15 +86,12 @@ public class RentalCardService implements CreateRentalCardUseCase, RentItemUseCa
         rentalCard.rentItem(item);
         RentalCard saved = saveRentalCardPort.save(rentalCard);
 
-        long point = RentalPointPolicy.RENT.point();
+        var event = pullRequiredEvent(rentalCard, ItemRentedDomainEvent.class);
         String correlationId = UUID.randomUUID().toString();
         saveRentalSagaStatePort.save(
-                RentalSagaState.startRent(correlationId, member, item, point)
+                RentalSagaState.startRent(correlationId, event.member(), event.item(), event.point())
         );
-        publishItemRentedPort.publishRentalEvent(
-            new ItemRentedDomainEvent(member, item, point),
-            correlationId
-        );
+        publishItemRentedPort.publishRentalEvent(event, correlationId);
         return RentalCardResult.from(saved);
     }
 
@@ -113,13 +111,12 @@ public class RentalCardService implements CreateRentalCardUseCase, RentItemUseCa
         rentalCard.returnItem(item, returnDate);
         RentalCard saved = saveRentalCardPort.save(rentalCard);
 
-        long point = RentalPointPolicy.RETURN.point();
+        var event = pullRequiredEvent(rentalCard, ItemReturnedDomainEvent.class);
         String correlationId = UUID.randomUUID().toString();
-        saveRentalSagaStatePort.save(RentalSagaState.startReturn(correlationId, member, item, point));
-        publishItemReturnedPort.publishReturnEvent(
-            new ItemReturnedDomainEvent(member, item, point),
-            correlationId
+        saveRentalSagaStatePort.save(
+                RentalSagaState.startReturn(correlationId, event.member(), event.item(), event.point())
         );
+        publishItemReturnedPort.publishReturnEvent(event, correlationId);
         return RentalCardResult.from(saved);
     }
 
@@ -156,12 +153,12 @@ public class RentalCardService implements CreateRentalCardUseCase, RentItemUseCa
         long usedPoint = rentalCard.makeAvailableRental(point);
         RentalCard saved = saveRentalCardPort.save(rentalCard);
 
+        var event = pullRequiredEvent(rentalCard, OverdueClearedDomainEvent.class);
         String correlationId = UUID.randomUUID().toString();
-        saveRentalSagaStatePort.save(RentalSagaState.startOverdue(correlationId, member, usedPoint));
-        publishOverdueClearedPort.publishOverdueClearEvent(
-            new OverdueClearedDomainEvent(member, usedPoint),
-            correlationId
+        saveRentalSagaStatePort.save(
+                RentalSagaState.startOverdue(correlationId, event.member(), usedPoint)
         );
+        publishOverdueClearedPort.publishOverdueClearEvent(event, correlationId);
         return RentalCardResult.from(saved);
     }
 
@@ -223,6 +220,36 @@ public class RentalCardService implements CreateRentalCardUseCase, RentItemUseCa
     private RentalCard load(RentalMember idName) {
         return loadRentalCardPort.loadRentalCard(idName.id())
             .orElseThrow(() -> new IllegalArgumentException("대여카드가 없습니다."));
+    }
+
+    /**
+     * 대여카드 aggregate 에서 이번 상태 변경 중 발생한 필수 도메인 이벤트를 꺼냅니다.
+     *
+     * <p>도메인 이벤트는 {@link RentalCard} 내부에 임시로 기록되며, application service 는
+     * 상태 저장 이후 필요한 이벤트를 꺼내 outbound port 로 전달합니다. 이 메서드는 현재 use case 가
+     * 기대하는 이벤트 타입이 실제로 발생했는지 확인하고, 없으면 도메인 상태 변경과 후속 발행 흐름이
+     * 어긋난 것으로 보고 예외를 발생시킵니다.
+     *
+     * <p>{@code pullDomainEvents()} 는 이벤트를 반환한 뒤 내부 이벤트 버퍼를 비우므로,
+     * 하나의 상태 변경 흐름에서 한 번만 호출해야 합니다.
+     *
+     * @param rentalCard 도메인 이벤트를 발생시킨 대여카드 aggregate 입니다.
+     * @param eventType 현재 use case 가 필요로 하는 도메인 이벤트 타입입니다.
+     * @return 현재 상태 변경 중 발생한 필수 도메인 이벤트입니다.
+     * @throws IllegalStateException 기대한 도메인 이벤트가 발생하지 않은 경우 발생합니다.
+     */
+    private <T extends RentalDomainEvent> T pullRequiredEvent(
+            RentalCard rentalCard,
+            Class<T> eventType
+    ) {
+        return rentalCard.pullDomainEvents()
+                .stream()
+                .filter(eventType::isInstance)
+                .map(eventType::cast)
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException(
+                        "Expected domain event was not raised: " + eventType.getSimpleName()
+                ));
     }
 
     private RentalMember rentalMember(String userId, String userNm) {

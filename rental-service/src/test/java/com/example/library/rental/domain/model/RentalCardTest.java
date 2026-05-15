@@ -3,7 +3,12 @@ package com.example.library.rental.domain.model;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.example.library.rental.domain.event.ItemRentCanceledDomainEvent;
 import com.example.library.rental.domain.event.ItemRentedDomainEvent;
+import com.example.library.rental.domain.event.ItemReturnCanceledDomainEvent;
+import com.example.library.rental.domain.event.OverdueClearCanceledDomainEvent;
+import com.example.library.rental.domain.event.RentalDomainEvent;
+import com.example.library.rental.domain.model.policy.RentalPointPolicy;
 import com.example.library.rental.domain.vo.LateFee;
 import com.example.library.rental.domain.vo.RentalItem;
 import com.example.library.rental.domain.vo.RentalMember;
@@ -101,6 +106,30 @@ class RentalCardTest {
     }
 
     @Test
+    void cancelRentItemRegistersDomainEvent() {
+        RentalCard rentalCard = RentalCard.createRentalCard(member());
+        RentalItem item = item(1);
+        rentalCard.rentItem(item);
+        rentalCard.pullDomainEvents();
+
+        rentalCard.cancelRentItem(item);
+
+        ItemRentCanceledDomainEvent event = pullSingleEvent(rentalCard, ItemRentCanceledDomainEvent.class);
+        assertThat(event.member()).isEqualTo(member());
+        assertThat(event.item()).isEqualTo(item);
+        assertThat(event.point()).isEqualTo(RentalPointPolicy.RENT.point());
+    }
+
+    @Test
+    void cancelRentItemDoesNotRegisterDomainEventWhenAlreadyCanceled() {
+        RentalCard rentalCard = RentalCard.createRentalCard(member());
+
+        rentalCard.cancelRentItem(item(1));
+
+        assertThat(rentalCard.pullDomainEvents()).isEmpty();
+    }
+
+    @Test
     void cancelReturnItem() {
         RentalCard rentalCard = RentalCard.createRentalCard(member());
         RentalItem item = item(1);
@@ -116,6 +145,36 @@ class RentalCardTest {
     }
 
     @Test
+    void cancelReturnItemRegistersDomainEvent() {
+        RentalCard rentalCard = RentalCard.createRentalCard(member());
+        RentalItem item = item(1);
+        rentalCard.rentItem(item);
+        rentalCard.returnItem(item, LocalDate.now());
+        rentalCard.pullDomainEvents();
+
+        rentalCard.cancelReturnItem(item, RentalPointPolicy.RETURN.point());
+
+        ItemReturnCanceledDomainEvent event = pullSingleEvent(rentalCard, ItemReturnCanceledDomainEvent.class);
+        assertThat(event.member()).isEqualTo(member());
+        assertThat(event.item()).isEqualTo(item);
+        assertThat(event.point()).isEqualTo(RentalPointPolicy.RETURN.point());
+    }
+
+    @Test
+    void cancelReturnItemDoesNotRegisterDomainEventWhenAlreadyCanceled() {
+        RentalCard rentalCard = RentalCard.createRentalCard(member());
+        RentalItem item = item(1);
+        rentalCard.rentItem(item);
+        rentalCard.returnItem(item, LocalDate.now());
+        rentalCard.cancelReturnItem(item, RentalPointPolicy.RETURN.point());
+        rentalCard.pullDomainEvents();
+
+        rentalCard.cancelReturnItem(item, RentalPointPolicy.RETURN.point());
+
+        assertThat(rentalCard.pullDomainEvents()).isEmpty();
+    }
+
+    @Test
     void cancelMakeAvailableRental() {
         RentalCard rentalCard = RentalCard.createRentalCard(member());
 
@@ -124,6 +183,31 @@ class RentalCardTest {
         logRentalCard("cancelMakeAvailableRental", rentalCard);
         assertThat(rentalCard.lateFee().point()).isEqualTo(40);
         assertThat(rentalCard.rentStatus()).isEqualTo(RentStatus.RENT_UNAVAILABLE);
+    }
+
+    @Test
+    void cancelMakeAvailableRentalRegistersDomainEvent() {
+        RentalCard rentalCard = RentalCard.createRentalCard(member());
+
+        rentalCard.cancelMakeAvailableRental(40);
+
+        OverdueClearCanceledDomainEvent event = pullSingleEvent(
+            rentalCard,
+            OverdueClearCanceledDomainEvent.class
+        );
+        assertThat(event.member()).isEqualTo(member());
+        assertThat(event.point()).isEqualTo(40);
+    }
+
+    @Test
+    void cancelMakeAvailableRentalDoesNotRegisterDomainEventWhenAlreadyCanceled() {
+        RentalCard rentalCard = RentalCard.createRentalCard(member());
+        rentalCard.cancelMakeAvailableRental(40);
+        rentalCard.pullDomainEvents();
+
+        rentalCard.cancelMakeAvailableRental(40);
+
+        assertThat(rentalCard.pullDomainEvents()).isEmpty();
     }
 
     @Test
@@ -164,6 +248,13 @@ class RentalCardTest {
             rentalCard.getRentItemList(),
             rentalCard.getReturnItemList()
         );
+    }
+
+    private <T extends RentalDomainEvent> T pullSingleEvent(RentalCard rentalCard, Class<T> eventType) {
+        List<RentalDomainEvent> events = rentalCard.pullDomainEvents();
+        assertThat(events).hasSize(1);
+        assertThat(events.get(0)).isInstanceOf(eventType);
+        return eventType.cast(events.get(0));
     }
 
     private RentalCard rentalCardWithRentItem(RentItem rentItem) {
