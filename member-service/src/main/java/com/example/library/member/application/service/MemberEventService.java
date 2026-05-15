@@ -1,10 +1,6 @@
 package com.example.library.member.application.service;
 
-import com.example.library.common.event.EventType;
 import com.example.library.common.event.InboundMessageType;
-import com.example.library.common.event.Participant;
-import com.example.library.common.event.SagaStep;
-import com.example.library.member.application.dto.MemberEventResult;
 import com.example.library.member.application.dto.MemberOverdueClearCommand;
 import com.example.library.member.application.dto.MemberPointSaveCommand;
 import com.example.library.member.application.dto.MemberPointUseCommand;
@@ -13,6 +9,9 @@ import com.example.library.member.application.port.out.LoadMemberByIdNamePort;
 import com.example.library.member.application.port.out.MessageIdempotencyPort;
 import com.example.library.member.application.port.out.PublishMemberEventResultPort;
 import com.example.library.member.application.port.out.SaveMemberPort;
+import com.example.library.member.domain.event.MemberDomainEvent;
+import com.example.library.member.domain.event.MemberPointSavedDomainEvent;
+import com.example.library.member.domain.event.MemberPointUsedDomainEvent;
 import com.example.library.member.domain.model.Member;
 import com.example.library.member.domain.vo.MemberIdentity;
 import java.util.NoSuchElementException;
@@ -50,11 +49,18 @@ public class MemberEventService implements HandleMemberEventUseCase {
             return;
         }
         try {
-            savePoint(command.memberId(), command.memberName(), command.point());
-            publishMemberEventResultPort.publish(result(command, EventType.RENT, SagaStep.MEMBER_SAVE_POINT, true, null));
+            Member member = savePoint(command.memberId(), command.memberName(), command.point());
+            var event = pullRequiredEvent(member, MemberPointSavedDomainEvent.class);
+            publishMemberEventResultPort.publishRentPointSaved(
+                event,
+                command.eventId(),
+                command.correlationId(),
+                command.itemNo(),
+                command.itemTitle()
+            );
         } catch (Exception ex) {
             log.error("member rent point save failed eventId={}", command.eventId(), ex);
-            publishMemberEventResultPort.publish(result(command, EventType.RENT, SagaStep.MEMBER_SAVE_POINT, false, ex.getMessage()));
+            publishMemberEventResultPort.publishRentPointSaveFailed(command, ex.getMessage());
         }
     }
 
@@ -75,11 +81,18 @@ public class MemberEventService implements HandleMemberEventUseCase {
             return;
         }
         try {
-            savePoint(command.memberId(), command.memberName(), command.point());
-            publishMemberEventResultPort.publish(result(command, EventType.RETURN, SagaStep.MEMBER_SAVE_POINT, true, null));
+            Member member = savePoint(command.memberId(), command.memberName(), command.point());
+            var event = pullRequiredEvent(member, MemberPointSavedDomainEvent.class);
+            publishMemberEventResultPort.publishReturnPointSaved(
+                event,
+                command.eventId(),
+                command.correlationId(),
+                command.itemNo(),
+                command.itemTitle()
+            );
         } catch (Exception ex) {
             log.error("member return point save failed eventId={}", command.eventId(), ex);
-            publishMemberEventResultPort.publish(result(command, EventType.RETURN, SagaStep.MEMBER_SAVE_POINT, false, ex.getMessage()));
+            publishMemberEventResultPort.publishReturnPointSaveFailed(command, ex.getMessage());
         }
     }
 
@@ -100,11 +113,16 @@ public class MemberEventService implements HandleMemberEventUseCase {
             return;
         }
         try {
-            usePoint(command.memberId(), command.memberName(), command.point());
-            publishMemberEventResultPort.publish(result(command, true, null));
+            Member member = usePoint(command.memberId(), command.memberName(), command.point());
+            var event = pullRequiredEvent(member, MemberPointUsedDomainEvent.class);
+            publishMemberEventResultPort.publishOverduePointUsed(
+                event,
+                command.eventId(),
+                command.correlationId()
+            );
         } catch (Exception ex) {
             log.error("overdue clear failed eventId={}", command.eventId(), ex);
-            publishMemberEventResultPort.publish(result(command, false, ex.getMessage()));
+            publishMemberEventResultPort.publishOverduePointUseFailed(command, ex.getMessage());
         }
     }
 
@@ -131,64 +149,29 @@ public class MemberEventService implements HandleMemberEventUseCase {
         }
     }
 
-    /**
-     * 대여 서비스가 연체 해제 보상 여부를 판단할 수 있도록 결과 이벤트를 생성합니다.
-     *
-     * @param event 처리하거나 발행할 도메인 이벤트 메시지입니다.
-     * @param successed 참여 서비스 처리 성공 여부입니다.
-     * @param reason 실패 결과나 보상 command의 사유입니다.
-     * @return 연체 해제 포인트 차감 성공/실패, 회원, 포인트, 사유를 담은 application result를 반환합니다.
-     */
-    private MemberEventResult result(MemberOverdueClearCommand command, boolean successed, String reason) {
-        return new MemberEventResult(
-            command.eventId(),
-            command.correlationId(),
-            EventType.OVERDUE,
-            Participant.MEMBER,
-            SagaStep.MEMBER_USE_POINT,
-            successed,
-            command.memberId(),
-            command.memberName(),
-            null,
-            null,
-            command.point(),
-            reason
-        );
-    }
-
-    private MemberEventResult result(
-        MemberPointSaveCommand command,
-        EventType eventType,
-        SagaStep step,
-        boolean successed,
-        String reason
-    ) {
-        return new MemberEventResult(
-            command.eventId(),
-            command.correlationId(),
-            eventType,
-            Participant.MEMBER,
-            step,
-            successed,
-            command.memberId(),
-            command.memberName(),
-            command.itemNo(),
-            command.itemTitle(),
-            command.point(),
-            reason
-        );
-    }
-
-    private void savePoint(String memberId, String memberName, long point) {
+    private Member savePoint(String memberId, String memberName, long point) {
         Member member = loadMember(memberId, memberName);
         member.savePoint(point);
         saveMemberPort.saveMember(member);
+        return member;
     }
 
-    private void usePoint(String memberId, String memberName, long point) {
+    private Member usePoint(String memberId, String memberName, long point) {
         Member member = loadMember(memberId, memberName);
         member.usePoint(point);
         saveMemberPort.saveMember(member);
+        return member;
+    }
+
+    private <T extends MemberDomainEvent> T pullRequiredEvent(Member member, Class<T> eventType) {
+        return member.pullDomainEvents()
+            .stream()
+            .filter(eventType::isInstance)
+            .map(eventType::cast)
+            .findFirst()
+            .orElseThrow(() -> new IllegalStateException(
+                "Expected domain event was not raised: " + eventType.getSimpleName()
+            ));
     }
 
     private Member loadMember(String memberId, String memberName) {

@@ -49,7 +49,7 @@ public class MemberPersistenceMapper {
             .map(Authority::create)
             .toList();
 
-        return new Member(
+        return Member.reconstitute(
             entity.getMemberNo(),
             new MemberIdentity(entity.getMemberId(), entity.getMemberName()),
             new PassWord(entity.getPassword()),

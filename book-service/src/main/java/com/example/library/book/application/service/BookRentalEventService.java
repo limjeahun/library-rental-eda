@@ -2,17 +2,16 @@ package com.example.library.book.application.service;
 
 import com.example.library.book.application.dto.BookRentalCancelCommand;
 import com.example.library.book.application.dto.BookRentalEventCommand;
-import com.example.library.book.application.dto.BookRentalEventResult;
 import com.example.library.book.application.port.in.HandleBookRentalEventUseCase;
 import com.example.library.book.application.port.out.LoadBookPort;
 import com.example.library.book.application.port.out.MessageIdempotencyPort;
 import com.example.library.book.application.port.out.PublishBookRentalResultPort;
 import com.example.library.book.application.port.out.SaveBookPort;
+import com.example.library.book.domain.event.BookDomainEvent;
+import com.example.library.book.domain.event.BookMadeAvailableDomainEvent;
+import com.example.library.book.domain.event.BookMadeUnavailableDomainEvent;
 import com.example.library.book.domain.model.Book;
-import com.example.library.common.event.EventType;
 import com.example.library.common.event.InboundMessageType;
-import com.example.library.common.event.Participant;
-import com.example.library.common.event.SagaStep;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -47,11 +46,19 @@ public class BookRentalEventService implements HandleBookRentalEventUseCase {
             return;
         }
         try {
-            makeUnavailable(command.itemNo());
-            publishBookRentalResultPort.publish(result(command, EventType.RENT, SagaStep.BOOK_MAKE_UNAVAILABLE, true, null));
+            Book book = makeUnavailable(command.itemNo());
+            var event = pullRequiredEvent(book, BookMadeUnavailableDomainEvent.class);
+            publishBookRentalResultPort.publishBookMadeUnavailable(
+                event,
+                command.eventId(),
+                command.correlationId(),
+                command.memberId(),
+                command.memberName(),
+                command.point()
+            );
         } catch (Exception ex) {
             log.error("Book rent event failed eventId={}", command.eventId(), ex);
-            publishBookRentalResultPort.publish(result(command, EventType.RENT, SagaStep.BOOK_MAKE_UNAVAILABLE, false, ex.getMessage()));
+            publishBookRentalResultPort.publishBookMakeUnavailableFailed(command, ex.getMessage());
         }
     }
 
@@ -72,11 +79,19 @@ public class BookRentalEventService implements HandleBookRentalEventUseCase {
             return;
         }
         try {
-            makeAvailable(command.itemNo());
-            publishBookRentalResultPort.publish(result(command, EventType.RETURN, SagaStep.BOOK_MAKE_AVAILABLE, true, null));
+            Book book = makeAvailable(command.itemNo());
+            var event = pullRequiredEvent(book, BookMadeAvailableDomainEvent.class);
+            publishBookRentalResultPort.publishBookMadeAvailable(
+                event,
+                command.eventId(),
+                command.correlationId(),
+                command.memberId(),
+                command.memberName(),
+                command.point()
+            );
         } catch (Exception ex) {
             log.error("Book return event failed eventId={}", command.eventId(), ex);
-            publishBookRentalResultPort.publish(result(command, EventType.RETURN, SagaStep.BOOK_MAKE_AVAILABLE, false, ex.getMessage()));
+            publishBookRentalResultPort.publishBookMakeAvailableFailed(command, ex.getMessage());
         }
     }
 
@@ -113,10 +128,11 @@ public class BookRentalEventService implements HandleBookRentalEventUseCase {
      *
      * @param bookNo 도서 번호.
      */
-    private void makeAvailable(long bookNo) {
+    private Book makeAvailable(long bookNo) {
         Book book = loadBookPort.loadBook(bookNo);
         book.makeAvailable();
         saveBookPort.save(book);
+        return book;
     }
 
     /**
@@ -124,32 +140,21 @@ public class BookRentalEventService implements HandleBookRentalEventUseCase {
      *
      * @param bookNo 도서 번호.
      */
-    private void makeUnavailable(long bookNo) {
+    private Book makeUnavailable(long bookNo) {
         Book book = loadBookPort.loadBook(bookNo);
         book.makeUnAvailable();
         saveBookPort.save(book);
+        return book;
     }
 
-    private BookRentalEventResult result(
-        BookRentalEventCommand command,
-        EventType eventType,
-        SagaStep step,
-        boolean successed,
-        String reason
-    ) {
-        return new BookRentalEventResult(
-            command.eventId(),
-            command.correlationId(),
-            eventType,
-            Participant.BOOK,
-            step,
-            successed,
-            command.memberId(),
-            command.memberName(),
-            command.itemNo(),
-            command.itemTitle(),
-            command.point(),
-            reason
-        );
+    private <T extends BookDomainEvent> T pullRequiredEvent(Book book, Class<T> eventType) {
+        return book.pullDomainEvents()
+            .stream()
+            .filter(eventType::isInstance)
+            .map(eventType::cast)
+            .findFirst()
+            .orElseThrow(() -> new IllegalStateException(
+                "Expected domain event was not raised: " + eventType.getSimpleName()
+            ));
     }
 }

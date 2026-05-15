@@ -1,6 +1,12 @@
 package com.example.library.book.domain.model;
 
+import com.example.library.book.domain.event.BookDomainEvent;
+import com.example.library.book.domain.event.BookMadeAvailableDomainEvent;
+import com.example.library.book.domain.event.BookMadeUnavailableDomainEvent;
 import com.example.library.book.domain.vo.BookDesc;
+import java.util.ArrayList;
+import java.util.List;
+import lombok.AccessLevel;
 import lombok.Getter;
 
 /**
@@ -32,6 +38,12 @@ public class Book {
      *  도서가 소장된 지점.
      */
     private final Location location;
+
+    /**
+     * 현재 aggregate 상태 변경 중 발생한 도메인 이벤트 목록.
+     */
+    @Getter(AccessLevel.NONE)
+    private final List<BookDomainEvent> domainEvents = new ArrayList<>();
 
     /**
      * 영속성 어댑터가 저장된 도서 상태를 도메인 모델로 복원할 때 사용합니다.
@@ -93,6 +105,7 @@ public class Book {
      */
     public Book makeAvailable() {
         this.bookStatus = BookStatus.AVAILABLE;
+        registerDomainEvent(new BookMadeAvailableDomainEvent(no, title));
         return this;
     }
 
@@ -103,7 +116,18 @@ public class Book {
      */
     public Book makeUnAvailable() {
         this.bookStatus = BookStatus.UNAVAILABLE;
+        registerDomainEvent(new BookMadeUnavailableDomainEvent(no, title));
         return this;
+    }
+
+    private void registerDomainEvent(BookDomainEvent event) {
+        domainEvents.add(event);
+    }
+
+    public List<BookDomainEvent> pullDomainEvents() {
+        List<BookDomainEvent> events = List.copyOf(domainEvents);
+        domainEvents.clear();
+        return events;
     }
 
 }

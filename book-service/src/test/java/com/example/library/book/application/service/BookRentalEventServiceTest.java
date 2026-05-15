@@ -1,19 +1,25 @@
 package com.example.library.book.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
 import com.example.library.book.application.dto.BookRentalEventCommand;
-import com.example.library.book.application.dto.BookRentalEventResult;
 import com.example.library.book.application.port.out.LoadBookPort;
 import com.example.library.book.application.port.out.MessageIdempotencyPort;
 import com.example.library.book.application.port.out.PublishBookRentalResultPort;
 import com.example.library.book.application.port.out.SaveBookPort;
-import com.example.library.common.event.EventType;
+import com.example.library.book.domain.event.BookMadeAvailableDomainEvent;
+import com.example.library.book.domain.event.BookMadeUnavailableDomainEvent;
+import com.example.library.book.domain.model.Book;
+import com.example.library.book.domain.model.BookStatus;
+import com.example.library.book.domain.model.Classification;
+import com.example.library.book.domain.model.Location;
+import com.example.library.book.domain.model.Source;
+import com.example.library.book.domain.vo.BookDesc;
 import com.example.library.common.event.InboundMessageType;
-import com.example.library.common.event.Participant;
-import com.example.library.common.event.SagaStep;
+import java.time.LocalDate;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -39,6 +45,68 @@ class BookRentalEventServiceTest {
     private BookRentalEventService service;
 
     @Test
+    void rentSuccessPublishesAggregateDomainEvent() {
+        BookRentalEventCommand command = rentedCommand();
+        Book book = book(BookStatus.AVAILABLE);
+        given(messageIdempotencyPort.markProcessed(
+            command.eventId(),
+            command.correlationId(),
+            InboundMessageType.ITEM_RENTED
+        )).willReturn(true);
+        given(loadBookPort.loadBook(command.itemNo())).willReturn(book);
+
+        service.handleRent(command);
+
+        ArgumentCaptor<BookMadeUnavailableDomainEvent> eventCaptor =
+            ArgumentCaptor.forClass(BookMadeUnavailableDomainEvent.class);
+        verify(saveBookPort).save(book);
+        verify(publishBookRentalResultPort).publishBookMadeUnavailable(
+            eventCaptor.capture(),
+            eq(command.eventId()),
+            eq(command.correlationId()),
+            eq(command.memberId()),
+            eq(command.memberName()),
+            eq(command.point())
+        );
+        BookMadeUnavailableDomainEvent event = eventCaptor.getValue();
+        assertThat(event.bookNo()).isEqualTo(command.itemNo());
+        assertThat(event.title()).isEqualTo(command.itemTitle());
+        assertThat(book.getBookStatus()).isEqualTo(BookStatus.UNAVAILABLE);
+        assertThat(book.pullDomainEvents()).isEmpty();
+    }
+
+    @Test
+    void returnSuccessPublishesAggregateDomainEvent() {
+        BookRentalEventCommand command = returnedCommand();
+        Book book = book(BookStatus.UNAVAILABLE);
+        given(messageIdempotencyPort.markProcessed(
+            command.eventId(),
+            command.correlationId(),
+            InboundMessageType.ITEM_RETURNED
+        )).willReturn(true);
+        given(loadBookPort.loadBook(command.itemNo())).willReturn(book);
+
+        service.handleReturn(command);
+
+        ArgumentCaptor<BookMadeAvailableDomainEvent> eventCaptor =
+            ArgumentCaptor.forClass(BookMadeAvailableDomainEvent.class);
+        verify(saveBookPort).save(book);
+        verify(publishBookRentalResultPort).publishBookMadeAvailable(
+            eventCaptor.capture(),
+            eq(command.eventId()),
+            eq(command.correlationId()),
+            eq(command.memberId()),
+            eq(command.memberName()),
+            eq(command.point())
+        );
+        BookMadeAvailableDomainEvent event = eventCaptor.getValue();
+        assertThat(event.bookNo()).isEqualTo(command.itemNo());
+        assertThat(event.title()).isEqualTo(command.itemTitle());
+        assertThat(book.getBookStatus()).isEqualTo(BookStatus.AVAILABLE);
+        assertThat(book.pullDomainEvents()).isEmpty();
+    }
+
+    @Test
     void rentFailureIsPublishedWhenLoadBookFails() {
         BookRentalEventCommand command = rentedCommand();
         given(messageIdempotencyPort.markProcessed(
@@ -51,14 +119,7 @@ class BookRentalEventServiceTest {
 
         service.handleRent(command);
 
-        BookRentalEventResult result = publishedResult();
-        assertThat(result.sourceEventId()).isEqualTo(command.eventId());
-        assertThat(result.correlationId()).isEqualTo(command.correlationId());
-        assertThat(result.eventType()).isEqualTo(EventType.RENT);
-        assertThat(result.participant()).isEqualTo(Participant.BOOK);
-        assertThat(result.step()).isEqualTo(SagaStep.BOOK_MAKE_UNAVAILABLE);
-        assertThat(result.successed()).isFalse();
-        assertThat(result.reason()).isEqualTo("book unavailable failed");
+        verify(publishBookRentalResultPort).publishBookMakeUnavailableFailed(command, "book unavailable failed");
     }
 
     @Test
@@ -74,20 +135,7 @@ class BookRentalEventServiceTest {
 
         service.handleReturn(command);
 
-        BookRentalEventResult result = publishedResult();
-        assertThat(result.sourceEventId()).isEqualTo(command.eventId());
-        assertThat(result.correlationId()).isEqualTo(command.correlationId());
-        assertThat(result.eventType()).isEqualTo(EventType.RETURN);
-        assertThat(result.participant()).isEqualTo(Participant.BOOK);
-        assertThat(result.step()).isEqualTo(SagaStep.BOOK_MAKE_AVAILABLE);
-        assertThat(result.successed()).isFalse();
-        assertThat(result.reason()).isEqualTo("book available failed");
-    }
-
-    private BookRentalEventResult publishedResult() {
-        ArgumentCaptor<BookRentalEventResult> captor = ArgumentCaptor.forClass(BookRentalEventResult.class);
-        verify(publishBookRentalResultPort).publish(captor.capture());
-        return captor.getValue();
+        verify(publishBookRentalResultPort).publishBookMakeAvailableFailed(command, "book available failed");
     }
 
     private BookRentalEventCommand rentedCommand() {
@@ -111,6 +159,17 @@ class BookRentalEventServiceTest {
             1L,
             "도서1",
             10L
+        );
+    }
+
+    private Book book(BookStatus status) {
+        return Book.reconstitute(
+            1L,
+            "도서1",
+            new BookDesc("설명", "저자", "isbn", LocalDate.now(), Source.SUPPLY),
+            Classification.LITERATURE,
+            status,
+            Location.JEONGJA
         );
     }
 }

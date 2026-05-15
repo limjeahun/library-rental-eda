@@ -1,10 +1,14 @@
 package com.example.library.member.domain.model;
 
+import com.example.library.member.domain.event.MemberDomainEvent;
+import com.example.library.member.domain.event.MemberPointSavedDomainEvent;
+import com.example.library.member.domain.event.MemberPointUsedDomainEvent;
 import com.example.library.member.domain.vo.MemberIdentity;
 import com.example.library.member.domain.vo.Authority;
 import com.example.library.member.domain.vo.Email;
 import com.example.library.member.domain.vo.PassWord;
 import com.example.library.member.domain.vo.Point;
+import lombok.AccessLevel;
 import lombok.Getter;
 
 import java.util.ArrayList;
@@ -40,6 +44,12 @@ public class Member {
      *  회원 포인트 값 객체를 반환합니다.
      */
     private Point point;
+
+    /**
+     * 현재 aggregate 상태 변경 중 발생한 도메인 이벤트 목록.
+     */
+    @Getter(AccessLevel.NONE)
+    private final List<MemberDomainEvent> domainEvents = new ArrayList<>();
 
     /**
      * 영속성 어댑터가 저장된 회원 상태를 도메인 모델로 복원할 때 사용.
@@ -81,6 +91,17 @@ public class Member {
         return member;
     }
 
+    public static Member reconstitute(
+            Long            memberNo,
+            MemberIdentity  idName,
+            PassWord        password,
+            Email           email,
+            List<Authority> authorities,
+            Point           point
+    ) {
+        return new Member(memberNo, idName, password, email, authorities, point);
+    }
+
     /**
      * 보유 포인트에 지정한 포인트를 적립.
      *
@@ -89,6 +110,7 @@ public class Member {
      */
     public long savePoint(long point) {
         this.point = this.point.savePoint(point);
+        registerDomainEvent(new MemberPointSavedDomainEvent(idName, point));
         return this.point.point();
     }
 
@@ -100,7 +122,18 @@ public class Member {
      */
     public long usePoint(long point) {
         this.point = this.point.usePoint(point);
+        registerDomainEvent(new MemberPointUsedDomainEvent(idName, point));
         return this.point.point();
+    }
+
+    private void registerDomainEvent(MemberDomainEvent event) {
+        domainEvents.add(event);
+    }
+
+    public List<MemberDomainEvent> pullDomainEvents() {
+        List<MemberDomainEvent> events = List.copyOf(domainEvents);
+        domainEvents.clear();
+        return events;
     }
 
     /**

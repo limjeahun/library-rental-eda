@@ -1,10 +1,15 @@
 package com.example.library.book.adapter.out.messaging;
 
-import com.example.library.book.application.dto.BookRentalEventResult;
+import com.example.library.book.application.dto.BookRentalEventCommand;
 import com.example.library.book.application.port.out.PublishBookRentalResultPort;
 import com.example.library.book.config.BookKafkaTopicProperties;
+import com.example.library.book.domain.event.BookMadeAvailableDomainEvent;
+import com.example.library.book.domain.event.BookMadeUnavailableDomainEvent;
 import com.example.library.common.event.AvroMessageMapper;
 import com.example.library.common.event.EventResult;
+import com.example.library.common.event.EventType;
+import com.example.library.common.event.Participant;
+import com.example.library.common.event.SagaStep;
 import lombok.RequiredArgsConstructor;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
@@ -26,11 +31,63 @@ public class BookKafkaEventProducer implements PublishBookRentalResultPort {
      * <p>수신: rental-service ({@code RentalEventConsumer#consumeRentalResult})
      * <p>의미: 도서 서비스가 대여/반납/보상 이벤트를 성공 또는 실패로 처리했음을 대여 흐름에 알리는 결과 이벤트입니다.
      *
-     * @param result 도서 서비스의 이벤트 처리 application result 입니다.
+     * @param event 도서 aggregate 가 발생시킨 상태 변경 도메인 이벤트입니다.
      */
     @Override
-    public void publish(BookRentalEventResult result) {
-        EventResult eventResult = toEventResult(result);
+    public void publishBookMadeUnavailable(
+        BookMadeUnavailableDomainEvent event,
+        String sourceEventId,
+        String correlationId,
+        String memberId,
+        String memberName,
+        long point
+    ) {
+        publish(success(
+            sourceEventId,
+            correlationId,
+            EventType.RENT,
+            SagaStep.BOOK_MAKE_UNAVAILABLE,
+            memberId,
+            memberName,
+            event.bookNo(),
+            event.title(),
+            point
+        ));
+    }
+
+    @Override
+    public void publishBookMakeUnavailableFailed(BookRentalEventCommand command, String reason) {
+        publish(failure(command, EventType.RENT, SagaStep.BOOK_MAKE_UNAVAILABLE, reason));
+    }
+
+    @Override
+    public void publishBookMadeAvailable(
+        BookMadeAvailableDomainEvent event,
+        String sourceEventId,
+        String correlationId,
+        String memberId,
+        String memberName,
+        long point
+    ) {
+        publish(success(
+            sourceEventId,
+            correlationId,
+            EventType.RETURN,
+            SagaStep.BOOK_MAKE_AVAILABLE,
+            memberId,
+            memberName,
+            event.bookNo(),
+            event.title(),
+            point
+        ));
+    }
+
+    @Override
+    public void publishBookMakeAvailableFailed(BookRentalEventCommand command, String reason) {
+        publish(failure(command, EventType.RETURN, SagaStep.BOOK_MAKE_AVAILABLE, reason));
+    }
+
+    private void publish(EventResult eventResult) {
         kafkaTemplate.send(
             topicProperties.rentalResult(),
             eventResult.correlationId(),
@@ -38,33 +95,44 @@ public class BookKafkaEventProducer implements PublishBookRentalResultPort {
         );
     }
 
-    private EventResult toEventResult(BookRentalEventResult result) {
-        if (result.successed()) {
-            return EventResult.success(
-                result.sourceEventId(),
-                result.correlationId(),
-                result.eventType(),
-                result.participant(),
-                result.step(),
-                result.memberId(),
-                result.memberName(),
-                result.itemNo(),
-                result.itemTitle(),
-                result.point()
-            );
-        }
+    private EventResult success(
+        String sourceEventId,
+        String correlationId,
+        EventType eventType,
+        SagaStep step,
+        String memberId,
+        String memberName,
+        Long itemNo,
+        String itemTitle,
+        long point
+    ) {
+        return EventResult.success(
+            sourceEventId,
+            correlationId,
+            eventType,
+            Participant.BOOK,
+            step,
+            memberId,
+            memberName,
+            itemNo,
+            itemTitle,
+            point
+        );
+    }
+
+    private EventResult failure(BookRentalEventCommand command, EventType eventType, SagaStep step, String reason) {
         return EventResult.failure(
-            result.sourceEventId(),
-            result.correlationId(),
-            result.eventType(),
-            result.participant(),
-            result.step(),
-            result.memberId(),
-            result.memberName(),
-            result.itemNo(),
-            result.itemTitle(),
-            result.point(),
-            result.reason()
+            command.eventId(),
+            command.correlationId(),
+            eventType,
+            Participant.BOOK,
+            step,
+            command.memberId(),
+            command.memberName(),
+            command.itemNo(),
+            command.itemTitle(),
+            command.point(),
+            reason
         );
     }
 }
