@@ -8,6 +8,7 @@ import com.example.library.book.application.port.in.MakeAvailableBookUseCase;
 import com.example.library.book.application.port.in.MakeUnavailableBookUseCase;
 import com.example.library.common.core.web.BaseResponse;
 import jakarta.validation.Valid;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -39,6 +40,18 @@ public class BookController {
     public ResponseEntity<BaseResponse<BookResponse>> addBook(@Valid @RequestBody BookRequest request) {
         return BaseResponse.created(
                 BookResponse.from(addBookUseCase.addBook(request.toCommand()))
+        ).toResponseEntity();
+    }
+
+    /**
+     * 등록된 모든 도서를 조회.
+     *
+     * @return 도서 정보 목록 HTTP 응답 DTO.
+     */
+    @GetMapping
+    public ResponseEntity<BaseResponse<List<BookResponse>>> getBooks() {
+        return BaseResponse.ok(
+                BookResponse.from(bookQueryUseCase.getBooks())
         ).toResponseEntity();
     }
 

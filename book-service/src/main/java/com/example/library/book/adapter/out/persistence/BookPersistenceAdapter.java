@@ -5,6 +5,7 @@ import com.example.library.book.adapter.out.persistence.repository.BookJpaReposi
 import com.example.library.book.application.port.out.LoadBookPort;
 import com.example.library.book.application.port.out.SaveBookPort;
 import com.example.library.book.domain.model.Book;
+import java.util.List;
 import java.util.NoSuchElementException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
@@ -27,6 +28,18 @@ public class BookPersistenceAdapter implements LoadBookPort, SaveBookPort {
     @Override
     public Book save(Book book) {
         return mapper.toDomain(repository.save(mapper.toJpaEntity(book)));
+    }
+
+    /**
+     * 모든 JPA 엔티티를 조회하고 도메인 모델 목록으로 변환합니다.
+     *
+     * @return 등록된 모든 도서 도메인 모델 목록을 반환합니다.
+     */
+    @Override
+    public List<Book> loadBooks() {
+        return repository.findAll().stream()
+            .map(mapper::toDomain)
+            .toList();
     }
 
     /**

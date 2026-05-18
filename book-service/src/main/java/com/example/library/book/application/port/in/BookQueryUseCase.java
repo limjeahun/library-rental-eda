@@ -1,11 +1,19 @@
 package com.example.library.book.application.port.in;
 
 import com.example.library.book.application.dto.BookResult;
+import java.util.List;
 
 /**
  * 도서 번호로 등록된 도서 정보를 조회하는 application 계약입니다.
  */
 public interface BookQueryUseCase {
+    /**
+     * 등록된 모든 도서 정보를 조회합니다.
+     *
+     * @return 등록된 모든 도서 결과 DTO 목록을 반환합니다.
+     */
+    List<BookResult> getBooks();
+
     /**
      * 도서 번호로 도서 정보를 조회합니다.
      *

@@ -13,6 +13,7 @@ import com.example.library.book.domain.model.Classification;
 import com.example.library.book.domain.model.Location;
 import com.example.library.book.domain.model.Source;
 import com.example.library.book.domain.vo.BookDesc;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,6 +49,19 @@ public class BookService implements AddBookUseCase, BookQueryUseCase, MakeAvaila
             Location.valueOf(command.location())
         );
         return BookResult.from(saveBookPort.save(book));
+    }
+
+    /**
+     * 등록된 모든 도서를 조회합니다.
+     *
+     * @return 등록된 모든 도서 결과 DTO 목록을 반환합니다.
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public List<BookResult> getBooks() {
+        return loadBookPort.loadBooks().stream()
+            .map(BookResult::from)
+            .toList();
     }
 
     /**

@@ -13,7 +13,7 @@ spring:
   application:
     name: bestbook-service
   kafka:
-    bootstrap-servers: localhost:9092
+    bootstrap-servers: localhost:19092
     consumer:
       group-id: bestbook
     properties:

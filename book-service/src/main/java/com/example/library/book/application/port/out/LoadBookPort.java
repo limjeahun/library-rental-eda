@@ -1,11 +1,19 @@
 package com.example.library.book.application.port.out;
 
 import com.example.library.book.domain.model.Book;
+import java.util.List;
 
 /**
  * 도서 번호로 도메인 도서를 조회하는 outbound port입니다.
  */
 public interface LoadBookPort {
+    /**
+     * 등록된 모든 도메인 도서를 조회합니다.
+     *
+     * @return 등록된 모든 도서 도메인 모델 목록을 반환합니다.
+     */
+    List<Book> loadBooks();
+
     /**
      * 도서 번호로 도메인 도서를 조회합니다.
      *

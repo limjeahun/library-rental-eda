@@ -596,7 +596,7 @@ docker compose up -d
 - MariaDB `localhost:3306`
 - MongoDB `localhost:27017`
 - Redis `localhost:6379`
-- Kafka KRaft `localhost:9092`
+- Kafka KRaft `localhost:19092`
 - Schema Registry `localhost:8085`
 - Kafka 초기 토픽 생성 컨테이너
 

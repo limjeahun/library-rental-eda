@@ -6,6 +6,7 @@ import com.example.library.book.domain.model.Classification;
 import com.example.library.book.domain.model.Location;
 import com.example.library.book.domain.model.Source;
 import java.time.LocalDate;
+import java.util.List;
 
 /**
  * 도서 API 응답으로 반환하는 HTTP DTO입니다.
@@ -52,5 +53,17 @@ public record BookResponse(
             result.bookStatus(),
             result.location()
         );
+    }
+
+    /**
+     * application 결과 DTO 목록을 HTTP 응답 DTO 목록으로 변환합니다.
+     *
+     * @param results 클라이언트에 반환할 도서 결과 목록입니다.
+     * @return 클라이언트에 반환할 도서 HTTP 응답 DTO 목록을 반환합니다.
+     */
+    public static List<BookResponse> from(List<BookResult> results) {
+        return results.stream()
+            .map(BookResponse::from)
+            .toList();
     }
 }
