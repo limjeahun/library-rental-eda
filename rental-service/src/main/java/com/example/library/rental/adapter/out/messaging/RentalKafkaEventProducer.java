@@ -48,18 +48,18 @@ public class RentalKafkaEventProducer implements PublishItemRentedPort, PublishI
      * <p>메시지 타입: {@link ItemRented}
      * <p>수신: book-service ({@code BookEventConsumer#consumeRent}),
      * member-service ({@code MemberEventConsumer#consumeRent}),
-     * bestbook-service ({@code BestBookEventConsumer#consumeRent})
+     * best book-service ({@code BestBookEventConsumer#consumeRent})
      * <p>의미: 도서 상태 변경, 회원 대여 포인트 적립, 인기 도서 집계를 시작하는 대여 완료 이벤트입니다.
      *
      * @param event 대여 완료 도메인 이벤트입니다.
-     * @param correlationId 대여 흐름 전체를 추적하는 상관관계 ID입니다.
+     * @param correlationId 대여 흐름 전체를 추적하는 상관관계 ID 입니다.
      */
     @Override
     public void publishRentalEvent(ItemRentedDomainEvent event, String correlationId) {
         ItemRented message = new ItemRented(
             UUID.randomUUID().toString(),
             correlationId,
-            Instant.now(),
+            event.occurredAt(),
             event.member().id(),
             event.member().name(),
             event.item().no(),
@@ -90,7 +90,7 @@ public class RentalKafkaEventProducer implements PublishItemRentedPort, PublishI
         ItemReturned message = new ItemReturned(
             UUID.randomUUID().toString(),
             correlationId,
-            Instant.now(),
+            event.occurredAt(),
             event.member().id(),
             event.member().name(),
             event.item().no(),
@@ -120,7 +120,7 @@ public class RentalKafkaEventProducer implements PublishItemRentedPort, PublishI
         OverdueCleared message = new OverdueCleared(
             UUID.randomUUID().toString(),
             correlationId,
-            Instant.now(),
+            event.occurredAt(),
             event.member().id(),
             event.member().name(),
             event.point()
@@ -211,7 +211,7 @@ public class RentalKafkaEventProducer implements PublishItemRentedPort, PublishI
         ItemRentCanceled message = new ItemRentCanceled(
             UUID.randomUUID().toString(),
             correlationId,
-            Instant.now(),
+            event.occurredAt(),
             event.member().id(),
             event.member().name(),
             event.item().no(),
@@ -241,7 +241,7 @@ public class RentalKafkaEventProducer implements PublishItemRentedPort, PublishI
         ItemReturnCanceled message = new ItemReturnCanceled(
             UUID.randomUUID().toString(),
             correlationId,
-            Instant.now(),
+            event.occurredAt(),
             event.member().id(),
             event.member().name(),
             event.item().no(),
@@ -274,7 +274,7 @@ public class RentalKafkaEventProducer implements PublishItemRentedPort, PublishI
         OverdueClearCanceled message = new OverdueClearCanceled(
             UUID.randomUUID().toString(),
             correlationId,
-            Instant.now(),
+            event.occurredAt(),
             event.member().id(),
             event.member().name(),
             event.point()

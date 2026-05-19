@@ -6,13 +6,10 @@ import com.example.library.book.domain.event.BookMadeUnavailableDomainEvent;
 import com.example.library.book.domain.vo.BookDesc;
 import java.util.ArrayList;
 import java.util.List;
-import lombok.AccessLevel;
-import lombok.Getter;
 
 /**
  * 도서의 입고 상태, 대여 가능 상태, 위치를 관리하는 순수 도메인 모델입니다.
  */
-@Getter
 public class Book {
     /**
      *  도서 번호.
@@ -42,7 +39,6 @@ public class Book {
     /**
      * 현재 aggregate 상태 변경 중 발생한 도메인 이벤트 목록.
      */
-    @Getter(AccessLevel.NONE)
     private final List<BookDomainEvent> domainEvents = new ArrayList<>();
 
     /**
@@ -55,7 +51,14 @@ public class Book {
      * @param bookStatus 도서 상태.
      * @param location 도서 소장 지점.
      */
-    public Book(Long no, String title, BookDesc desc, Classification classification, BookStatus bookStatus, Location location) {
+    private Book(
+        Long no,
+        String title,
+        BookDesc desc,
+        Classification classification,
+        BookStatus bookStatus,
+        Location location
+    ) {
         this.no = no;
         this.title = title;
         this.desc = desc;
@@ -105,7 +108,7 @@ public class Book {
      */
     public Book makeAvailable() {
         this.bookStatus = BookStatus.AVAILABLE;
-        registerDomainEvent(new BookMadeAvailableDomainEvent(no, title));
+        registerDomainEvent(BookMadeAvailableDomainEvent.of(no, title));
         return this;
     }
 
@@ -116,7 +119,7 @@ public class Book {
      */
     public Book makeUnAvailable() {
         this.bookStatus = BookStatus.UNAVAILABLE;
-        registerDomainEvent(new BookMadeUnavailableDomainEvent(no, title));
+        registerDomainEvent(BookMadeUnavailableDomainEvent.of(no, title));
         return this;
     }
 
@@ -128,6 +131,30 @@ public class Book {
         List<BookDomainEvent> events = List.copyOf(domainEvents);
         domainEvents.clear();
         return events;
+    }
+
+    public Long no() {
+        return no;
+    }
+
+    public String title() {
+        return title;
+    }
+
+    public BookDesc desc() {
+        return desc;
+    }
+
+    public Classification classification() {
+        return classification;
+    }
+
+    public BookStatus bookStatus() {
+        return bookStatus;
+    }
+
+    public Location location() {
+        return location;
     }
 
 }

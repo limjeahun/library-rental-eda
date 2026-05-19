@@ -8,16 +8,12 @@ import com.example.library.member.domain.vo.Authority;
 import com.example.library.member.domain.vo.Email;
 import com.example.library.member.domain.vo.PassWord;
 import com.example.library.member.domain.vo.Point;
-import lombok.AccessLevel;
-import lombok.Getter;
-
 import java.util.ArrayList;
 import java.util.List;
 
 /**
  * 회원 식별 정보, 권한, 포인트를 관리하는 순수 도메인 모델.
  */
-@Getter
 public class Member {
     /**
      *  회원 번호를 반환합니다.
@@ -48,7 +44,6 @@ public class Member {
     /**
      * 현재 aggregate 상태 변경 중 발생한 도메인 이벤트 목록.
      */
-    @Getter(AccessLevel.NONE)
     private final List<MemberDomainEvent> domainEvents = new ArrayList<>();
 
     /**
@@ -61,7 +56,7 @@ public class Member {
      * @param authorities 회원에게 부여된 권한 목록.
      * @param point 적립, 차감, 정산 또는 보상에 사용할 포인트 값.
      */
-    public Member(
+    private Member(
             Long            memberNo,
             MemberIdentity  idName,
             PassWord        password,
@@ -73,7 +68,7 @@ public class Member {
         this.idName      = idName;
         this.password    = password;
         this.email       = email;
-        this.authorities = authorities;
+        this.authorities = new ArrayList<>(authorities);
         this.point       = point;
     }
 
@@ -110,7 +105,7 @@ public class Member {
      */
     public long savePoint(long point) {
         this.point = this.point.savePoint(point);
-        registerDomainEvent(new MemberPointSavedDomainEvent(idName, point));
+        registerDomainEvent(MemberPointSavedDomainEvent.of(idName, point));
         return this.point.point();
     }
 
@@ -122,7 +117,7 @@ public class Member {
      */
     public long usePoint(long point) {
         this.point = this.point.usePoint(point);
-        registerDomainEvent(new MemberPointUsedDomainEvent(idName, point));
+        registerDomainEvent(MemberPointUsedDomainEvent.of(idName, point));
         return this.point.point();
     }
 
@@ -145,12 +140,27 @@ public class Member {
         this.authorities.add(authority);
     }
 
-    /**
-     * 회원 권한 목록을 반환합니다.
-     *
-     * @return 회원에게 부여된 권한 값 목록을 반환합니다.
-     */
-    public List<Authority> getAuthorities() {
+    public Long memberNo() {
+        return memberNo;
+    }
+
+    public MemberIdentity idName() {
+        return idName;
+    }
+
+    public PassWord password() {
+        return password;
+    }
+
+    public Email email() {
+        return email;
+    }
+
+    public Point point() {
+        return point;
+    }
+
+    public List<Authority> authorities() {
         return List.copyOf(authorities);
     }
 

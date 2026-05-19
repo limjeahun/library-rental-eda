@@ -14,7 +14,7 @@
 - Treat scan output as review leads, not automatic truth. Confirm each finding against this `AGENTS.md` before editing code.
 - Enforce stable architecture rules with the ArchUnit tests under each module's `src/test/java/.../architecture`.
 - When changing domain/application/adapter boundaries, run the relevant module's `HexagonalArchitectureTest`; when changing `common-events`, run `CommonEventsArchitectureTest`.
-- Route concrete slices to the existing project skills: EDA/SAGA improvements, common-events VO refactoring, web request/command/domain VO boundary, or class constant removal.
+- Route concrete slices to the existing project skills: EDA/SAGA improvements, common-events VO refactoring, web request/command/domain VO boundary, class constant removal, or domain aggregate root rules.
 
 ## Project Stack
 
@@ -75,7 +75,21 @@ Use normal Spring Boot, Spring Kafka, JPA, MongoDB, Redis, and Gradle patterns a
 - Domain enums that express business state or business classification belong in `domain/model`.
 - Shared message/protocol enums used across services belong in `common-events`, and adapter-only or persistence-only enums should stay in the relevant adapter package.
 - Use record canonical accessors such as `id()`, `item()`, and `correlationId()` for records. Do not add JavaBean compatibility getters or setters to records.
-- Existing aggregate/domain model getters such as `RentalCard.getRentItemList()` and persistence entity getters may remain when they are part of the current API or framework mapping style.
+- Domain aggregate roots must not use Lombok-generated accessors. Declare each allowed accessor explicitly, preferably in canonical style such as `member()`, `rentStatus()`, and `lateFee()`. Existing explicit API methods such as `getRentItemList()` may remain only when they are already part of the current API or mapping style, but they must be hand-written and preserve aggregate encapsulation.
+
+## Domain Aggregate Root Rules
+
+- Aggregate root creation paths must be constrained by intent-revealing factories. Use a factory such as `createRentalCard(...)` for new aggregate creation and `reconstitute(...)` for persistence restoration. Do not expose public constructors that allow arbitrary aggregate state creation.
+- Aggregate state changes must happen only through domain behavior methods on the aggregate root. Methods such as `rentItem(...)`, `returnItem(...)`, `overdueItem(...)`, `makeAvailableRental(...)`, and compensation-oriented `cancel...(...)` methods are the state mutation entry points. Do not add setters or expose mutable collections as mutation paths.
+- Aggregate roots must validate domain rules before changing state. Availability, rental limit, duplicate rental, currently rented item checks, late-fee matching, and similar invariants belong inside the aggregate behavior.
+- Register service-local domain events only after the aggregate state has actually changed. A domain event represents a fact that happened in the aggregate, not merely an incoming request.
+- Domain event payloads must be based on aggregate-confirmed internal state rather than raw input parameters when the aggregate already owns that state. For example, prefer snapshots from `rentItem.item()` or `returnItem.item().item()` over a caller-provided `item` parameter when publishing rental or return facts.
+- Service-local domain events must not contain Kafka metadata such as `eventId`, `correlationId`, topic names, participants, saga steps, or Avro/wire concerns. The aggregate records service-local domain events only; messaging adapters add integration-message metadata.
+- Persistence restoration must not create domain events. A method such as `reconstitute(...)` restores stored state and must leave the aggregate event buffer empty so old events are not republished.
+- Pulling domain events must clear the aggregate event buffer. `pullDomainEvents()` should return a defensive copy and then clear the internal list to prevent duplicate publication.
+- Aggregate roots must not expose internal mutable collections directly. Return defensive copies or otherwise unmodifiable views for read access.
+- Domain aggregate roots must stay free of technical dependencies, including Spring, JPA, Kafka, Redis, MongoDB annotations, `common-events`, and Lombok. They should express domain rules, state transitions, and service-local domain events only.
+- Aggregate roots must not use Lombok accessor annotations such as `@Getter`, `@Setter`, `@Data`, or `@Builder`. Write explicit accessors by hand, preferably in canonical style such as `member()`, and expose only the state that callers genuinely need.
 
 ## Policy, Protocol Key, and Constants Rules
 

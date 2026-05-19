@@ -15,8 +15,8 @@ class BookTest {
     void enterBook() {
         Book book = Book.enterBook("도서", desc(), Classification.LITERATURE, Location.JEONGJA);
 
-        assertThat(book.getTitle()).isEqualTo("도서");
-        assertThat(book.getBookStatus()).isEqualTo(BookStatus.ENTERED);
+        assertThat(book.title()).isEqualTo("도서");
+        assertThat(book.bookStatus()).isEqualTo(BookStatus.ENTERED);
     }
 
     @Test
@@ -25,8 +25,9 @@ class BookTest {
 
         book.makeAvailable();
 
-        assertThat(book.getBookStatus()).isEqualTo(BookStatus.AVAILABLE);
+        assertThat(book.bookStatus()).isEqualTo(BookStatus.AVAILABLE);
         BookMadeAvailableDomainEvent event = pullSingleEvent(book, BookMadeAvailableDomainEvent.class);
+        assertThat(event.occurredAt()).isNotNull();
         assertThat(event.bookNo()).isEqualTo(1L);
         assertThat(event.title()).isEqualTo("도서");
         assertThat(book.pullDomainEvents()).isEmpty();
@@ -38,8 +39,9 @@ class BookTest {
 
         book.makeUnAvailable();
 
-        assertThat(book.getBookStatus()).isEqualTo(BookStatus.UNAVAILABLE);
+        assertThat(book.bookStatus()).isEqualTo(BookStatus.UNAVAILABLE);
         BookMadeUnavailableDomainEvent event = pullSingleEvent(book, BookMadeUnavailableDomainEvent.class);
+        assertThat(event.occurredAt()).isNotNull();
         assertThat(event.bookNo()).isEqualTo(1L);
         assertThat(event.title()).isEqualTo("도서");
         assertThat(book.pullDomainEvents()).isEmpty();

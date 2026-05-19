@@ -11,10 +11,9 @@ import com.example.library.book.domain.model.Source;
 import com.example.library.book.domain.vo.BookDesc;
 import java.time.LocalDate;
 import org.junit.jupiter.api.Test;
-import org.mapstruct.factory.Mappers;
 
 class BookPersistenceMapperTest {
-    private final BookPersistenceMapper mapper = Mappers.getMapper(BookPersistenceMapper.class);
+    private final BookPersistenceMapper mapper = new BookPersistenceMapper();
 
     @Test
     void mapsBookToJpaEntity() {
@@ -22,16 +21,16 @@ class BookPersistenceMapperTest {
 
         BookJpaEntity entity = mapper.toJpaEntity(book);
 
-        assertThat(entity.getNo()).isEqualTo(book.getNo());
-        assertThat(entity.getTitle()).isEqualTo(book.getTitle());
-        assertThat(entity.getDescription()).isEqualTo(book.getDesc().description());
-        assertThat(entity.getAuthor()).isEqualTo(book.getDesc().author());
-        assertThat(entity.getIsbn()).isEqualTo(book.getDesc().isbn());
-        assertThat(entity.getPublicationDate()).isEqualTo(book.getDesc().publicationDate());
-        assertThat(entity.getSource()).isEqualTo(book.getDesc().source());
-        assertThat(entity.getClassification()).isEqualTo(book.getClassification());
-        assertThat(entity.getBookStatus()).isEqualTo(book.getBookStatus());
-        assertThat(entity.getLocation()).isEqualTo(book.getLocation());
+        assertThat(entity.getNo()).isEqualTo(book.no());
+        assertThat(entity.getTitle()).isEqualTo(book.title());
+        assertThat(entity.getDescription()).isEqualTo(book.desc().description());
+        assertThat(entity.getAuthor()).isEqualTo(book.desc().author());
+        assertThat(entity.getIsbn()).isEqualTo(book.desc().isbn());
+        assertThat(entity.getPublicationDate()).isEqualTo(book.desc().publicationDate());
+        assertThat(entity.getSource()).isEqualTo(book.desc().source());
+        assertThat(entity.getClassification()).isEqualTo(book.classification());
+        assertThat(entity.getBookStatus()).isEqualTo(book.bookStatus());
+        assertThat(entity.getLocation()).isEqualTo(book.location());
     }
 
     @Test
@@ -40,20 +39,20 @@ class BookPersistenceMapperTest {
 
         Book book = mapper.toDomain(entity);
 
-        assertThat(book.getNo()).isEqualTo(entity.getNo());
-        assertThat(book.getTitle()).isEqualTo(entity.getTitle());
-        assertThat(book.getDesc().description()).isEqualTo(entity.getDescription());
-        assertThat(book.getDesc().author()).isEqualTo(entity.getAuthor());
-        assertThat(book.getDesc().isbn()).isEqualTo(entity.getIsbn());
-        assertThat(book.getDesc().publicationDate()).isEqualTo(entity.getPublicationDate());
-        assertThat(book.getDesc().source()).isEqualTo(entity.getSource());
-        assertThat(book.getClassification()).isEqualTo(entity.getClassification());
-        assertThat(book.getBookStatus()).isEqualTo(entity.getBookStatus());
-        assertThat(book.getLocation()).isEqualTo(entity.getLocation());
+        assertThat(book.no()).isEqualTo(entity.getNo());
+        assertThat(book.title()).isEqualTo(entity.getTitle());
+        assertThat(book.desc().description()).isEqualTo(entity.getDescription());
+        assertThat(book.desc().author()).isEqualTo(entity.getAuthor());
+        assertThat(book.desc().isbn()).isEqualTo(entity.getIsbn());
+        assertThat(book.desc().publicationDate()).isEqualTo(entity.getPublicationDate());
+        assertThat(book.desc().source()).isEqualTo(entity.getSource());
+        assertThat(book.classification()).isEqualTo(entity.getClassification());
+        assertThat(book.bookStatus()).isEqualTo(entity.getBookStatus());
+        assertThat(book.location()).isEqualTo(entity.getLocation());
     }
 
     private Book book() {
-        return new Book(
+        return Book.reconstitute(
             1L,
             "도서1",
             new BookDesc(

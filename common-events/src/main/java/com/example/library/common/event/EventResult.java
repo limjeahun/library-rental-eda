@@ -34,6 +34,34 @@ public record EventResult(
         String itemTitle,
         long point
     ) {
+        return success(
+            sourceEventId,
+            correlationId,
+            eventType,
+            participant,
+            step,
+            memberId,
+            memberName,
+            itemNo,
+            itemTitle,
+            point,
+            Instant.now()
+        );
+    }
+
+    public static EventResult success(
+        String sourceEventId,
+        String correlationId,
+        EventType eventType,
+        Participant participant,
+        SagaStep step,
+        String memberId,
+        String memberName,
+        Long itemNo,
+        String itemTitle,
+        long point,
+        Instant occurredAt
+    ) {
         return result(
             sourceEventId,
             correlationId,
@@ -46,7 +74,8 @@ public record EventResult(
             itemNo,
             itemTitle,
             point,
-            null
+            null,
+            occurredAt
         );
     }
 
@@ -75,7 +104,8 @@ public record EventResult(
             itemNo,
             itemTitle,
             point,
-            reason
+            reason,
+            Instant.now()
         );
     }
 
@@ -91,7 +121,8 @@ public record EventResult(
         Long itemNo,
         String itemTitle,
         long point,
-        String reason
+        String reason,
+        Instant occurredAt
     ) {
         String eventId = UUID.randomUUID().toString();
         validateSnapshot(eventType, memberId, itemNo, itemTitle);
@@ -99,7 +130,7 @@ public record EventResult(
             eventId,
             normalizeCorrelationId(correlationId, eventId),
             sourceEventId,
-            Instant.now(),
+            occurredAt,
             eventType,
             participant,
             step,

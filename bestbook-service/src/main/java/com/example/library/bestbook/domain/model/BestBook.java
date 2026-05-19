@@ -1,12 +1,10 @@
 package com.example.library.bestbook.domain.model;
 
 import com.example.library.bestbook.domain.vo.BestBookItem;
-import lombok.Getter;
 
 /**
  * 대여 이벤트를 기반으로 누적되는 인기 도서 read model 도메인 모델입니다.
  */
-@Getter
 public class BestBook {
     /**
      *  인기 도서 read model 식별자.
@@ -33,7 +31,7 @@ public class BestBook {
      * @param itemTitle 인기 도서 집계에 표시할 도서 제목입니다.
      * @param rentCount 저장하거나 응답할 누적 대여 횟수입니다.
      */
-    public BestBook(Long id, Long itemNo, String itemTitle, long rentCount) {
+    private BestBook(Long id, Long itemNo, String itemTitle, long rentCount) {
         this.id = id;
         this.itemNo = itemNo;
         this.itemTitle = itemTitle;
@@ -59,6 +57,19 @@ public class BestBook {
      */
     public static BestBook registerBestBook(Long itemNo, String itemTitle) {
         return new BestBook(null, itemNo, itemTitle, 1L);
+    }
+
+    /**
+     * 저장소에 기록된 인기 도서 read model 상태를 복원합니다.
+     *
+     * @param id 조회하거나 저장할 인기 도서 read model 식별자입니다.
+     * @param itemNo 인기 도서 집계 대상 도서 번호입니다.
+     * @param itemTitle 인기 도서 집계에 표시할 도서 제목입니다.
+     * @param rentCount 저장된 누적 대여 횟수입니다.
+     * @return 저장소 상태에서 복원한 인기 도서 도메인 모델을 반환합니다.
+     */
+    public static BestBook reconstitute(Long id, Long itemNo, String itemTitle, long rentCount) {
+        return new BestBook(id, itemNo, itemTitle, rentCount);
     }
 
     /**
@@ -92,6 +103,22 @@ public class BestBook {
             this.rentCount -= 1;
         }
         return this.rentCount;
+    }
+
+    public Long id() {
+        return id;
+    }
+
+    public Long itemNo() {
+        return itemNo;
+    }
+
+    public String itemTitle() {
+        return itemTitle;
+    }
+
+    public long rentCount() {
+        return rentCount;
     }
 
 }

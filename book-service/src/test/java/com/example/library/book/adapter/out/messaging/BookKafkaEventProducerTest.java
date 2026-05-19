@@ -12,6 +12,7 @@ import com.example.library.common.event.EventType;
 import com.example.library.common.event.Participant;
 import com.example.library.common.event.SagaStep;
 import com.example.library.common.event.schema.EventResultMessage;
+import java.time.Instant;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -30,7 +31,8 @@ class BookKafkaEventProducerTest {
             kafkaTemplate,
             new BookKafkaTopicProperties("rental-result")
         );
-        BookMadeUnavailableDomainEvent event = new BookMadeUnavailableDomainEvent(1L, "도서1");
+        Instant occurredAt = Instant.parse("2026-05-19T00:00:00Z");
+        BookMadeUnavailableDomainEvent event = new BookMadeUnavailableDomainEvent(occurredAt, 1L, "도서1");
 
         producer.publishBookMadeUnavailable(
             event,
@@ -43,6 +45,7 @@ class BookKafkaEventProducerTest {
 
         EventResult result = sentResult("correlation-1");
         assertThat(result.sourceEventId()).isEqualTo("source-event-1");
+        assertThat(result.occurredAt()).isEqualTo(occurredAt);
         assertThat(result.eventType()).isEqualTo(EventType.RENT);
         assertThat(result.participant()).isEqualTo(Participant.BOOK);
         assertThat(result.step()).isEqualTo(SagaStep.BOOK_MAKE_UNAVAILABLE);

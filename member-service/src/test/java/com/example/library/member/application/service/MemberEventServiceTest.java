@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verify;
 import com.example.library.common.event.InboundMessageType;
 import com.example.library.member.application.dto.MemberOverdueClearCommand;
 import com.example.library.member.application.dto.MemberPointSaveCommand;
+import com.example.library.member.application.dto.MemberPointSaveResultContext;
 import com.example.library.member.application.port.out.LoadMemberByIdNamePort;
 import com.example.library.member.application.port.out.MessageIdempotencyPort;
 import com.example.library.member.application.port.out.PublishMemberEventResultPort;
@@ -64,18 +65,22 @@ class MemberEventServiceTest {
 
         ArgumentCaptor<MemberPointSavedDomainEvent> eventCaptor =
             ArgumentCaptor.forClass(MemberPointSavedDomainEvent.class);
+        ArgumentCaptor<MemberPointSaveResultContext> contextCaptor =
+            ArgumentCaptor.forClass(MemberPointSaveResultContext.class);
         verify(saveMemberPort).saveMember(member);
         verify(publishMemberEventResultPort).publishRentPointSaved(
             eventCaptor.capture(),
-            eq(command.eventId()),
-            eq(command.correlationId()),
-            eq(command.itemNo()),
-            eq(command.itemTitle())
+            contextCaptor.capture()
         );
         MemberPointSavedDomainEvent event = eventCaptor.getValue();
+        MemberPointSaveResultContext context = contextCaptor.getValue();
         assertThat(event.member().id()).isEqualTo(command.memberId());
         assertThat(event.member().name()).isEqualTo(command.memberName());
         assertThat(event.point()).isEqualTo(command.point());
+        assertThat(context.sourceEventId()).isEqualTo(command.eventId());
+        assertThat(context.correlationId()).isEqualTo(command.correlationId());
+        assertThat(context.itemNo()).isEqualTo(command.itemNo());
+        assertThat(context.itemTitle()).isEqualTo(command.itemTitle());
         assertThat(member.pullDomainEvents()).isEmpty();
     }
 

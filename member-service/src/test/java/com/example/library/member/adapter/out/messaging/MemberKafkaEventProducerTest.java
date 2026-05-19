@@ -10,8 +10,10 @@ import com.example.library.common.event.EventType;
 import com.example.library.common.event.Participant;
 import com.example.library.common.event.SagaStep;
 import com.example.library.common.event.schema.EventResultMessage;
+import com.example.library.member.application.dto.MemberPointSaveResultContext;
 import com.example.library.member.domain.event.MemberPointSavedDomainEvent;
 import com.example.library.member.domain.vo.MemberIdentity;
+import java.time.Instant;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -27,13 +29,17 @@ class MemberKafkaEventProducerTest {
     @Test
     void rentPointSavedDomainEventIsMappedToEventResult() {
         MemberKafkaEventProducer producer = new MemberKafkaEventProducer(kafkaTemplate, "rental-result");
+        Instant occurredAt = Instant.parse("2026-05-19T00:00:00Z");
         MemberPointSavedDomainEvent event =
-            new MemberPointSavedDomainEvent(new MemberIdentity("member-1", "회원1"), 10L);
+            new MemberPointSavedDomainEvent(occurredAt, new MemberIdentity("member-1", "회원1"), 10L);
+        MemberPointSaveResultContext context =
+            new MemberPointSaveResultContext("source-event-1", "correlation-1", 1L, "도서1");
 
-        producer.publishRentPointSaved(event, "source-event-1", "correlation-1", 1L, "도서1");
+        producer.publishRentPointSaved(event, context);
 
         EventResult result = sentResult("correlation-1");
         assertThat(result.sourceEventId()).isEqualTo("source-event-1");
+        assertThat(result.occurredAt()).isEqualTo(occurredAt);
         assertThat(result.eventType()).isEqualTo(EventType.RENT);
         assertThat(result.participant()).isEqualTo(Participant.MEMBER);
         assertThat(result.step()).isEqualTo(SagaStep.MEMBER_SAVE_POINT);

@@ -3,6 +3,7 @@ package com.example.library.member.application.service;
 import com.example.library.common.event.InboundMessageType;
 import com.example.library.member.application.dto.MemberOverdueClearCommand;
 import com.example.library.member.application.dto.MemberPointSaveCommand;
+import com.example.library.member.application.dto.MemberPointSaveResultContext;
 import com.example.library.member.application.dto.MemberPointUseCommand;
 import com.example.library.member.application.port.in.HandleMemberEventUseCase;
 import com.example.library.member.application.port.out.LoadMemberByIdNamePort;
@@ -35,7 +36,7 @@ public class MemberEventService implements HandleMemberEventUseCase {
     /**
      * 대여 완료 이벤트를 처리해 회원에게 대여 포인트를 적립합니다.
      *
-     * @param command 처리할 대여 포인트 적립 application command입니다.
+     * @param command 처리할 대여 포인트 적립 application command 입니다.
      */
     @Override
     @Transactional
@@ -49,15 +50,10 @@ public class MemberEventService implements HandleMemberEventUseCase {
             return;
         }
         try {
-            Member member = savePoint(command.memberId(), command.memberName(), command.point());
+            var member = savePoint(command.memberId(), command.memberName(), command.point());
             var event = pullRequiredEvent(member, MemberPointSavedDomainEvent.class);
-            publishMemberEventResultPort.publishRentPointSaved(
-                event,
-                command.eventId(),
-                command.correlationId(),
-                command.itemNo(),
-                command.itemTitle()
-            );
+            var context = MemberPointSaveResultContext.from(command);
+            publishMemberEventResultPort.publishRentPointSaved(event, context);
         } catch (Exception ex) {
             log.error("member rent point save failed eventId={}", command.eventId(), ex);
             publishMemberEventResultPort.publishRentPointSaveFailed(command, ex.getMessage());
@@ -81,15 +77,10 @@ public class MemberEventService implements HandleMemberEventUseCase {
             return;
         }
         try {
-            Member member = savePoint(command.memberId(), command.memberName(), command.point());
-            var event = pullRequiredEvent(member, MemberPointSavedDomainEvent.class);
-            publishMemberEventResultPort.publishReturnPointSaved(
-                event,
-                command.eventId(),
-                command.correlationId(),
-                command.itemNo(),
-                command.itemTitle()
-            );
+            var member  = savePoint(command.memberId(), command.memberName(), command.point());
+            var event   = pullRequiredEvent(member, MemberPointSavedDomainEvent.class);
+            var context = MemberPointSaveResultContext.from(command);
+            publishMemberEventResultPort.publishReturnPointSaved(event, context);
         } catch (Exception ex) {
             log.error("member return point save failed eventId={}", command.eventId(), ex);
             publishMemberEventResultPort.publishReturnPointSaveFailed(command, ex.getMessage());

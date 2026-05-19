@@ -41,16 +41,16 @@ public record BookResult(
      */
     public static BookResult from(Book book) {
         return new BookResult(
-            book.getNo(),
-            book.getTitle(),
-            book.getDesc().description(),
-            book.getDesc().author(),
-            book.getDesc().isbn(),
-            book.getDesc().publicationDate(),
-            book.getDesc().source(),
-            book.getClassification(),
-            book.getBookStatus(),
-            book.getLocation()
+            book.no(),
+            book.title(),
+            book.desc().description(),
+            book.desc().author(),
+            book.desc().isbn(),
+            book.desc().publicationDate(),
+            book.desc().source(),
+            book.classification(),
+            book.bookStatus(),
+            book.location()
         );
     }
 }

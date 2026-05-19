@@ -10,6 +10,7 @@ import com.example.library.common.event.EventResult;
 import com.example.library.common.event.EventType;
 import com.example.library.common.event.Participant;
 import com.example.library.common.event.SagaStep;
+import java.time.Instant;
 import lombok.RequiredArgsConstructor;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
@@ -51,7 +52,8 @@ public class BookKafkaEventProducer implements PublishBookRentalResultPort {
             memberName,
             event.bookNo(),
             event.title(),
-            point
+            point,
+            event.occurredAt()
         ));
     }
 
@@ -78,7 +80,8 @@ public class BookKafkaEventProducer implements PublishBookRentalResultPort {
             memberName,
             event.bookNo(),
             event.title(),
-            point
+            point,
+            event.occurredAt()
         ));
     }
 
@@ -104,7 +107,8 @@ public class BookKafkaEventProducer implements PublishBookRentalResultPort {
         String memberName,
         Long itemNo,
         String itemTitle,
-        long point
+        long point,
+        Instant occurredAt
     ) {
         return EventResult.success(
             sourceEventId,
@@ -116,7 +120,8 @@ public class BookKafkaEventProducer implements PublishBookRentalResultPort {
             memberName,
             itemNo,
             itemTitle,
-            point
+            point,
+            occurredAt
         );
     }
 

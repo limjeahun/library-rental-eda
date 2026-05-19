@@ -7,6 +7,7 @@ import com.example.library.common.event.Participant;
 import com.example.library.common.event.SagaStep;
 import com.example.library.member.application.dto.MemberOverdueClearCommand;
 import com.example.library.member.application.dto.MemberPointSaveCommand;
+import com.example.library.member.application.dto.MemberPointSaveResultContext;
 import com.example.library.member.application.port.out.PublishMemberEventResultPort;
 import com.example.library.member.domain.event.MemberPointSavedDomainEvent;
 import com.example.library.member.domain.event.MemberPointUsedDomainEvent;
@@ -31,87 +32,131 @@ public class MemberKafkaEventProducer implements PublishMemberEventResultPort {
     }
 
     /**
-     * 회원 포인트 처리 결과를 {@link EventResult} 이벤트로 발행합니다.
-     *
-     * <p>발행 토픽: {@code rental_result} ({@code app.kafka.topics.rental-result})
-     * <p>메시지 타입: {@link EventResult}
-     * <p>수신: rental-service ({@code RentalEventConsumer#consumeRentalResult})
-     * <p>의미: 회원 서비스가 대여/반납 포인트 적립, 연체료 차감, 보상 포인트 차감을 성공 또는 실패로 처리했음을
-     * 대여 흐름에 알리는 결과 이벤트입니다.
+     * 대여 포인트 적립 성공 결과를 {@link EventResult}로 만들어 rental-service 에 회신합니다.
      *
      * @param event 회원 aggregate 가 발생시킨 포인트 적립 도메인 이벤트입니다.
+     * @param context 원본 대여 이벤트 ID, correlation ID, 도서 snapshot 을 담은 결과 발행 컨텍스트입니다.
      */
     @Override
-    public void publishRentPointSaved(
-        MemberPointSavedDomainEvent event,
-        String sourceEventId,
-        String correlationId,
-        Long itemNo,
-        String itemTitle
-    ) {
-        publish(success(
-            sourceEventId,
-            correlationId,
+    public void publishRentPointSaved(MemberPointSavedDomainEvent event, MemberPointSaveResultContext context) {
+        publish(EventResult.success(
+            context.sourceEventId(),
+            context.correlationId(),
             EventType.RENT,
+            Participant.MEMBER,
             SagaStep.MEMBER_SAVE_POINT,
             event.member().id(),
             event.member().name(),
-            itemNo,
-            itemTitle,
-            event.point()
+            context.itemNo(),
+            context.itemTitle(),
+            event.point(),
+            event.occurredAt()
         ));
     }
 
+    /**
+     * 대여 포인트 적립 실패 결과를 {@link EventResult}로 만들어 rental-service 에 회신합니다.
+     *
+     * @param command 실패한 대여 포인트 적립 command 입니다.
+     * @param reason 실패 사유입니다.
+     */
     @Override
     public void publishRentPointSaveFailed(MemberPointSaveCommand command, String reason) {
-        publish(failure(command, EventType.RENT, SagaStep.MEMBER_SAVE_POINT, reason));
-    }
-
-    @Override
-    public void publishReturnPointSaved(
-        MemberPointSavedDomainEvent event,
-        String sourceEventId,
-        String correlationId,
-        Long itemNo,
-        String itemTitle
-    ) {
-        publish(success(
-            sourceEventId,
-            correlationId,
-            EventType.RETURN,
+        publish(EventResult.failure(
+            command.eventId(),
+            command.correlationId(),
+            EventType.RENT,
+            Participant.MEMBER,
             SagaStep.MEMBER_SAVE_POINT,
-            event.member().id(),
-            event.member().name(),
-            itemNo,
-            itemTitle,
-            event.point()
+            command.memberId(),
+            command.memberName(),
+            command.itemNo(),
+            command.itemTitle(),
+            command.point(),
+            reason
         ));
     }
 
+    /**
+     * 반납 포인트 적립 성공 결과를 {@link EventResult}로 만들어 rental-service 에 회신합니다.
+     *
+     * @param event 회원 aggregate 가 발생시킨 포인트 적립 도메인 이벤트입니다.
+     * @param context 원본 반납 이벤트 ID, correlation ID, 도서 snapshot 을 담은 결과 발행 컨텍스트입니다.
+     */
     @Override
-    public void publishReturnPointSaveFailed(MemberPointSaveCommand command, String reason) {
-        publish(failure(command, EventType.RETURN, SagaStep.MEMBER_SAVE_POINT, reason));
+    public void publishReturnPointSaved(MemberPointSavedDomainEvent event, MemberPointSaveResultContext context) {
+        publish(EventResult.success(
+            context.sourceEventId(),
+            context.correlationId(),
+            EventType.RETURN,
+            Participant.MEMBER,
+            SagaStep.MEMBER_SAVE_POINT,
+            event.member().id(),
+            event.member().name(),
+            context.itemNo(),
+            context.itemTitle(),
+            event.point(),
+            event.occurredAt()
+        ));
     }
 
+    /**
+     * 반납 포인트 적립 실패 결과를 {@link EventResult}로 만들어 rental-service 에 회신합니다.
+     *
+     * @param command 실패한 반납 포인트 적립 command 입니다.
+     * @param reason 실패 사유입니다.
+     */
+    @Override
+    public void publishReturnPointSaveFailed(MemberPointSaveCommand command, String reason) {
+        publish(EventResult.failure(
+            command.eventId(),
+            command.correlationId(),
+            EventType.RETURN,
+            Participant.MEMBER,
+            SagaStep.MEMBER_SAVE_POINT,
+            command.memberId(),
+            command.memberName(),
+            command.itemNo(),
+            command.itemTitle(),
+            command.point(),
+            reason
+        ));
+    }
+
+    /**
+     * 연체 해제 포인트 차감 성공 결과를 {@link EventResult}로 만들어 rental-service 에 회신합니다.
+     *
+     * @param event 회원 aggregate 가 발생시킨 포인트 차감 도메인 이벤트입니다.
+     * @param sourceEventId 처리한 원본 연체 해제 이벤트 ID 입니다.
+     * @param correlationId 연체 해제 흐름을 연결하는 correlation ID 입니다.
+     */
     @Override
     public void publishOverduePointUsed(
         MemberPointUsedDomainEvent event,
         String sourceEventId,
         String correlationId
     ) {
-        publish(success(
+        publish(EventResult.success(
             sourceEventId,
             correlationId,
             EventType.OVERDUE,
+            Participant.MEMBER,
             SagaStep.MEMBER_USE_POINT,
             event.member().id(),
             event.member().name(),
             null,
             null,
-            event.point()
+            event.point(),
+            event.occurredAt()
         ));
     }
 
+    /**
+     * 연체 해제 포인트 차감 실패 결과를 {@link EventResult}로 만들어 rental-service 에 회신합니다.
+     *
+     * @param command 실패한 연체 해제 포인트 차감 command 입니다.
+     * @param reason 실패 사유입니다.
+     */
     @Override
     public void publishOverduePointUseFailed(MemberOverdueClearCommand command, String reason) {
         publish(EventResult.failure(
@@ -129,52 +174,16 @@ public class MemberKafkaEventProducer implements PublishMemberEventResultPort {
         ));
     }
 
+    /**
+     * 생성된 {@link EventResult}를 Avro wire payload 로 변환해 rental-result 토픽에 발행합니다.
+     *
+     * @param eventResult 발행할 회원 이벤트 처리 결과입니다.
+     */
     private void publish(EventResult eventResult) {
         kafkaTemplate.send(
             rentalResultTopic,
             eventResult.correlationId(),
             AvroMessageMapper.toEventResultMessage(eventResult)
-        );
-    }
-
-    private EventResult success(
-        String sourceEventId,
-        String correlationId,
-        EventType eventType,
-        SagaStep step,
-        String memberId,
-        String memberName,
-        Long itemNo,
-        String itemTitle,
-        long point
-    ) {
-        return EventResult.success(
-            sourceEventId,
-            correlationId,
-            eventType,
-            Participant.MEMBER,
-            step,
-            memberId,
-            memberName,
-            itemNo,
-            itemTitle,
-            point
-        );
-    }
-
-    private EventResult failure(MemberPointSaveCommand command, EventType eventType, SagaStep step, String reason) {
-        return EventResult.failure(
-            command.eventId(),
-            command.correlationId(),
-            eventType,
-            Participant.MEMBER,
-            step,
-            command.memberId(),
-            command.memberName(),
-            command.itemNo(),
-            command.itemTitle(),
-            command.point(),
-            reason
         );
     }
 }

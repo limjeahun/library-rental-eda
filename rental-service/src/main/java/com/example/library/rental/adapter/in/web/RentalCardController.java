@@ -115,7 +115,9 @@ public class RentalCardController {
     @PostMapping("/return")
     public ResponseEntity<BaseResponse<RentalResultResponse>> returnItem(@Valid @RequestBody ReturnItemRequest request) {
         return BaseResponse.accepted(
-                RentalResultResponse.returnAccepted(returnItemUseCase.returnItem(request.toCommand()))
+                RentalResultResponse.returnAccepted(
+                        returnItemUseCase.returnItem(request.toCommand())
+                )
         ).toResponseEntity();
     }
 

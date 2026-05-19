@@ -115,6 +115,7 @@ class RentalCardTest {
         rentalCard.cancelRentItem(item);
 
         ItemRentCanceledDomainEvent event = pullSingleEvent(rentalCard, ItemRentCanceledDomainEvent.class);
+        assertThat(event.occurredAt()).isNotNull();
         assertThat(event.member()).isEqualTo(member());
         assertThat(event.item()).isEqualTo(item);
         assertThat(event.point()).isEqualTo(RentalPointPolicy.RENT.point());
@@ -155,6 +156,7 @@ class RentalCardTest {
         rentalCard.cancelReturnItem(item, RentalPointPolicy.RETURN.point());
 
         ItemReturnCanceledDomainEvent event = pullSingleEvent(rentalCard, ItemReturnCanceledDomainEvent.class);
+        assertThat(event.occurredAt()).isNotNull();
         assertThat(event.member()).isEqualTo(member());
         assertThat(event.item()).isEqualTo(item);
         assertThat(event.point()).isEqualTo(RentalPointPolicy.RETURN.point());
@@ -195,6 +197,7 @@ class RentalCardTest {
             rentalCard,
             OverdueClearCanceledDomainEvent.class
         );
+        assertThat(event.occurredAt()).isNotNull();
         assertThat(event.member()).isEqualTo(member());
         assertThat(event.point()).isEqualTo(40);
     }
@@ -222,7 +225,7 @@ class RentalCardTest {
 
     @Test
     void createDomainEventWithoutIntegrationMetadata() {
-        ItemRentedDomainEvent event = new ItemRentedDomainEvent(member(), item(1), 10);
+        ItemRentedDomainEvent event = ItemRentedDomainEvent.of(member(), item(1), 10);
 
         log.info(
             "createDomainEventWithoutIntegrationMetadata member={} RentalItem={} point={}",
@@ -230,6 +233,7 @@ class RentalCardTest {
             event.item(),
             event.point()
         );
+        assertThat(event.occurredAt()).isNotNull();
         assertThat(event.member()).isEqualTo(member());
         assertThat(event.item()).isEqualTo(item(1));
         assertThat(event.point()).isEqualTo(10);

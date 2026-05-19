@@ -19,10 +19,10 @@ public record BestBookResult(Long id, Long itemNo, String itemTitle, long rentCo
      */
     public static BestBookResult from(BestBook bestBook) {
         return new BestBookResult(
-            bestBook.getId(),
-            bestBook.getItemNo(),
-            bestBook.getItemTitle(),
-            bestBook.getRentCount()
+            bestBook.id(),
+            bestBook.itemNo(),
+            bestBook.itemTitle(),
+            bestBook.rentCount()
         );
     }
 }

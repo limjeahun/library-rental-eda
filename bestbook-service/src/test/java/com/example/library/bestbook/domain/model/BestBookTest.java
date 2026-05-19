@@ -16,8 +16,8 @@ class BestBookTest {
     void registerBestBook() {
         BestBook bestBook = BestBook.registerBestBook(new BestBookItem(1L, "도서"));
 
-        assertThat(bestBook.getItemNo()).isEqualTo(1L);
-        assertThat(bestBook.getRentCount()).isEqualTo(1L);
+        assertThat(bestBook.itemNo()).isEqualTo(1L);
+        assertThat(bestBook.rentCount()).isEqualTo(1L);
     }
 
     /**
@@ -29,6 +29,6 @@ class BestBookTest {
 
         bestBook.increaseBestBookCount();
 
-        assertThat(bestBook.getRentCount()).isEqualTo(2L);
+        assertThat(bestBook.rentCount()).isEqualTo(2L);
     }
 }

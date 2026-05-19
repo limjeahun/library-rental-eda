@@ -1,0 +1,7 @@
+interface:
+  display_name: "도메인 Aggregate Root 규칙 적용"
+  short_description: "Aggregate 생성, 접근자, 이벤트 규칙 정리"
+  default_prompt: "$apply-domain-aggregate-root-rules 를 사용해서 도메인 aggregate root 규칙을 적용해줘."
+
+policy:
+  allow_implicit_invocation: true

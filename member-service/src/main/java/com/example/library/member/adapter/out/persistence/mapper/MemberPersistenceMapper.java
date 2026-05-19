@@ -23,18 +23,18 @@ public class MemberPersistenceMapper {
      * @return 저장소 계층에서 사용할 JPA 모델을 반환.
      */
     public MemberJpaEntity toJpaEntity(Member member) {
-        List<UserRole> roles = member.getAuthorities().stream()
+        List<UserRole> roles = member.authorities().stream()
             .map(Authority::role)
             .toList();
 
         return new MemberJpaEntity(
-            member.getMemberNo(),
-            member.getIdName().id(),
-            member.getIdName().name(),
-            member.getPassword().value(),
-            member.getEmail().value(),
+            member.memberNo(),
+            member.idName().id(),
+            member.idName().name(),
+            member.password().value(),
+            member.email().value(),
             roles,
-            member.getPoint().point()
+            member.point().point()
         );
     }
 

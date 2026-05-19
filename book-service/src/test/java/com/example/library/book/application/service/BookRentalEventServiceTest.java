@@ -71,7 +71,7 @@ class BookRentalEventServiceTest {
         BookMadeUnavailableDomainEvent event = eventCaptor.getValue();
         assertThat(event.bookNo()).isEqualTo(command.itemNo());
         assertThat(event.title()).isEqualTo(command.itemTitle());
-        assertThat(book.getBookStatus()).isEqualTo(BookStatus.UNAVAILABLE);
+        assertThat(book.bookStatus()).isEqualTo(BookStatus.UNAVAILABLE);
         assertThat(book.pullDomainEvents()).isEmpty();
     }
 
@@ -102,7 +102,7 @@ class BookRentalEventServiceTest {
         BookMadeAvailableDomainEvent event = eventCaptor.getValue();
         assertThat(event.bookNo()).isEqualTo(command.itemNo());
         assertThat(event.title()).isEqualTo(command.itemTitle());
-        assertThat(book.getBookStatus()).isEqualTo(BookStatus.AVAILABLE);
+        assertThat(book.bookStatus()).isEqualTo(BookStatus.AVAILABLE);
         assertThat(book.pullDomainEvents()).isEmpty();
     }
 

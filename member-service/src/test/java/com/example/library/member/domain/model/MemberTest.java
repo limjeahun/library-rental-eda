@@ -19,9 +19,9 @@ class MemberTest {
     void registerMember() {
         Member member = Member.registerMember(idName(), new PassWord("1111"), new Email("a@b.com"));
 
-        assertThat(member.getIdName().id()).isEqualTo("jenny");
-        assertThat(member.getAuthorities()).hasSize(1);
-        assertThat(member.getPoint().point()).isZero();
+        assertThat(member.idName().id()).isEqualTo("jenny");
+        assertThat(member.authorities()).hasSize(1);
+        assertThat(member.point().point()).isZero();
     }
 
     @Test
@@ -30,8 +30,9 @@ class MemberTest {
 
         member.savePoint(10);
 
-        assertThat(member.getPoint().point()).isEqualTo(10);
+        assertThat(member.point().point()).isEqualTo(10);
         MemberPointSavedDomainEvent event = pullSingleEvent(member, MemberPointSavedDomainEvent.class);
+        assertThat(event.occurredAt()).isNotNull();
         assertThat(event.member()).isEqualTo(idName());
         assertThat(event.point()).isEqualTo(10);
         assertThat(member.pullDomainEvents()).isEmpty();
@@ -45,8 +46,9 @@ class MemberTest {
 
         member.usePoint(10);
 
-        assertThat(member.getPoint().point()).isEqualTo(10);
+        assertThat(member.point().point()).isEqualTo(10);
         MemberPointUsedDomainEvent event = pullSingleEvent(member, MemberPointUsedDomainEvent.class);
+        assertThat(event.occurredAt()).isNotNull();
         assertThat(event.member()).isEqualTo(idName());
         assertThat(event.point()).isEqualTo(10);
         assertThat(member.pullDomainEvents()).isEmpty();
@@ -64,7 +66,7 @@ class MemberTest {
     void authoritiesAreNotExternallyMutable() {
         Member member = Member.registerMember(idName(), new PassWord("1111"), new Email("a@b.com"));
 
-        assertThatThrownBy(() -> member.getAuthorities().clear())
+        assertThatThrownBy(() -> member.authorities().clear())
             .isInstanceOf(UnsupportedOperationException.class);
     }
 
