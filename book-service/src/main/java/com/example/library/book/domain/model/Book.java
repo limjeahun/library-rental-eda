@@ -35,7 +35,6 @@ public class Book {
      *  도서가 소장된 지점.
      */
     private final Location location;
-
     /**
      * 현재 aggregate 상태 변경 중 발생한 도메인 이벤트 목록.
      */

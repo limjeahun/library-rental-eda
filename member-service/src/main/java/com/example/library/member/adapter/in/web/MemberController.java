@@ -34,7 +34,7 @@ public class MemberController {
      * 새 회원 등록.
      *
      * @param request 회원 ID, 이름, 이메일, 비밀번호를 담은 등록 요청 본문 DTO.
-     * @return 클회원 정보 DTO.
+     * @return 회원 정보 DTO.
      */
     @PostMapping("/")
     public ResponseEntity<BaseResponse<MemberResponse>> addMember(@Valid @RequestBody MemberRequest request) {

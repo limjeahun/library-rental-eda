@@ -63,7 +63,7 @@ public class MemberEventService implements HandleMemberEventUseCase {
     /**
      * 반납 완료 이벤트를 처리해 회원에게 반납 포인트를 적립합니다.
      *
-     * @param command 처리할 반납 포인트 적립 application command입니다.
+     * @param command 처리할 반납 포인트 적립 application command 입니다.
      */
     @Override
     @Transactional
