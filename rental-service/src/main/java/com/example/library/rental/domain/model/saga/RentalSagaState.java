@@ -115,6 +115,7 @@ public class RentalSagaState {
         RentalSagaParticipant participant,
         boolean successed
     ) {
+        // 여러 참여자 결과가 와도 최초 원본 이벤트 ID만 SAGA 추적 상태에 남깁니다.
         if (this.sourceEventId == null || this.sourceEventId.isBlank()) {
             this.sourceEventId = sourceEventId;
         }

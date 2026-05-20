@@ -19,6 +19,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 대여 이벤트를 받아 도서 상태를 변경하고 처리 결과 이벤트를 발행하는 application service.
+ *
+ * <p>상태 변경 전에 processed message를 먼저 기록해 Kafka 재전달로 인한 중복 도서 상태 변경을 막습니다.
  */
 @Service
 @Slf4j

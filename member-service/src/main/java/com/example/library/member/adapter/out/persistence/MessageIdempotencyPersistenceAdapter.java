@@ -11,6 +11,8 @@ import org.springframework.stereotype.Repository;
 
 /**
  * 회원 서비스 메시지 처리 완료 여부를 MariaDB unique constraint로 보장하는 adapter입니다.
+ *
+ * <p>Kafka 재전달에 대비해 {@code serviceName + eventId}를 DB unique key로 기록합니다.
  */
 @Repository
 @RequiredArgsConstructor
@@ -20,6 +22,7 @@ public class MessageIdempotencyPersistenceAdapter implements MessageIdempotencyP
 
     @Override
     public boolean markProcessed(String eventId, String correlationId, InboundMessageType messageType) {
+        // INSERT IGNORE는 unique key 충돌을 예외 대신 inserted=0으로 알려줍니다.
         int inserted = jdbcTemplate.update(
             """
             insert ignore into processed_messages

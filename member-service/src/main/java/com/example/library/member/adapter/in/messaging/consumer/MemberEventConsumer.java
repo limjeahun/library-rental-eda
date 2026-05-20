@@ -33,14 +33,9 @@ public class MemberEventConsumer {
     private final KafkaConsumerProcessingProperties processingProperties;
 
     /**
-     * 대여 이벤트를 받아 회원에게 대여 포인트를 적립합니다.
-     *
-     * <p>수신 토픽: {@code rental_rent} ({@code app.kafka.topics.rental-rent})
-     * <p>메시지 타입: {@link ItemRented}
-     * <p>발신: rental-service ({@code RentalKafkaEventProducer#publishRentalEvent})
+     * 대여 이벤트를 회원 대여 포인트 적립 use case로 전달합니다.
      *
      * @param message rental_rent 토픽에서 수신한 대여 이벤트 메시지.
-     * @throws Exception Redis 중복 기록, 회원 포인트 적립 중 오류가 발생할 때 전달.
      */
     @KafkaListener(topics = "${app.kafka.topics.rental-rent}", groupId = "${spring.kafka.consumer.group-id}")
     public void consumeRent(ItemRentedMessage message) throws Exception {
@@ -53,14 +48,9 @@ public class MemberEventConsumer {
     }
 
     /**
-     * 반납 이벤트를 받아 회원에게 반납 포인트를 적립합니다.
+     * 반납 이벤트를 회원 반납 포인트 적립 use case로 전달합니다.
      *
-     * <p>수신 토픽: {@code rental_return} ({@code app.kafka.topics.rental-return})
-     * <p>메시지 타입: {@link ItemReturned}
-     * <p>발신: rental-service ({@code RentalKafkaEventProducer#publishReturnEvent})
-     *
-     * @param message rental_return 토픽에서 수신한 반납 이벤트 메시지입니다.
-     * @throws Exception Redis 중복 기록, 회원 포인트 적립 중 오류가 발생할 때 전달됩니다.
+     * @param message rental_return 토픽에서 수신한 반납 이벤트 메시지.
      */
     @KafkaListener(topics = "${app.kafka.topics.rental-return}", groupId = "${spring.kafka.consumer.group-id}")
     public void consumeReturn(ItemReturnedMessage message) throws Exception {
@@ -73,14 +63,9 @@ public class MemberEventConsumer {
     }
 
     /**
-     * 연체 해제 이벤트를 받아 회원 포인트를 연체료만큼 차감합니다.
+     * 연체 해제 이벤트를 회원 포인트 차감 use case로 전달합니다.
      *
-     * <p>수신 토픽: {@code overdue_clear} ({@code app.kafka.topics.overdue-clear})
-     * <p>메시지 타입: {@link OverdueCleared}
-     * <p>발신: rental-service ({@code RentalKafkaEventProducer#publishOverdueClearEvent})
-     *
-     * @param message overdue_clear 토픽에서 수신한 연체 해제 이벤트 메시지입니다.
-     * @throws Exception Redis 중복 기록, 회원 포인트 차감 중 오류가 발생할 때 전달됩니다.
+     * @param message overdue_clear 토픽에서 수신한 연체 해제 이벤트 메시지.
      */
     @KafkaListener(topics = "${app.kafka.topics.overdue-clear}", groupId = "${spring.kafka.consumer.group-id}")
     public void consumeClear(OverdueClearedMessage message) throws Exception {
@@ -93,14 +78,9 @@ public class MemberEventConsumer {
     }
 
     /**
-     * 포인트 차감 command 를 받아 보상 대상 포인트를 차감합니다.
+     * 포인트 차감 command를 보상 포인트 차감 use case로 전달합니다.
      *
-     * <p>수신 토픽: {@code point_use} ({@code app.kafka.topics.point-use})
-     * <p>메시지 타입: {@link PointUseCommand}
-     * <p>발신: rental-service ({@code RentalKafkaEventProducer#publishPointUseCommand})
-     *
-     * @param message point_use 토픽에서 수신한 포인트 차감 command 메시지입니다.
-     * @throws Exception Redis 중복 기록, 회원 포인트 차감 중 오류가 발생할 때 전달됩니다.
+     * @param message point_use 토픽에서 수신한 포인트 차감 command 메시지.
      */
     @KafkaListener(topics = "${app.kafka.topics.point-use}", groupId = "${spring.kafka.consumer.group-id}")
     public void consumeUsePoint(PointUseCommandMessage message) throws Exception {
@@ -113,10 +93,10 @@ public class MemberEventConsumer {
     }
 
     /**
-     * 대여 이벤트 메시지의 회원 snapshot 과 포인트 값을 회원 포인트 적립 command 로 변환합니다.
+     * 대여 이벤트 snapshot을 회원 포인트 적립 command로 옮깁니다.
      *
-     * @param event common-events 대여 이벤트 record 입니다.
-     * @return 회원에게 대여 포인트를 적립하기 위한 application command 를 반환합니다.
+     * @param event common-events 대여 이벤트 record.
+     * @return 회원에게 대여 포인트를 적립하기 위한 application command.
      */
     private MemberPointSaveCommand toCommand(ItemRented event) {
         return new MemberPointSaveCommand(
@@ -131,10 +111,10 @@ public class MemberEventConsumer {
     }
 
     /**
-     * 반납 이벤트 메시지의 회원 snapshot 과 포인트 값을 회원 포인트 적립 command 로 변환합니다.
+     * 반납 이벤트 snapshot을 회원 포인트 적립 command로 옮깁니다.
      *
-     * @param event common-events 반납 이벤트 record 입니다.
-     * @return 회원에게 반납 포인트를 적립하기 위한 application command 를 반환합니다.
+     * @param event common-events 반납 이벤트 record.
+     * @return 회원에게 반납 포인트를 적립하기 위한 application command.
      */
     private MemberPointSaveCommand toCommand(ItemReturned event) {
         return new MemberPointSaveCommand(
@@ -149,10 +129,10 @@ public class MemberEventConsumer {
     }
 
     /**
-     * 연체 해제 이벤트 메시지의 회원 snapshot 과 정산 포인트 값을 회원 포인트 차감 command 로 변환합니다.
+     * 연체 해제 이벤트 snapshot을 회원 포인트 차감 command로 옮깁니다.
      *
-     * @param event common-events 연체 해제 이벤트 record 입니다.
-     * @return 회원 포인트에서 연체료를 차감하기 위한 application command 를 반환합니다.
+     * @param event common-events 연체 해제 이벤트 record.
+     * @return 회원 포인트에서 연체료를 차감하기 위한 application command.
      */
     private MemberOverdueClearCommand toCommand(OverdueCleared event) {
         return new MemberOverdueClearCommand(
@@ -165,10 +145,10 @@ public class MemberEventConsumer {
     }
 
     /**
-     * 포인트 사용 command 메시지의 회원 snapshot, 포인트, 사유를 회원 포인트 차감 command 로 변환합니다.
+     * 포인트 사용 command snapshot을 회원 포인트 차감 command로 옮깁니다.
      *
-     * @param command common-events 포인트 사용 command record 입니다.
-     * @return 보상 흐름에서 회원 포인트를 차감하기 위한 application command 를 반환합니다.
+     * @param command common-events 포인트 사용 command record.
+     * @return 보상 흐름에서 회원 포인트를 차감하기 위한 application command.
      */
     private MemberPointUseCommand toCommand(PointUseCommand command) {
         return new MemberPointUseCommand(
@@ -182,11 +162,11 @@ public class MemberEventConsumer {
     }
 
     /**
-     * Redis processing lock handle
-     * @param eventId 이벤트 식별자
-     * @param message already processing message
-     * @param handler 이벤트 handler
-     * @throws Exception 예외 전파
+     * Redis 처리 점유권을 얻은 경우에만 handler를 실행합니다.
+     *
+     * @param eventId 이벤트 식별자.
+     * @param message already processing 로그 메시지.
+     * @param handler 이벤트 handler.
      */
     private void handleWithProcessingLock(String eventId, String message, MessageHandler handler) throws Exception {
         switch (tryAcquireProcessingLock(eventId)) {
@@ -203,32 +183,33 @@ public class MemberEventConsumer {
     }
 
     /**
-     * Redis 에 처리 이력을 기록해 동일 메시지가 다시 처리되지 않도록 합니다.
+     * Redis lock은 동시 처리만 막고, 최종 중복 방지는 processed message 저장소가 맡습니다.
      *
      * @param eventId 멱등성 판단과 추적에 사용할 이벤트 식별자.
-     * @return 새로 처리할 수 있는 이벤트이면 CLAIMED, 이미 처리된 이벤트이면 ALREADY_PROCESSING 를 반환.
+     * @return 새로 처리할 수 있으면 CLAIMED, 이미 처리 중이면 ALREADY_PROCESSING.
      */
     private ProcessingClaimResult tryAcquireProcessingLock(String eventId) {
         String key = processingKey(eventId);
+        // 동시에 처리 중인 consumer만 막고, 실패하면 releaseProcessing으로 다시 열어둡니다.
         return Boolean.TRUE.equals(
             redisTemplate.opsForValue().setIfAbsent(key, UUID.randomUUID().toString(), processingProperties.ttl())
         ) ? ProcessingClaimResult.CLAIMED : ProcessingClaimResult.ALREADY_PROCESSING;
     }
 
     /**
-     * Redis processing lock Key 생성 제거.
+     * 처리 실패 시 재전달 메시지가 다시 점유할 수 있도록 lock을 해제합니다.
      *
-     * @param eventId 멱등성 판단과 추적에 사용할 이벤트 식별자.
+     * @param eventId 이벤트 식별자.
      */
     private void releaseProcessing(String eventId) {
         redisTemplate.delete(processingKey(eventId));
     }
 
     /**
-     * Redis processing lock Key 생성.
+     * 서비스별 처리 lock key를 만듭니다.
      *
-     * @param eventId 멱등성 판단과 추적에 사용할 이벤트 식별자.
-     * @return  Redis processing lock Key.
+     * @param eventId 이벤트 식별자.
+     * @return Redis processing lock key.
      */
     private String processingKey(String eventId) {
         return "processing:member:" + eventId;

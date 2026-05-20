@@ -74,15 +74,15 @@ public class RentalCardJpaEntity {
     protected RentalCardJpaEntity() {}
 
     /**
-     * 대여카드 엔티티 생성
+     * 도메인 모델의 현재 상태를 JPA 엔티티로 옮길 때 사용합니다.
      *
-     * @param rentalCardNo 설정할 대여카드 번호.
-     * @param memberId 조회할 회원 로그인 ID.
-     * @param memberName 저장할 회원 이름.
-     * @param rentStatus 저장하거나 설정할 대여카드 상태.
-     * @param lateFeePoint 저장하거나 복원할 연체료 포인트 값.
-     * @param rentItems 저장할 대여 중 도서 값 목록.
-     * @param returnItems 저장할 반납 완료 도서 값 목록.
+     * @param rentalCardNo 대여카드 번호.
+     * @param memberId 회원 로그인 ID.
+     * @param memberName 회원 이름.
+     * @param rentStatus 대여카드 상태.
+     * @param lateFeePoint 연체료 포인트.
+     * @param rentItems 대여 중 도서 값 목록.
+     * @param returnItems 반납 완료 도서 값 목록.
      */
     public RentalCardJpaEntity(
         String rentalCardNo,

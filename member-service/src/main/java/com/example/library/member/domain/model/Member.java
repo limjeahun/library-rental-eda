@@ -47,14 +47,14 @@ public class Member {
     private final List<MemberDomainEvent> domainEvents = new ArrayList<>();
 
     /**
-     * 영속성 어댑터가 저장된 회원 상태를 도메인 모델로 복원할 때 사용.
+     * factory와 저장소 복원에서만 회원 상태를 초기화합니다.
      *
-     * @param memberNo 조회할 회원 번호.
+     * @param memberNo 회원 번호.
      * @param idName 대상 회원의 ID와 이름을 담은 값 객체.
-     * @param password 저장하거나 검증할 비밀번호 값.
-     * @param email 저장하거나 검증할 이메일 값.
+     * @param password 비밀번호 값.
+     * @param email 이메일 값.
      * @param authorities 회원에게 부여된 권한 목록.
-     * @param point 적립, 차감, 정산 또는 보상에 사용할 포인트 값.
+     * @param point 회원 보유 포인트.
      */
     private Member(
             Long            memberNo,
@@ -73,12 +73,12 @@ public class Member {
     }
 
     /**
-     * 기본 USER 권한과 0 포인트를 가진 새 회원을 등록.
+     * 기본 USER 권한과 0 포인트를 가진 새 회원을 등록합니다.
      *
      * @param idName 대상 회원의 ID와 이름을 담은 값 객체.
      * @param pwd 회원 등록에 사용할 비밀번호 값 객체.
-     * @param email 저장하거나 검증할 이메일 값.
-     * @return 기본 USER 권한과 0포인트로 초기화된 회원 도메인 모델을 반환.
+     * @param email 이메일 값.
+     * @return 기본 USER 권한과 0포인트로 초기화된 회원 도메인 모델.
      */
     public static Member registerMember(MemberIdentity idName, PassWord pwd, Email email) {
         Member member = new Member(null, idName, pwd, email, new ArrayList<>(), new Point(0));
@@ -127,6 +127,7 @@ public class Member {
 
     public List<MemberDomainEvent> pullDomainEvents() {
         List<MemberDomainEvent> events = List.copyOf(domainEvents);
+        // 발행 후 같은 도메인 이벤트가 다시 나가지 않도록 비웁니다.
         domainEvents.clear();
         return events;
     }

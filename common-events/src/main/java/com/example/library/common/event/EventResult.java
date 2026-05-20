@@ -124,6 +124,7 @@ public record EventResult(
         String reason,
         Instant occurredAt
     ) {
+        // Result 자체도 메시지이므로 원본 eventId와 별개의 새 eventId를 갖습니다.
         String eventId = UUID.randomUUID().toString();
         validateSnapshot(eventType, memberId, itemNo, itemTitle);
         return new EventResult(

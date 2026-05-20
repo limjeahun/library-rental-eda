@@ -87,6 +87,7 @@ public class RentalCardService implements CreateRentalCardUseCase, RentItemUseCa
         RentalCard saved = saveRentalCardPort.save(rentalCard);
 
         var event = pullRequiredEvent(rentalCard, ItemRentedDomainEvent.class);
+        // 이 correlationId로 book/member/bestbook 결과를 하나의 RENT 흐름으로 묶습니다.
         String correlationId = UUID.randomUUID().toString();
         saveRentalSagaStatePort.save(
                 RentalSagaState.startRent(correlationId, event.member(), event.item(), event.point())
@@ -112,6 +113,7 @@ public class RentalCardService implements CreateRentalCardUseCase, RentItemUseCa
         RentalCard saved = saveRentalCardPort.save(rentalCard);
 
         var event = pullRequiredEvent(rentalCard, ItemReturnedDomainEvent.class);
+        // 이 correlationId로 book/member 결과를 하나의 RETURN 흐름으로 묶습니다.
         String correlationId = UUID.randomUUID().toString();
         saveRentalSagaStatePort.save(
                 RentalSagaState.startReturn(correlationId, event.member(), event.item(), event.point())
@@ -154,6 +156,7 @@ public class RentalCardService implements CreateRentalCardUseCase, RentItemUseCa
         RentalCard saved = saveRentalCardPort.save(rentalCard);
 
         var event = pullRequiredEvent(rentalCard, OverdueClearedDomainEvent.class);
+        // 이 correlationId로 member 결과와 연체 해제 보상을 같은 흐름으로 묶습니다.
         String correlationId = UUID.randomUUID().toString();
         saveRentalSagaStatePort.save(
                 RentalSagaState.startOverdue(correlationId, event.member(), usedPoint)
@@ -223,20 +226,9 @@ public class RentalCardService implements CreateRentalCardUseCase, RentItemUseCa
     }
 
     /**
-     * 대여카드 aggregate 에서 이번 상태 변경 중 발생한 필수 도메인 이벤트를 꺼냅니다.
+     * 이번 상태 변경에서 필요한 도메인 이벤트를 꺼냅니다.
      *
-     * <p>도메인 이벤트는 {@link RentalCard} 내부에 임시로 기록되며, application service 는
-     * 상태 저장 이후 필요한 이벤트를 꺼내 outbound port 로 전달합니다. 이 메서드는 현재 use case 가
-     * 기대하는 이벤트 타입이 실제로 발생했는지 확인하고, 없으면 도메인 상태 변경과 후속 발행 흐름이
-     * 어긋난 것으로 보고 예외를 발생시킵니다.
-     *
-     * <p>{@code pullDomainEvents()} 는 이벤트를 반환한 뒤 내부 이벤트 버퍼를 비우므로,
-     * 하나의 상태 변경 흐름에서 한 번만 호출해야 합니다.
-     *
-     * @param rentalCard 도메인 이벤트를 발생시킨 대여카드 aggregate 입니다.
-     * @param eventType 현재 use case 가 필요로 하는 도메인 이벤트 타입입니다.
-     * @return 현재 상태 변경 중 발생한 필수 도메인 이벤트입니다.
-     * @throws IllegalStateException 기대한 도메인 이벤트가 발생하지 않은 경우 발생합니다.
+     * <p>없으면 aggregate 상태 변경과 후속 발행 흐름이 어긋난 것으로 봅니다.
      */
     private <T extends RentalDomainEvent> T pullRequiredEvent(
             RentalCard rentalCard,

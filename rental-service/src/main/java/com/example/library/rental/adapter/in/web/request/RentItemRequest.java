@@ -6,12 +6,12 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 /**
- * 도서 대여 요청 DTO.
+ * 도서 대여 HTTP 요청 DTO.
  *
  * @param itemId 대여 대상 도서 번호.
- * @param itemTitle 대여 항목의 도서 제목.
- * @param userId 대여카드 소유자를 식별하는 회원 ID.
- * @param userNm 대여카드 요청 또는 응답에서 사용할 회원 이름.
+ * @param itemTitle 대여 대상 도서 제목.
+ * @param userId 대여카드 소유 회원 ID.
+ * @param userNm 대여카드 소유 회원 이름.
  */
 public record RentItemRequest(
     @NotNull @JsonAlias({"itemId", "ItemId"}) Long itemId,
@@ -20,9 +20,9 @@ public record RentItemRequest(
     @NotBlank @JsonAlias({"userNm", "UserNm"}) String userNm
 ) {
     /**
-     * 요청의 회원/도서 정보를 도서 대여 command로 변환.
+     * web 요청 값을 도서 대여 command로 넘깁니다.
      *
-     * @return 요청 회원과 도서 정보를 담은 application command를 반환.
+     * @return 요청 회원과 도서 정보를 담은 application command.
      */
     public RentItemCommand toCommand() {
         return new RentItemCommand(userId, userNm, itemId, itemTitle);

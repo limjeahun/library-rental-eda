@@ -41,7 +41,7 @@ public class Book {
     private final List<BookDomainEvent> domainEvents = new ArrayList<>();
 
     /**
-     * 영속성 어댑터가 저장된 도서 상태를 도메인 모델로 복원할 때 사용합니다.
+     * factory와 저장소 복원에서만 도서 상태를 초기화합니다.
      *
      * @param no 도서 번호.
      * @param title 도서 제목.
@@ -73,14 +73,14 @@ public class Book {
      * @param desc 도서 상세 설명.
      * @param classification 도서 분류.
      * @param location 도서 소장 지점.
-     * @return ENTERED 새 도서 도메인 모델.
+     * @return ENTERED 상태의 새 도서 도메인 모델.
      */
     public static Book enterBook(String title, BookDesc desc, Classification classification, Location location) {
         return new Book(null, title, desc, classification, BookStatus.ENTERED, location);
     }
 
     /**
-     * 도서 모델 재구성
+     * 저장소 상태로 도서 모델을 복원합니다.
      *
      * @param no 도서 번호.
      * @param title 도서 제목.
@@ -88,7 +88,7 @@ public class Book {
      * @param classification 도서 분류.
      * @param bookStatus 도서 상태.
      * @param location 도서 소장 지점.
-     * @return Book Model
+     * @return 저장소 상태에서 복원한 도서 도메인 모델.
      */
     public static Book reconstitute(
             Long no,
@@ -128,6 +128,7 @@ public class Book {
 
     public List<BookDomainEvent> pullDomainEvents() {
         List<BookDomainEvent> events = List.copyOf(domainEvents);
+        // 발행 후 같은 도메인 이벤트가 다시 나가지 않도록 비웁니다.
         domainEvents.clear();
         return events;
     }

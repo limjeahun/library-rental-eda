@@ -26,12 +26,12 @@ public class BestBookDocument {
     }
 
     /**
-     * 인기 도서 read model의 저장 상태를 생성합니다.
+     * 도메인 모델의 현재 상태를 MongoDB document로 옮길 때 사용합니다.
      *
-     * @param id 조회하거나 저장할 인기 도서 read model 식별자입니다.
-     * @param itemNo 인기 도서 집계 대상 도서 번호입니다.
-     * @param itemTitle 인기 도서 집계에 표시할 도서 제목입니다.
-     * @param rentCount 저장하거나 응답할 누적 대여 횟수입니다.
+     * @param id 인기 도서 read model 식별자.
+     * @param itemNo 인기 도서 집계 대상 도서 번호.
+     * @param itemTitle 인기 도서 집계에 표시할 도서 제목.
+     * @param rentCount 누적 대여 횟수.
      */
     public BestBookDocument(Long id, Long itemNo, String itemTitle, long rentCount) {
         this.id = id;

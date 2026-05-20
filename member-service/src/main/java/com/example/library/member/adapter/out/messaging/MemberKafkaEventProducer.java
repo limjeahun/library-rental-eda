@@ -17,6 +17,8 @@ import org.springframework.stereotype.Component;
 
 /**
  * member-service 의 포인트 적립/차감 처리 결과를 {@link EventResult} 메시지로 변환해 발행하는 outbound adapter 입니다.
+ *
+ * <p>Result eventId는 새로 만들고 sourceEventId에는 처리한 원본 메시지 ID를 보존합니다.
  */
 @Component
 public class MemberKafkaEventProducer implements PublishMemberEventResultPort {

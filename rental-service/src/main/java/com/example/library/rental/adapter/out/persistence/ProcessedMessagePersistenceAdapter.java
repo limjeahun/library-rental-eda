@@ -10,6 +10,8 @@ import org.springframework.stereotype.Repository;
 
 /**
  * 대여 서비스가 처리 완료한 Kafka 메시지를 저장소에 기록하는 outbound persistence adapter입니다.
+ *
+ * <p>Kafka 재전달에 대비해 {@code serviceName + eventId}를 DB unique key로 기록합니다.
  */
 @Repository
 public class ProcessedMessagePersistenceAdapter implements MessageIdempotencyPort {
@@ -28,6 +30,7 @@ public class ProcessedMessagePersistenceAdapter implements MessageIdempotencyPor
     public boolean markProcessed(String eventId, String correlationId, InboundMessageType messageType) {
         validate(eventId, messageType);
         try {
+            // 중복 여부를 즉시 알아야 하므로 save 대신 flush 까지 실행합니다.
             repository.saveAndFlush(
                 new ProcessedMessageJpaEntity(serviceName, eventId, correlationId, messageType.name())
             );
@@ -38,6 +41,7 @@ public class ProcessedMessagePersistenceAdapter implements MessageIdempotencyPor
     }
 
     private void validate(String eventId, InboundMessageType messageType) {
+        // unique key와 기록 타입이 비어 있으면 멱등성 판단이 불가능합니다.
         if (serviceName == null || serviceName.isBlank()) {
             throw new IllegalArgumentException("serviceName은 비어 있을 수 없습니다.");
         }

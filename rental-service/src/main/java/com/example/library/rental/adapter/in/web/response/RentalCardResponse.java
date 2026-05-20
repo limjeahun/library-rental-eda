@@ -7,13 +7,13 @@ import java.util.List;
 /**
  * 대여카드 API 응답으로 반환하는 HTTP DTO.
  *
- * @param rentalCardNo 설정할 대여카드 번호.
- * @param userId 대여카드 소유자를 식별하는 회원 ID.
- * @param userNm 대여카드 요청 또는 응답에서 사용할 회원 이름.
- * @param rentStatus 저장하거나 설정할 대여카드 상태.
- * @param lateFee 저장하거나 설정할 연체료 값 객체.
- * @param rentItems 저장할 대여 중 도서 값 목록.
- * @param returnItems 저장할 반납 완료 도서 값 목록.
+ * @param rentalCardNo 대여카드 번호.
+ * @param userId 대여카드 소유 회원 ID.
+ * @param userNm 대여카드 소유 회원 이름.
+ * @param rentStatus 대여카드 상태.
+ * @param lateFee 연체료 포인트.
+ * @param rentItems 대여 중 도서 목록.
+ * @param returnItems 반납 완료 도서 목록.
  */
 public record RentalCardResponse(
     String rentalCardNo,
@@ -25,10 +25,10 @@ public record RentalCardResponse(
     List<ReturnItemResponse> returnItems
 ) {
     /**
-     * 대여카드 도메인 모델을 HTTP 응답 DTO로 변환.
+     * application 결과를 HTTP 응답 형태로 옮깁니다.
      *
-     * @param rentalCard 저장하거나 응답 DTO 로 변환할 대여카드 도메인 모델.
-     * @return 클라이언트에 반환할 HTTP 응답 DTO 반환.
+     * @param rentalCard 응답 DTO로 변환할 대여카드 application 결과.
+     * @return 클라이언트에 반환할 HTTP 응답 DTO.
      */
     public static RentalCardResponse from(RentalCardResult rentalCard) {
         return new RentalCardResponse(

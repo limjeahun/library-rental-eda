@@ -23,6 +23,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 대여 관련 이벤트와 포인트 command 를 처리해 회원 포인트를 변경하는 application service.
+ *
+ * <p>상태 변경 전에 processed message를 먼저 기록해 Kafka 재전달로 인한 중복 포인트 변경을 막습니다.
  */
 @Service
 @Slf4j

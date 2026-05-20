@@ -21,6 +21,8 @@ import org.springframework.stereotype.Service;
 
 /**
  * 인기 도서 read model 조회와 대여 횟수 누적 기록 흐름을 조율하는 application service입니다.
+ *
+ * <p>집계 변경 전에 processed message를 먼저 기록해 Kafka 재전달로 인한 중복 집계를 막습니다.
  */
 @Service
 @Slf4j

@@ -17,6 +17,8 @@ import org.springframework.stereotype.Component;
 
 /**
  * book-service 의 대여/반납 이벤트 처리 결과를 {@link EventResult} 메시지로 변환해 발행하는 outbound adapter 입니다.
+ *
+ * <p>Result eventId는 새로 만들고 sourceEventId에는 처리한 원본 메시지 ID를 보존합니다.
  */
 @Component
 @RequiredArgsConstructor
@@ -27,12 +29,7 @@ public class BookKafkaEventProducer implements PublishBookRentalResultPort {
     /**
      * 도서 상태 변경 처리 결과를 {@link EventResult} 이벤트로 발행합니다.
      *
-     * <p>발행 토픽: {@code rental_result} ({@code app.kafka.topics.rental-result})
-     * <p>메시지 타입: {@link EventResult}
-     * <p>수신: rental-service ({@code RentalEventConsumer#consumeRentalResult})
-     * <p>의미: 도서 서비스가 대여/반납/보상 이벤트를 성공 또는 실패로 처리했음을 대여 흐름에 알리는 결과 이벤트입니다.
-     *
-     * @param event 도서 aggregate 가 발생시킨 상태 변경 도메인 이벤트입니다.
+     * <p>rental-service가 SAGA 참여자 결과로 해석합니다.
      */
     @Override
     public void publishBookMadeUnavailable(

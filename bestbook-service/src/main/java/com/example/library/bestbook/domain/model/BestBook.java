@@ -24,12 +24,12 @@ public class BestBook {
     private long rentCount;
 
     /**
-     * 저장된 인기 도서 상태를 도메인 모델로 복원할 때 사용합니다.
+     * factory와 저장소 복원에서만 인기 도서 상태를 초기화합니다.
      *
-     * @param id 조회하거나 저장할 인기 도서 read model 식별자입니다.
-     * @param itemNo 인기 도서 집계 대상 도서 번호입니다.
-     * @param itemTitle 인기 도서 집계에 표시할 도서 제목입니다.
-     * @param rentCount 저장하거나 응답할 누적 대여 횟수입니다.
+     * @param id 인기 도서 read model 식별자.
+     * @param itemNo 인기 도서 집계 대상 도서 번호.
+     * @param itemTitle 인기 도서 집계에 표시할 도서 제목.
+     * @param rentCount 누적 대여 횟수.
      */
     private BestBook(Long id, Long itemNo, String itemTitle, long rentCount) {
         this.id = id;
@@ -39,34 +39,34 @@ public class BestBook {
     }
 
     /**
-     * 서비스 로컬 도서 값으로 첫 대여가 기록된 인기 도서 모델을 생성합니다.
+     * 첫 대여가 기록된 인기 도서 모델을 생성합니다.
      *
-     * @param item 업무 대상 도서의 번호와 제목입니다.
-     * @return 첫 대여 횟수 1회가 기록된 인기 도서 도메인 모델을 반환합니다.
+     * @param item 업무 대상 도서의 번호와 제목.
+     * @return 첫 대여 횟수 1회가 기록된 인기 도서 도메인 모델.
      */
     public static BestBook registerBestBook(BestBookItem item) {
         return new BestBook(null, item.no(), item.title(), 1L);
     }
 
     /**
-     * 도서 번호와 제목으로 첫 대여가 기록된 인기 도서 모델을 생성합니다.
+     * 첫 대여가 기록된 인기 도서 모델을 생성합니다.
      *
-     * @param itemNo 인기 도서 집계 대상 도서 번호입니다.
-     * @param itemTitle 인기 도서 집계에 표시할 도서 제목입니다.
-     * @return 첫 대여 횟수 1회가 기록된 인기 도서 도메인 모델을 반환합니다.
+     * @param itemNo 인기 도서 집계 대상 도서 번호.
+     * @param itemTitle 인기 도서 집계에 표시할 도서 제목.
+     * @return 첫 대여 횟수 1회가 기록된 인기 도서 도메인 모델.
      */
     public static BestBook registerBestBook(Long itemNo, String itemTitle) {
         return new BestBook(null, itemNo, itemTitle, 1L);
     }
 
     /**
-     * 저장소에 기록된 인기 도서 read model 상태를 복원합니다.
+     * 저장소 상태로 인기 도서 모델을 복원합니다.
      *
-     * @param id 조회하거나 저장할 인기 도서 read model 식별자입니다.
-     * @param itemNo 인기 도서 집계 대상 도서 번호입니다.
-     * @param itemTitle 인기 도서 집계에 표시할 도서 제목입니다.
-     * @param rentCount 저장된 누적 대여 횟수입니다.
-     * @return 저장소 상태에서 복원한 인기 도서 도메인 모델을 반환합니다.
+     * @param id 인기 도서 read model 식별자.
+     * @param itemNo 인기 도서 집계 대상 도서 번호.
+     * @param itemTitle 인기 도서 집계에 표시할 도서 제목.
+     * @param rentCount 저장된 누적 대여 횟수.
+     * @return 저장소 상태에서 복원한 인기 도서 도메인 모델.
      */
     public static BestBook reconstitute(Long id, Long itemNo, String itemTitle, long rentCount) {
         return new BestBook(id, itemNo, itemTitle, rentCount);

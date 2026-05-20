@@ -22,14 +22,14 @@ public class ReturnItemJpaEmbeddable {
     }
 
     /**
-     * 반납 완료 도서의 저장 상태를 생성합니다.
+     * 반납 항목의 현재 상태를 JPA 값 객체로 옮길 때 사용합니다.
      *
-     * @param itemNo 대여 또는 반납 항목의 도서 번호입니다.
-     * @param itemTitle 대여 또는 반납 항목의 도서 제목입니다.
-     * @param rentDate 저장하거나 복원할 대여일입니다.
-     * @param overdue 저장하거나 복원할 연체 여부입니다.
-     * @param overdueDate 저장하거나 복원할 반납 예정일입니다.
-     * @param returnDate 도서가 실제로 반납된 날짜입니다.
+     * @param itemNo 도서 번호.
+     * @param itemTitle 도서 제목.
+     * @param rentDate 대여일.
+     * @param overdue 연체 여부.
+     * @param overdueDate 반납 예정일.
+     * @param returnDate 실제 반납일.
      */
     public ReturnItemJpaEmbeddable(
         Long itemNo,

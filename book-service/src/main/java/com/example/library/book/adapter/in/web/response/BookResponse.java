@@ -11,16 +11,16 @@ import java.util.List;
 /**
  * 도서 API 응답으로 반환하는 HTTP DTO입니다.
  *
- * @param no 도서 번호입니다.
- * @param title 등록하거나 응답할 도서 제목입니다.
- * @param description 등록하거나 저장할 도서 설명입니다.
- * @param author 등록하거나 저장할 도서 저자입니다.
- * @param isbn 등록하거나 저장할 도서 ISBN입니다.
- * @param publicationDate 등록하거나 저장할 도서 발행일입니다.
- * @param source 등록하거나 저장할 도서 입수 경로입니다.
- * @param classification 등록하거나 저장할 도서 분류입니다.
- * @param bookStatus 저장하거나 복원할 도서 상태입니다.
- * @param location 등록하거나 저장할 도서 소장 지점입니다.
+ * @param no 도서 번호.
+ * @param title 도서 제목.
+ * @param description 도서 설명.
+ * @param author 도서 저자.
+ * @param isbn 도서 ISBN.
+ * @param publicationDate 도서 발행일.
+ * @param source 도서 입수 경로.
+ * @param classification 도서 분류.
+ * @param bookStatus 도서 상태.
+ * @param location 도서 소장 지점.
  */
 public record BookResponse(
     Long no,

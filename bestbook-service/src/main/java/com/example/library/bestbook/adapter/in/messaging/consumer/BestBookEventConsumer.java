@@ -31,14 +31,9 @@ public class BestBookEventConsumer {
     private final KafkaConsumerProcessingProperties processingProperties;
 
     /**
-     * 대여 이벤트를 받아 도서의 누적 대여 횟수를 1 증가시킵니다.
+     * 대여 이벤트를 인기 도서 대여 횟수 증가 use case로 전달합니다.
      *
-     * <p>수신 토픽: {@code rental_rent} ({@code app.kafka.topics.rental-rent})
-     * <p>메시지 타입: {@link ItemRented}
-     * <p>발신: rental-service ({@code RentalKafkaEventProducer#publishRentalEvent})
-     *
-     * @param message rental_rent 토픽에서 수신한 대여 이벤트 메시지입니다.
-     * @throws Exception Redis 중복 기록, 인기 도서 집계 중 오류가 발생할 때 전달됩니다.
+     * @param message rental_rent 토픽에서 수신한 대여 이벤트 메시지.
      */
     @KafkaListener(topics = "${app.kafka.topics.rental-rent}", groupId = "${spring.kafka.consumer.group-id}")
     public void consumeRent(ItemRentedMessage message) throws Exception {
@@ -51,14 +46,9 @@ public class BestBookEventConsumer {
     }
 
     /**
-     * 대여 취소 보상 이벤트를 받아 도서의 누적 대여 횟수를 1 감소시킵니다.
+     * 대여 취소 이벤트를 인기 도서 대여 횟수 감소 use case로 전달합니다.
      *
-     * <p>수신 토픽: {@code rent_cancel} ({@code app.kafka.topics.rent-cancel})
-     * <p>메시지 타입: {@link ItemRentCanceled}
-     * <p>발신: rental-service ({@code RentalKafkaEventProducer#publishRentCanceledEvent})
-     *
-     * @param message rent_cancel 토픽에서 수신한 대여 취소 이벤트 메시지입니다.
-     * @throws Exception Redis 중복 기록, 인기 도서 집계 취소 중 오류가 발생할 때 전달됩니다.
+     * @param message rent_cancel 토픽에서 수신한 대여 취소 이벤트 메시지.
      */
     @KafkaListener(topics = "${app.kafka.topics.rent-cancel}", groupId = "${spring.kafka.consumer.group-id}")
     public void consumeRentCanceled(ItemRentCanceledMessage message) throws Exception {
@@ -71,10 +61,10 @@ public class BestBookEventConsumer {
     }
 
     /**
-     * 대여 이벤트 메시지의 도서 snapshot 과 메시지 식별 값을 인기 도서 집계 command 로 변환합니다.
+     * 대여 이벤트 snapshot을 인기 도서 집계 command로 옮깁니다.
      *
-     * @param event common-events 대여 이벤트 record 입니다.
-     * @return 인기 도서 누적 대여 횟수를 증가시키기 위한 application command 를 반환합니다.
+     * @param event common-events 대여 이벤트 record.
+     * @return 인기 도서 누적 대여 횟수를 증가시키기 위한 application command.
      */
     private RecordBestBookRentCommand toCommand(ItemRented event) {
         return new RecordBestBookRentCommand(
@@ -87,10 +77,10 @@ public class BestBookEventConsumer {
     }
 
     /**
-     * 대여 취소 이벤트 메시지의 도서 snapshot 과 메시지 식별 값을 인기 도서 집계 취소 command 로 변환합니다.
+     * 대여 취소 이벤트 snapshot을 인기 도서 집계 취소 command로 옮깁니다.
      *
-     * @param event common-events 대여 취소 이벤트 record 입니다.
-     * @return 인기 도서 누적 대여 횟수를 감소시키기 위한 application command 를 반환합니다.
+     * @param event common-events 대여 취소 이벤트 record.
+     * @return 인기 도서 누적 대여 횟수를 감소시키기 위한 application command.
      */
     private CancelBestBookRentCommand toCommand(ItemRentCanceled event) {
         return new CancelBestBookRentCommand(
@@ -102,11 +92,11 @@ public class BestBookEventConsumer {
     }
 
     /**
-     * Redis processing lock handle
-     * @param eventId 이벤트 식별자
-     * @param logType already processing log type
-     * @param handler 이벤트 handler
-     * @throws Exception 예외 전파
+     * Redis 처리 점유권을 얻은 경우에만 handler를 실행합니다.
+     *
+     * @param eventId 이벤트 식별자.
+     * @param logType already processing 로그 타입.
+     * @param handler 이벤트 handler.
      */
     private void handleWithProcessingLock(String eventId, String logType, MessageHandler handler) throws Exception {
         switch (tryAcquireProcessingLock(eventId)) {
@@ -123,32 +113,33 @@ public class BestBookEventConsumer {
     }
 
     /**
-     * Redis 에 처리 이력을 기록해 동일 메시지가 다시 처리되지 않도록 합니다.
+     * Redis lock은 동시 처리만 막고, 최종 중복 방지는 processed message 저장소가 맡습니다.
      *
      * @param eventId 멱등성 판단과 추적에 사용할 이벤트 식별자.
-     * @return 새로 처리할 수 있는 이벤트이면 CLAIMED, 이미 처리된 이벤트이면 ALREADY_PROCESSING 를 반환.
+     * @return 새로 처리할 수 있으면 CLAIMED, 이미 처리 중이면 ALREADY_PROCESSING.
      */
     private ProcessingClaimResult tryAcquireProcessingLock(String eventId) {
         String key = processingKey(eventId);
+        // 동시에 처리 중인 consumer만 막고, 실패하면 releaseProcessing으로 다시 열어둡니다.
         return Boolean.TRUE.equals(
             redisTemplate.opsForValue().setIfAbsent(key, UUID.randomUUID().toString(), processingProperties.ttl())
         ) ? ProcessingClaimResult.CLAIMED : ProcessingClaimResult.ALREADY_PROCESSING;
     }
 
     /**
-     * Redis processing lock Key 생성 제거.
+     * 처리 실패 시 재전달 메시지가 다시 점유할 수 있도록 lock을 해제합니다.
      *
-     * @param eventId 멱등성 판단과 추적에 사용할 이벤트 식별자.
+     * @param eventId 이벤트 식별자.
      */
     private void releaseProcessing(String eventId) {
         redisTemplate.delete(processingKey(eventId));
     }
 
     /**
-     * Redis processing lock Key 생성.
+     * 서비스별 처리 lock key를 만듭니다.
      *
-     * @param eventId 멱등성 판단과 추적에 사용할 이벤트 식별자.
-     * @return  Redis processing lock Key.
+     * @param eventId 이벤트 식별자.
+     * @return Redis processing lock key.
      */
     private String processingKey(String eventId) {
         return "processing:bestbook:" + eventId;

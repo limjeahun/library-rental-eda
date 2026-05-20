@@ -7,18 +7,18 @@ import java.util.List;
 /**
  * 대여 중인 도서 항목 응답 DTO.
  *
- * @param itemId 대여, 반납, 연체 처리 대상 도서 번호입니다.
- * @param itemTitle 대여 또는 반납 항목의 도서 제목입니다.
- * @param rentDate 저장하거나 복원할 대여일입니다.
- * @param overdue 저장하거나 복원할 연체 여부입니다.
- * @param overdueDate 저장하거나 복원할 반납 예정일입니다.
+ * @param itemId 대여 중인 도서 번호.
+ * @param itemTitle 대여 중인 도서 제목.
+ * @param rentDate 대여일.
+ * @param overdue 연체 여부.
+ * @param overdueDate 반납 예정일.
  */
 public record RentItemResponse(Long itemId, String itemTitle, LocalDate rentDate, boolean overdue, LocalDate overdueDate) {
     /**
-     * 대여 항목 도메인 모델을 응답 DTO 변환.
+     * 대여 항목 결과를 응답 DTO로 옮깁니다.
      *
-     * @param rentItem 반납 또는 연체료 계산 대상 대여 항목.
-     * @return 클라이언트에 반환할 응답 DTO 반환.
+     * @param rentItem 대여 항목 application 결과.
+     * @return 클라이언트에 반환할 응답 DTO.
      */
     public static RentItemResponse from(RentItemResult rentItem) {
         return new RentItemResponse(
@@ -31,9 +31,10 @@ public record RentItemResponse(Long itemId, String itemTitle, LocalDate rentDate
     }
 
     /**
-     * 대여 항목 도메인 모델을 응답 DTO 로 변환.
-     * @param rentItems 대여 중인 도서 항목 DTO 리스트.
-     * @return 대여 항목 반환.
+     * 대여 항목 결과 목록을 응답 DTO 목록으로 옮깁니다.
+     *
+     * @param rentItems 대여 중인 도서 항목 결과 목록.
+     * @return 대여 항목 응답 DTO 목록.
      */
     public static List<RentItemResponse> from(List<RentItemResult> rentItems) {
         return rentItems.stream()
