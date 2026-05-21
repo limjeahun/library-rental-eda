@@ -16,6 +16,8 @@ import com.example.library.member.domain.event.MemberPointUsedDomainEvent;
 import com.example.library.member.domain.model.Member;
 import com.example.library.member.domain.vo.MemberIdentity;
 import java.util.NoSuchElementException;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -43,23 +45,14 @@ public class MemberEventService implements HandleMemberEventUseCase {
     @Override
     @Transactional
     public void handleRent(MemberPointSaveCommand command) {
-        if (!messageIdempotencyPort.markProcessed(
-            command.eventId(),
-            command.correlationId(),
-            InboundMessageType.ITEM_RENTED
-        )) {
-            log.info("skip already processed member rent eventId={}", command.eventId());
-            return;
-        }
-        try {
-            var member = savePoint(command.memberId(), command.memberName(), command.point());
-            var event = pullRequiredEvent(member, MemberPointSavedDomainEvent.class);
-            var context = MemberPointSaveResultContext.from(command);
-            publishMemberEventResultPort.publishRentPointSaved(event, context);
-        } catch (Exception ex) {
-            log.error("member rent point save failed eventId={}", command.eventId(), ex);
-            publishMemberEventResultPort.publishRentPointSaveFailed(command, ex.getMessage());
-        }
+        handlePointSave(
+            command,
+            InboundMessageType.ITEM_RENTED,
+            "member rent",
+            "member rent point save",
+            publishMemberEventResultPort::publishRentPointSaved,
+            publishMemberEventResultPort::publishRentPointSaveFailed
+        );
     }
 
     /**
@@ -70,23 +63,14 @@ public class MemberEventService implements HandleMemberEventUseCase {
     @Override
     @Transactional
     public void handleReturn(MemberPointSaveCommand command) {
-        if (!messageIdempotencyPort.markProcessed(
-            command.eventId(),
-            command.correlationId(),
-            InboundMessageType.ITEM_RETURNED
-        )) {
-            log.info("skip already processed member return eventId={}", command.eventId());
-            return;
-        }
-        try {
-            var member  = savePoint(command.memberId(), command.memberName(), command.point());
-            var event   = pullRequiredEvent(member, MemberPointSavedDomainEvent.class);
-            var context = MemberPointSaveResultContext.from(command);
-            publishMemberEventResultPort.publishReturnPointSaved(event, context);
-        } catch (Exception ex) {
-            log.error("member return point save failed eventId={}", command.eventId(), ex);
-            publishMemberEventResultPort.publishReturnPointSaveFailed(command, ex.getMessage());
-        }
+        handlePointSave(
+            command,
+            InboundMessageType.ITEM_RETURNED,
+            "member return",
+            "member return point save",
+            publishMemberEventResultPort::publishReturnPointSaved,
+            publishMemberEventResultPort::publishReturnPointSaveFailed
+        );
     }
 
     /**
@@ -97,26 +81,27 @@ public class MemberEventService implements HandleMemberEventUseCase {
     @Override
     @Transactional
     public void handleOverdueClear(MemberOverdueClearCommand command) {
-        if (!messageIdempotencyPort.markProcessed(
+        processInboundMessage(
             command.eventId(),
             command.correlationId(),
-            InboundMessageType.OVERDUE_CLEARED
-        )) {
-            log.info("skip already processed overdue clear eventId={}", command.eventId());
-            return;
-        }
-        try {
-            Member member = usePoint(command.memberId(), command.memberName(), command.point());
-            var event = pullRequiredEvent(member, MemberPointUsedDomainEvent.class);
-            publishMemberEventResultPort.publishOverduePointUsed(
-                event,
+            InboundMessageType.OVERDUE_CLEARED,
+            "overdue clear",
+            () -> {
+                Member member = usePoint(command.memberId(), command.memberName(), command.point());
+                var event = pullRequiredEvent(member, MemberPointUsedDomainEvent.class);
+                publishMemberEventResultPort.publishOverduePointUsed(
+                    event,
+                    command.eventId(),
+                    command.correlationId()
+                );
+            },
+            ex -> publishFailure(
+                "overdue clear",
                 command.eventId(),
-                command.correlationId()
-            );
-        } catch (Exception ex) {
-            log.error("overdue clear failed eventId={}", command.eventId(), ex);
-            publishMemberEventResultPort.publishOverduePointUseFailed(command, ex.getMessage());
-        }
+                ex,
+                reason -> publishMemberEventResultPort.publishOverduePointUseFailed(command, reason)
+            )
+        );
     }
 
     /**
@@ -127,19 +112,76 @@ public class MemberEventService implements HandleMemberEventUseCase {
     @Override
     @Transactional
     public void handlePointUse(MemberPointUseCommand command) {
-        if (!messageIdempotencyPort.markProcessed(
+        processInboundMessage(
             command.eventId(),
             command.correlationId(),
-            InboundMessageType.POINT_USE_COMMAND
-        )) {
-            log.info("skip already processed point_use eventId={}", command.eventId());
+            InboundMessageType.POINT_USE_COMMAND,
+            "point_use",
+            () -> usePoint(command.memberId(), command.memberName(), command.point()),
+            ex -> log.error(
+                "point_use command failed eventId={} reason={}",
+                command.eventId(),
+                command.reason(),
+                ex
+            )
+        );
+    }
+
+    private void handlePointSave(
+        MemberPointSaveCommand command,
+        InboundMessageType messageType,
+        String duplicateLogName,
+        String failureLogName,
+        BiConsumer<MemberPointSavedDomainEvent, MemberPointSaveResultContext> successPublisher,
+        BiConsumer<MemberPointSaveCommand, String> failurePublisher
+    ) {
+        processInboundMessage(
+            command.eventId(),
+            command.correlationId(),
+            messageType,
+            duplicateLogName,
+            () -> {
+                var member = savePoint(command.memberId(), command.memberName(), command.point());
+                var event = pullRequiredEvent(member, MemberPointSavedDomainEvent.class);
+                var context = MemberPointSaveResultContext.from(command);
+                successPublisher.accept(event, context);
+            },
+            ex -> publishFailure(
+                failureLogName,
+                command.eventId(),
+                ex,
+                reason -> failurePublisher.accept(command, reason)
+            )
+        );
+    }
+
+    private void processInboundMessage(
+        String eventId,
+        String correlationId,
+        InboundMessageType messageType,
+        String duplicateLogName,
+        Runnable handler,
+        Consumer<Exception> failureHandler
+    ) {
+        if (!messageIdempotencyPort.markProcessed(eventId, correlationId, messageType)) {
+            log.info("skip already processed {} eventId={}", duplicateLogName, eventId);
             return;
         }
         try {
-            usePoint(command.memberId(), command.memberName(), command.point());
+            handler.run();
         } catch (Exception ex) {
-            log.error("point_use command failed eventId={} reason={}", command.eventId(), command.reason(), ex);
+            failureHandler.accept(ex);
         }
+    }
+
+    private void publishFailure(
+        String failureLogName,
+        String eventId,
+        Exception ex,
+        Consumer<String> failurePublisher
+    ) {
+        log.error("{} failed eventId={}", failureLogName, eventId, ex);
+        failurePublisher.accept(ex.getMessage());
     }
 
     private Member savePoint(String memberId, String memberName, long point) {

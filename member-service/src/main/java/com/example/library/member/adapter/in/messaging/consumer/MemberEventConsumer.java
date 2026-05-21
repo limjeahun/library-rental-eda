@@ -33,7 +33,7 @@ public class MemberEventConsumer {
     private final KafkaConsumerProcessingProperties processingProperties;
 
     /**
-     * 대여 이벤트를 회원 대여 포인트 적립 use case로 전달합니다.
+     * 대여 이벤트를 회원 대여 포인트 적립 use case 로 전달합니다.
      *
      * @param message rental_rent 토픽에서 수신한 대여 이벤트 메시지.
      */
