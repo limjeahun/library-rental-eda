@@ -1,0 +1,43 @@
+lowercaseOutputName: true
+lowercaseOutputLabelNames: true
+rules:
+  - pattern: 'kafka.server<type=BrokerTopicMetrics, name=(.+)PerSec, topic=(.+)><>Count'
+    name: kafka_server_brokertopicmetrics_$1_total
+    labels:
+      topic: "$2"
+    type: COUNTER
+  - pattern: 'kafka.server<type=BrokerTopicMetrics, name=(.+)PerSec><>Count'
+    name: kafka_server_brokertopicmetrics_$1_total
+    type: COUNTER
+  - pattern: 'kafka.controller<type=KafkaController, name=(.+)><>Value'
+    name: kafka_controller_kafkacontroller_$1
+    type: GAUGE
+  - pattern: 'kafka.server<type=ReplicaManager, name=(.+)><>Value'
+    name: kafka_server_replicamanager_$1
+    type: GAUGE
+  - pattern: 'kafka.network<type=RequestMetrics, name=RequestsPerSec, request=(.+)><>Count'
+    name: kafka_network_requestmetrics_requests_total
+    labels:
+      request: "$1"
+    type: COUNTER
+  - pattern: 'kafka.network<type=RequestMetrics, name=TotalTimeMs, request=(.+)><>Mean'
+    name: kafka_network_requestmetrics_totaltimems_mean
+    labels:
+      request: "$1"
+    type: GAUGE
+  - pattern: 'java.lang<type=Memory><HeapMemoryUsage>used'
+    name: jvm_memory_heap_used_bytes
+    type: GAUGE
+  - pattern: 'java.lang<type=Memory><HeapMemoryUsage>max'
+    name: jvm_memory_heap_max_bytes
+    type: GAUGE
+  - pattern: 'java.lang<type=GarbageCollector, name=(.+)><>CollectionCount'
+    name: jvm_gc_collection_count
+    labels:
+      gc: "$1"
+    type: COUNTER
+  - pattern: 'java.lang<type=GarbageCollector, name=(.+)><>CollectionTime'
+    name: jvm_gc_collection_time_ms
+    labels:
+      gc: "$1"
+    type: COUNTER

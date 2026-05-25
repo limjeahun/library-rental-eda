@@ -31,10 +31,16 @@ services:
       - ./docker/mongodb/init:/docker-entrypoint-initdb.d
 
   kafka:
-    image: apache/kafka:3.9.0
+    build:
+      context: ./docker/kafka
+      args:
+        KAFKA_IMAGE: apache/kafka:3.9.0
+        JMX_EXPORTER_VERSION: 1.5.0
+    image: library-kafka-jmx:3.9.0
     container_name: library-kafka
     ports:
       - "19092:9092"
+      - "7071:7071"
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
@@ -51,6 +57,7 @@ services:
       KAFKA_NUM_PARTITIONS: 4
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
       KAFKA_CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+      KAFKA_OPTS: "-javaagent:/opt/jmx_exporter/jmx_prometheus_javaagent.jar=7071:/opt/jmx_exporter/kafka-jmx.yml"
 
   schema-registry:
     image: confluentinc/cp-schema-registry:7.7.1
@@ -82,3 +89,221 @@ services:
       /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:29092 --create --if-not-exists --topic return_cancel --partitions 4 --replication-factor 1 &&
       /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:29092 --create --if-not-exists --topic overdue_clear_cancel --partitions 4 --replication-factor 1
       "
+
+  rental-service:
+    build:
+      context: .
+      dockerfile: docker/service/Dockerfile
+      args:
+        SERVICE_NAME: rental-service
+    image: library-rental-service:local
+    container_name: library-rental-service
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      schema-registry:
+        condition: service_started
+      kafka-init:
+        condition: service_completed_successfully
+    ports:
+      - "8080:8080"
+    environment:
+      JAVA_OPTS: "-XX:MaxRAMPercentage=75.0 -Dfile.encoding=UTF-8"
+      SPRING_DATASOURCE_URL: jdbc:mariadb://mariadb:3306/rental_db
+      SPRING_DATASOURCE_USERNAME: library
+      SPRING_DATASOURCE_PASSWORD: library
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      SPRING_KAFKA_PROPERTIES_SCHEMA_REGISTRY_URL: http://schema-registry:8081
+      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: "health,info,prometheus"
+      MANAGEMENT_ENDPOINT_HEALTH_PROBES_ENABLED: "true"
+      MANAGEMENT_ENDPOINT_PROMETHEUS_ENABLED: "true"
+      MANAGEMENT_METRICS_TAGS_APPLICATION: rental-service
+
+  book-service:
+    build:
+      context: .
+      dockerfile: docker/service/Dockerfile
+      args:
+        SERVICE_NAME: book-service
+    image: library-book-service:local
+    container_name: library-book-service
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      schema-registry:
+        condition: service_started
+      kafka-init:
+        condition: service_completed_successfully
+    ports:
+      - "8081:8081"
+    environment:
+      JAVA_OPTS: "-XX:MaxRAMPercentage=75.0 -Dfile.encoding=UTF-8"
+      SPRING_DATASOURCE_URL: jdbc:mariadb://mariadb:3306/book_db
+      SPRING_DATASOURCE_USERNAME: library
+      SPRING_DATASOURCE_PASSWORD: library
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      SPRING_KAFKA_PROPERTIES_SCHEMA_REGISTRY_URL: http://schema-registry:8081
+      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: "health,info,prometheus"
+      MANAGEMENT_ENDPOINT_HEALTH_PROBES_ENABLED: "true"
+      MANAGEMENT_ENDPOINT_PROMETHEUS_ENABLED: "true"
+      MANAGEMENT_METRICS_TAGS_APPLICATION: book-service
+
+  member-service:
+    build:
+      context: .
+      dockerfile: docker/service/Dockerfile
+      args:
+        SERVICE_NAME: member-service
+    image: library-member-service:local
+    container_name: library-member-service
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      schema-registry:
+        condition: service_started
+      kafka-init:
+        condition: service_completed_successfully
+    ports:
+      - "8082:8082"
+    environment:
+      JAVA_OPTS: "-XX:MaxRAMPercentage=75.0 -Dfile.encoding=UTF-8"
+      SPRING_DATASOURCE_URL: jdbc:mariadb://mariadb:3306/member_db
+      SPRING_DATASOURCE_USERNAME: library
+      SPRING_DATASOURCE_PASSWORD: library
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      SPRING_KAFKA_PROPERTIES_SCHEMA_REGISTRY_URL: http://schema-registry:8081
+      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: "health,info,prometheus"
+      MANAGEMENT_ENDPOINT_HEALTH_PROBES_ENABLED: "true"
+      MANAGEMENT_ENDPOINT_PROMETHEUS_ENABLED: "true"
+      MANAGEMENT_METRICS_TAGS_APPLICATION: member-service
+
+  bestbook-service:
+    build:
+      context: .
+      dockerfile: docker/service/Dockerfile
+      args:
+        SERVICE_NAME: bestbook-service
+    image: library-bestbook-service:local
+    container_name: library-bestbook-service
+    depends_on:
+      mongodb:
+        condition: service_started
+      redis:
+        condition: service_started
+      schema-registry:
+        condition: service_started
+      kafka-init:
+        condition: service_completed_successfully
+    ports:
+      - "8084:8084"
+    environment:
+      JAVA_OPTS: "-XX:MaxRAMPercentage=75.0 -Dfile.encoding=UTF-8"
+      SPRING_DATA_MONGODB_URI: "mongodb://mongodb:27017/bestbook_db?serverSelectionTimeoutMS=30000&connectTimeoutMS=10000&socketTimeoutMS=60000"
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      SPRING_KAFKA_PROPERTIES_SCHEMA_REGISTRY_URL: http://schema-registry:8081
+      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: "health,info,prometheus"
+      MANAGEMENT_ENDPOINT_HEALTH_PROBES_ENABLED: "true"
+      MANAGEMENT_ENDPOINT_PROMETHEUS_ENABLED: "true"
+      MANAGEMENT_METRICS_TAGS_APPLICATION: bestbook-service
+
+  kafka-exporter:
+    image: danielqsj/kafka-exporter:v1.9.0
+    container_name: library-kafka-exporter
+    depends_on:
+      - kafka
+    command:
+      - "--kafka.server=kafka:29092"
+      - "--web.listen-address=:9308"
+    ports:
+      - "9308:9308"
+
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    container_name: library-prometheus
+    depends_on:
+      - kafka
+      - kafka-exporter
+      - loki
+      - alloy
+    ports:
+      - "9090:9090"
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+
+  loki:
+    image: grafana/loki:3.7.0
+    container_name: library-loki
+    ports:
+      - "3100:3100"
+    command:
+      - "-config.file=/etc/loki/loki-config.yml"
+    volumes:
+      - ./docker/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - loki-data:/loki
+
+  alloy:
+    image: grafana/alloy:v1.16.1
+    container_name: library-alloy
+    user: "0:0"
+    depends_on:
+      - loki
+    ports:
+      - "12345:12345"
+    command:
+      - "run"
+      - "--server.http.listen-addr=0.0.0.0:12345"
+      - "--storage.path=/var/lib/alloy/data"
+      - "/etc/alloy/config.alloy"
+    volumes:
+      - ./docker/alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - type: bind
+        source: /var/run/docker.sock
+        target: /var/run/docker.sock
+        read_only: true
+        bind:
+          create_host_path: false
+      - alloy-data:/var/lib/alloy/data
+
+  grafana:
+    image: grafana/grafana:12.3.3
+    container_name: library-grafana
+    depends_on:
+      - prometheus
+      - loki
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_DEFAULT_LANGUAGE: ko-KR
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./docker/grafana/dashboards:/etc/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+
+volumes:
+  prometheus-data:
+  loki-data:
+  alloy-data:
+  grafana-data:

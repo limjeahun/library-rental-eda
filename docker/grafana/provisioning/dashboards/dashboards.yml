@@ -1,0 +1,12 @@
+apiVersion: 1
+
+providers:
+  - name: 도서관 Kafka
+    orgId: 1
+    folder: 도서관 대여 EDA
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/dashboards

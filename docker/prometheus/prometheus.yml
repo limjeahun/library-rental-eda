@@ -1,0 +1,53 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets:
+          - prometheus:9090
+
+  - job_name: kafka-jmx
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - kafka:7071
+
+  - job_name: kafka-exporter
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - kafka-exporter:9308
+
+  - job_name: spring-services
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets:
+          - rental-service:8080
+        labels:
+          service_name: rental-service
+      - targets:
+          - book-service:8081
+        labels:
+          service_name: book-service
+      - targets:
+          - member-service:8082
+        labels:
+          service_name: member-service
+      - targets:
+          - bestbook-service:8084
+        labels:
+          service_name: bestbook-service
+
+  - job_name: loki
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - loki:3100
+
+  - job_name: alloy
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - alloy:12345
