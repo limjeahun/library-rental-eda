@@ -638,6 +638,26 @@ macOS/Linux:
 ./gradlew :bestbook-service:bootRun
 ```
 
+### 3. k6 성능 테스트 실행
+
+Docker Compose의 `perf` profile로 k6를 실행할 수 있습니다. k6는 Compose 네트워크 안에서 각 서비스의 REST API를 호출하고, 내부 Kafka consumer 처리까지 포함한 EDA 대여/반납 흐름을 검증합니다.
+
+```powershell
+docker compose up -d --build
+docker compose --profile perf run --rm k6
+```
+
+부하 강도와 비동기 처리 대기 시간은 환경 변수로 조정합니다.
+
+```powershell
+$env:K6_TARGET_VUS="50"
+$env:K6_STEADY_DURATION="3m"
+$env:ASYNC_TIMEOUT_SECONDS="15"
+docker compose --profile perf run --rm k6
+```
+
+자세한 시나리오와 옵션은 [k6 Performance Tests](performance/k6/README.md)를 참고합니다.
+
 ## 수동 검증 시나리오
 
 ### 1. 회원 등록

@@ -302,6 +302,36 @@ services:
       - ./docker/grafana/dashboards:/etc/grafana/dashboards:ro
       - grafana-data:/var/lib/grafana
 
+  k6:
+    image: grafana/k6:latest
+    profiles:
+      - perf
+    depends_on:
+      rental-service:
+        condition: service_started
+      book-service:
+        condition: service_started
+      member-service:
+        condition: service_started
+      bestbook-service:
+        condition: service_started
+    volumes:
+      - ./performance/k6:/scripts:ro
+    environment:
+      MEMBER_URL: http://member-service:8082
+      BOOK_URL: http://book-service:8081
+      RENTAL_URL: http://rental-service:8080
+      BESTBOOK_URL: http://bestbook-service:8084
+      K6_TARGET_VUS: ${K6_TARGET_VUS:-20}
+      K6_RAMP_UP: ${K6_RAMP_UP:-30s}
+      K6_STEADY_DURATION: ${K6_STEADY_DURATION:-1m}
+      K6_RAMP_DOWN: ${K6_RAMP_DOWN:-30s}
+      ASYNC_TIMEOUT_SECONDS: ${ASYNC_TIMEOUT_SECONDS:-10}
+      POLL_INTERVAL_SECONDS: ${POLL_INTERVAL_SECONDS:-1}
+      SERVICE_READY_TIMEOUT_SECONDS: ${SERVICE_READY_TIMEOUT_SECONDS:-120}
+      VERIFY_BESTBOOK: ${VERIFY_BESTBOOK:-true}
+    command: ["run", "/scripts/rental-flow.js"]
+
 volumes:
   prometheus-data:
   loki-data:
