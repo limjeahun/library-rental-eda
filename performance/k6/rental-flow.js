@@ -16,6 +16,7 @@ const ASYNC_TIMEOUT_SECONDS = Number(__ENV.ASYNC_TIMEOUT_SECONDS || 10);
 const POLL_INTERVAL_SECONDS = Number(__ENV.POLL_INTERVAL_SECONDS || 1);
 const SERVICE_READY_TIMEOUT_SECONDS = Number(__ENV.SERVICE_READY_TIMEOUT_SECONDS || 120);
 const VERIFY_BESTBOOK = (__ENV.VERIFY_BESTBOOK || 'true').toLowerCase() === 'true';
+const PRE_REGISTERED_BOOK_COUNT = 100;
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 const memberSamples = buildMemberSamples();
@@ -50,13 +51,18 @@ export const options = {
 
 export function setup() {
   serviceReadiness.forEach(([name, url]) => waitForService(name, url));
+  return {
+    books: preRegisterBooks(),
+  };
 }
 
-export default function () {
+export default function (setupData) {
   const scenarioData = createScenarioData();
   const userId = scenarioData.userId;
   const userName = scenarioData.userName;
-  const itemTitle = scenarioData.itemTitle;
+  const selectedBook = pickRandomBook(setupData.books);
+  const itemId = selectedBook.itemId;
+  const itemTitle = selectedBook.itemTitle;
 
   const memberResponse = postJson(`${MEMBER_URL}/api/Member/`, {
     id: userId,
@@ -68,22 +74,6 @@ export default function () {
   check(memberResponse, {
     'created member has zero point': (response) => response.json('data.point') === 0,
   });
-
-  const bookResponse = postJson(`${BOOK_URL}/api/book`, {
-    title: itemTitle,
-    description: scenarioData.description,
-    author: scenarioData.author,
-    isbn: scenarioData.isbn,
-    publicationDate: scenarioData.publicationDate,
-    source: 'SUPPLY',
-    classification: scenarioData.classification,
-    location: scenarioData.location,
-  }, 201, 'book create');
-  const itemId = bookResponse.json('data.no');
-
-  if (!itemId) {
-    fail(`book create response did not include data.no: ${bookResponse.body}`);
-  }
 
   postJson(`${RENTAL_URL}/api/rental-cards`, {
     userId,
@@ -139,8 +129,43 @@ export default function () {
   sleep(1);
 }
 
-function uniqueId() {
-  return `k6-${Date.now()}-${exec.vu.idInTest}-${exec.scenario.iterationInTest}`;
+function preRegisterBooks() {
+  const books = [];
+
+  for (let index = 0; index < PRE_REGISTERED_BOOK_COUNT; index += 1) {
+    const sample = pick(bookSamples, index);
+    const title = `${sample.title} ${String(index + 1).padStart(3, '0')}`;
+    const response = postJson(`${BOOK_URL}/api/book`, {
+      title,
+      description: `${sample.title} 선등록 테스트 도서`,
+      author: sample.author,
+      isbn: `979-${numericCode(index + 1, 10)}`,
+      publicationDate: publicationDate(index),
+      source: 'SUPPLY',
+      classification: sample.classification,
+      location: index % 2 === 0 ? 'JEONGJA' : 'PANGYO',
+    }, 201, 'seed book create');
+    const itemId = response.json('data.no');
+
+    if (!itemId) {
+      fail(`seed book create response did not include data.no: ${response.body}`);
+    }
+
+    books.push({
+      itemId,
+      itemTitle: response.json('data.title') || title,
+    });
+  }
+
+  return books;
+}
+
+function pickRandomBook(books) {
+  if (!books || books.length === 0) {
+    fail('pre-registered book list is empty');
+  }
+
+  return books[Math.floor(Math.random() * books.length)];
 }
 
 function buildMemberSamples() {
@@ -426,30 +451,23 @@ function buildBookSamples() {
 
 function createScenarioData() {
   const seed = exec.vu.idInTest * 100000 + exec.scenario.iterationInTest;
-  const suffix = uniqueId();
+  const sequence = exec.scenario.iterationInTest + 1;
   const member = pick(memberSamples, seed);
-  const book = pick(bookSamples, seed + 3);
+  const userId = memberId(member, sequence);
 
   return {
-    userId: `${member.idPrefix}.${suffix}`,
+    userId,
     userName: member.name,
-    email: `${member.idPrefix}.${suffix}@library.test`,
-    itemTitle: `${book.title} ${shortCode(suffix)}`,
-    description: `${book.title} 소장용 테스트 도서`,
-    author: book.author,
-    isbn: `979-${numericCode(seed, 10)}`,
-    publicationDate: publicationDate(seed),
-    classification: book.classification,
-    location: seed % 2 === 0 ? 'JEONGJA' : 'PANGYO',
+    email: `${userId}@library.test`,
   };
+}
+
+function memberId(member, sequence) {
+  return `${member.idPrefix.replace(/\./g, '')}${sequence}`;
 }
 
 function pick(values, seed) {
   return values[Math.abs(seed) % values.length];
-}
-
-function shortCode(value) {
-  return value.replace(/[^a-zA-Z0-9]/g, '').slice(-8).toUpperCase();
 }
 
 function numericCode(seed, length) {
