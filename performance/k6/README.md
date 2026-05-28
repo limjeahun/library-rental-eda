@@ -16,9 +16,11 @@ k6 시나리오를 실행합니다.
 docker compose --profile perf run --rm k6
 ```
 
+Compose의 k6 서비스는 Prometheus remote write 출력으로 실행됩니다. 테스트가 시작되면 `http://localhost:3000`의 Grafana에서 `도서관 대여 EDA / k6 Performance` 대시보드를 열어 k6 자체 지표를 볼 수 있습니다.
+
 ## 시나리오
 
-`rental-flow.js`는 각 iteration마다 고유한 회원과 도서를 만들고 다음 흐름을 검증합니다.
+`rental-flow.js`는 각 iteration마다 고유한 회원과 도서를 만들고 다음 흐름을 검증합니다. 회원 이름은 2,000명 규모의 한국어 샘플 풀에서, 도서 제목은 분야별 120권 규모의 샘플 풀에서 생성합니다.
 
 1. 회원 등록
 2. 도서 등록
@@ -56,3 +58,4 @@ k6 결과와 함께 Grafana에서 Kafka consumer lag, Spring Boot HTTP/JVM metri
 - Grafana: `http://localhost:3000`
 - Prometheus: `http://localhost:9090`
 - Kafka Exporter: `http://localhost:9308/metrics`
+- k6 Dashboard: Grafana `도서관 대여 EDA / k6 Performance`

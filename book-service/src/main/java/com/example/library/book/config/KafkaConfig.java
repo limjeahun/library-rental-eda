@@ -71,6 +71,10 @@ public class KafkaConfig {
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaAvroDeserializer.class);
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        Integer maxPollRecords = kafkaProperties.getConsumer().getMaxPollRecords();
+        if (maxPollRecords != null) {
+            props.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, maxPollRecords);
+        }
         props.put(AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, schemaRegistryUrl());
         props.put(KafkaAvroDeserializerConfig.SPECIFIC_AVRO_READER_CONFIG, true);
         return new DefaultKafkaConsumerFactory<>(props);

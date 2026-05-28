@@ -17,17 +17,20 @@ spring:
     username: library
     password: library
     driver-class-name: org.mariadb.jdbc.Driver
+    hikari:
+      maximum-pool-size: 20
   jpa:
     hibernate:
       ddl-auto: update
-    show-sql: true
+    show-sql: false
     properties:
       hibernate:
-        format_sql: true
+        format_sql: false
   kafka:
     bootstrap-servers: localhost:19092
     consumer:
       group-id: member
+      max-poll-records: 10
     properties:
       schema.registry.url: http://localhost:8085
   data:

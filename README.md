@@ -647,6 +647,8 @@ docker compose up -d --build
 docker compose --profile perf run --rm k6
 ```
 
+`k6` 실행 결과는 Prometheus remote write로 `library-prometheus`에 누적되며, Grafana의 `도서관 대여 EDA / k6 Performance` 대시보드에서 확인할 수 있습니다.
+
 부하 강도와 비동기 처리 대기 시간은 환경 변수로 조정합니다.
 
 ```powershell

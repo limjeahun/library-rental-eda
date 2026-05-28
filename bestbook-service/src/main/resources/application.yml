@@ -16,6 +16,7 @@ spring:
     bootstrap-servers: localhost:19092
     consumer:
       group-id: bestbook
+      max-poll-records: 10
     properties:
       schema.registry.url: http://localhost:8085
   data:

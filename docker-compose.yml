@@ -246,6 +246,7 @@ services:
       - "--storage.tsdb.path=/prometheus"
       - "--web.console.libraries=/usr/share/prometheus/console_libraries"
       - "--web.console.templates=/usr/share/prometheus/consoles"
+      - "--web.enable-remote-write-receiver"
     volumes:
       - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus
@@ -315,6 +316,8 @@ services:
         condition: service_started
       bestbook-service:
         condition: service_started
+      prometheus:
+        condition: service_started
     volumes:
       - ./performance/k6:/scripts:ro
     environment:
@@ -330,7 +333,10 @@ services:
       POLL_INTERVAL_SECONDS: ${POLL_INTERVAL_SECONDS:-1}
       SERVICE_READY_TIMEOUT_SECONDS: ${SERVICE_READY_TIMEOUT_SECONDS:-120}
       VERIFY_BESTBOOK: ${VERIFY_BESTBOOK:-true}
-    command: ["run", "/scripts/rental-flow.js"]
+      K6_PROMETHEUS_RW_SERVER_URL: http://prometheus:9090/api/v1/write
+      K6_PROMETHEUS_RW_PUSH_INTERVAL: 1s
+      K6_PROMETHEUS_RW_TREND_STATS: "p(90),p(95),p(99),avg,min,max"
+    command: ["run", "-o", "experimental-prometheus-rw", "/scripts/rental-flow.js"]
 
 volumes:
   prometheus-data:
