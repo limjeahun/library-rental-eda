@@ -84,7 +84,7 @@ public class BookService implements AddBookUseCase, BookQueryUseCase, MakeAvaila
      */
     @Override
     public BookResult makeAvailable(long bookNo) {
-        Book book = loadBookPort.loadBook(bookNo);
+        Book book = loadBookPort.loadBookForUpdate(bookNo);
         book.makeAvailable();
         return BookResult.from(saveBookPort.save(book));
     }
@@ -97,7 +97,7 @@ public class BookService implements AddBookUseCase, BookQueryUseCase, MakeAvaila
      */
     @Override
     public BookResult makeUnavailable(long bookNo) {
-        Book book = loadBookPort.loadBook(bookNo);
+        Book book = loadBookPort.loadBookForUpdate(bookNo);
         book.makeUnAvailable();
         return BookResult.from(saveBookPort.save(book));
     }

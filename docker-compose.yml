@@ -231,16 +231,30 @@ services:
     ports:
       - "9308:9308"
 
+  cadvisor:
+    image: ghcr.io/google/cadvisor:v0.57.0
+    container_name: library-cadvisor
+    privileged: true
+    ports:
+      - "8089:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - /dev/disk:/dev/disk:ro
+
   prometheus:
     image: prom/prometheus:v3.5.0
     container_name: library-prometheus
     depends_on:
       - kafka
       - kafka-exporter
+      - cadvisor
       - loki
       - alloy
     ports:
-      - "9090:9090"
+      - "19090:9090"
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
       - "--storage.tsdb.path=/prometheus"
@@ -333,6 +347,7 @@ services:
       POLL_INTERVAL_SECONDS: ${POLL_INTERVAL_SECONDS:-1}
       SERVICE_READY_TIMEOUT_SECONDS: ${SERVICE_READY_TIMEOUT_SECONDS:-120}
       VERIFY_BESTBOOK: ${VERIFY_BESTBOOK:-true}
+      PRE_REGISTERED_BOOK_COUNT: ${PRE_REGISTERED_BOOK_COUNT:-300}
       K6_PROMETHEUS_RW_SERVER_URL: http://prometheus:9090/api/v1/write
       K6_PROMETHEUS_RW_PUSH_INTERVAL: 1s
       K6_PROMETHEUS_RW_TREND_STATS: "p(90),p(95),p(99),avg,min,max"

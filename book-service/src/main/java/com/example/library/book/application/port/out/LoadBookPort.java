@@ -21,4 +21,12 @@ public interface LoadBookPort {
      * @return 도서 번호에 해당하는 도서 도메인 모델을 반환합니다.
      */
     Book loadBook(long bookNo);
+
+    /**
+     * 상태 변경을 위해 도서 row를 잠그고 도메인 도서를 조회합니다.
+     *
+     * @param bookNo 상태를 변경할 도서 번호입니다.
+     * @return 도서 번호에 해당하는 도서 도메인 모델을 반환합니다.
+     */
+    Book loadBookForUpdate(long bookNo);
 }

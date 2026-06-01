@@ -117,6 +117,9 @@ public class Book {
      * @return UNAVAILABLE 상태로 변경된 현재 도서 도메인 모델을 반환합니다.
      */
     public Book makeUnAvailable() {
+        if (bookStatus == BookStatus.UNAVAILABLE) {
+            throw new IllegalStateException("이미 대여 중인 도서입니다.");
+        }
         this.bookStatus = BookStatus.UNAVAILABLE;
         registerDomainEvent(BookMadeUnavailableDomainEvent.of(no, title));
         return this;

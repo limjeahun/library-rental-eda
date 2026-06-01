@@ -131,7 +131,7 @@ public class BookRentalEventService implements HandleBookRentalEventUseCase {
      * @param bookNo 도서 번호.
      */
     private Book makeAvailable(long bookNo) {
-        Book book = loadBookPort.loadBook(bookNo);
+        Book book = loadBookPort.loadBookForUpdate(bookNo);
         book.makeAvailable();
         saveBookPort.save(book);
         return book;
@@ -143,7 +143,7 @@ public class BookRentalEventService implements HandleBookRentalEventUseCase {
      * @param bookNo 도서 번호.
      */
     private Book makeUnavailable(long bookNo) {
-        Book book = loadBookPort.loadBook(bookNo);
+        Book book = loadBookPort.loadBookForUpdate(bookNo);
         book.makeUnAvailable();
         saveBookPort.save(book);
         return book;

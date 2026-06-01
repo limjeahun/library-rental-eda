@@ -3,6 +3,7 @@ package com.example.library.book.application.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import com.example.library.book.application.dto.BookRentalEventCommand;
@@ -53,7 +54,7 @@ class BookRentalEventServiceTest {
             command.correlationId(),
             InboundMessageType.ITEM_RENTED
         )).willReturn(true);
-        given(loadBookPort.loadBook(command.itemNo())).willReturn(book);
+        given(loadBookPort.loadBookForUpdate(command.itemNo())).willReturn(book);
 
         service.handleRent(command);
 
@@ -84,7 +85,7 @@ class BookRentalEventServiceTest {
             command.correlationId(),
             InboundMessageType.ITEM_RETURNED
         )).willReturn(true);
-        given(loadBookPort.loadBook(command.itemNo())).willReturn(book);
+        given(loadBookPort.loadBookForUpdate(command.itemNo())).willReturn(book);
 
         service.handleReturn(command);
 
@@ -114,12 +115,31 @@ class BookRentalEventServiceTest {
             command.correlationId(),
             InboundMessageType.ITEM_RENTED
         )).willReturn(true);
-        given(loadBookPort.loadBook(command.itemNo()))
+        given(loadBookPort.loadBookForUpdate(command.itemNo()))
             .willThrow(new IllegalArgumentException("book unavailable failed"));
 
         service.handleRent(command);
 
         verify(publishBookRentalResultPort).publishBookMakeUnavailableFailed(command, "book unavailable failed");
+    }
+
+    @Test
+    void rentFailureIsPublishedWhenBookIsAlreadyUnavailable() {
+        BookRentalEventCommand command = rentedCommand();
+        Book book = book(BookStatus.UNAVAILABLE);
+        given(messageIdempotencyPort.markProcessed(
+            command.eventId(),
+            command.correlationId(),
+            InboundMessageType.ITEM_RENTED
+        )).willReturn(true);
+        given(loadBookPort.loadBookForUpdate(command.itemNo())).willReturn(book);
+
+        service.handleRent(command);
+
+        verify(saveBookPort, never()).save(book);
+        verify(publishBookRentalResultPort).publishBookMakeUnavailableFailed(command, "이미 대여 중인 도서입니다.");
+        assertThat(book.bookStatus()).isEqualTo(BookStatus.UNAVAILABLE);
+        assertThat(book.pullDomainEvents()).isEmpty();
     }
 
     @Test
@@ -130,7 +150,7 @@ class BookRentalEventServiceTest {
             command.correlationId(),
             InboundMessageType.ITEM_RETURNED
         )).willReturn(true);
-        given(loadBookPort.loadBook(command.itemNo()))
+        given(loadBookPort.loadBookForUpdate(command.itemNo()))
             .willThrow(new IllegalArgumentException("book available failed"));
 
         service.handleReturn(command);

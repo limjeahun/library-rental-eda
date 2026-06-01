@@ -1,7 +1,7 @@
 import http from 'k6/http';
 import { check, fail, sleep } from 'k6';
 import exec from 'k6/execution';
-import { Rate } from 'k6/metrics';
+import { Counter, Rate, Trend } from 'k6/metrics';
 
 const MEMBER_URL = __ENV.MEMBER_URL || 'http://member-service:8082';
 const BOOK_URL = __ENV.BOOK_URL || 'http://book-service:8081';
@@ -16,7 +16,7 @@ const ASYNC_TIMEOUT_SECONDS = Number(__ENV.ASYNC_TIMEOUT_SECONDS || 10);
 const POLL_INTERVAL_SECONDS = Number(__ENV.POLL_INTERVAL_SECONDS || 1);
 const SERVICE_READY_TIMEOUT_SECONDS = Number(__ENV.SERVICE_READY_TIMEOUT_SECONDS || 120);
 const VERIFY_BESTBOOK = (__ENV.VERIFY_BESTBOOK || 'true').toLowerCase() === 'true';
-const PRE_REGISTERED_BOOK_COUNT = 100;
+const PRE_REGISTERED_BOOK_COUNT = Math.max(Number(__ENV.PRE_REGISTERED_BOOK_COUNT || 300), TARGET_VUS);
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 const memberSamples = buildMemberSamples();
@@ -29,8 +29,16 @@ const serviceReadiness = [
 ];
 
 export const eventualConsistencySuccess = new Rate('eventual_consistency_success');
+export const bookUnavailableAfterRentDuration = new Trend('book_unavailable_after_rent_duration', true);
+export const memberPointSavedAfterRentDuration = new Trend('member_point_saved_after_rent_duration', true);
+export const bestbookReadModelUpdatedAfterRentDuration = new Trend('bestbook_read_model_updated_after_rent_duration', true);
+export const bookAvailableAfterReturnDuration = new Trend('book_available_after_return_duration', true);
+export const memberPointSavedAfterReturnDuration = new Trend('member_point_saved_after_return_duration', true);
+export const returnAfterRentCompensationAttempts = new Counter('return_after_rent_compensation_attempts');
+export const returnAfterRentCompensationRate = new Rate('return_after_rent_compensation_rate');
 
 export const options = {
+  summaryTrendStats: ['avg', 'min', 'med', 'p(90)', 'p(95)', 'p(99)', 'max'],
   scenarios: {
     rental_flow: {
       executor: 'ramping-vus',
@@ -87,18 +95,18 @@ export default function (setupData) {
     userNm: userName,
   }, 202, 'rent item');
 
-  eventually('book unavailable after rent', () => {
+  const bookUnavailableAfterRent = eventually('book unavailable after rent', bookUnavailableAfterRentDuration, () => {
     const response = http.get(`${BOOK_URL}/api/book/${itemId}`, { tags: { name: 'book get by id' } });
     return response.status === 200 && response.json('data.bookStatus') === 'UNAVAILABLE';
   });
 
-  eventually('member point saved after rent', () => {
+  const memberPointSavedAfterRent = eventually('member point saved after rent', memberPointSavedAfterRentDuration, () => {
     const response = http.get(`${MEMBER_URL}/api/Member/by-id/${userId}`, { tags: { name: 'member get by id' } });
     return response.status === 200 && response.json('data.point') >= 10;
   });
 
   if (VERIFY_BESTBOOK) {
-    eventually('bestbook read model updated after rent', () => {
+    eventually('bestbook read model updated after rent', bestbookReadModelUpdatedAfterRentDuration, () => {
       const response = http.get(`${BESTBOOK_URL}/api/books`, { tags: { name: 'bestbook list' } });
       if (response.status !== 200) {
         return false;
@@ -109,19 +117,24 @@ export default function (setupData) {
     });
   }
 
-  postJson(`${RENTAL_URL}/api/rental-cards/return`, {
+  const returnResult = postReturnItem({
     itemId,
     itemTitle,
     userId,
     userNm: userName,
-  }, 202, 'return item');
+  }, bookUnavailableAfterRent && memberPointSavedAfterRent);
 
-  eventually('book available after return', () => {
+  if (!returnResult.accepted) {
+    sleep(1);
+    return;
+  }
+
+  eventually('book available after return', bookAvailableAfterReturnDuration, () => {
     const response = http.get(`${BOOK_URL}/api/book/${itemId}`, { tags: { name: 'book get by id' } });
     return response.status === 200 && response.json('data.bookStatus') === 'AVAILABLE';
   });
 
-  eventually('member point saved after return', () => {
+  eventually('member point saved after return', memberPointSavedAfterReturnDuration, () => {
     const response = http.get(`${MEMBER_URL}/api/Member/by-id/${userId}`, { tags: { name: 'member get by id' } });
     return response.status === 200 && response.json('data.point') >= 20;
   });
@@ -502,20 +515,70 @@ function postJson(url, payload, expectedStatus, requestName) {
   return response;
 }
 
-function eventually(name, assertion) {
+function postReturnItem(payload, rentConfirmed) {
+  const response = http.post(`${RENTAL_URL}/api/rental-cards/return`, JSON.stringify(payload), {
+    headers: JSON_HEADERS,
+    tags: { name: 'return item' },
+    responseCallback: http.expectedStatuses(202, 400),
+  });
+
+  const compensatedReturnAttempt = isReturnAfterRentCompensationAttempt(response);
+  returnAfterRentCompensationRate.add(compensatedReturnAttempt, {
+    rent_confirmed: String(rentConfirmed),
+  });
+
+  if (compensatedReturnAttempt) {
+    returnAfterRentCompensationAttempts.add(1, {
+      rent_confirmed: String(rentConfirmed),
+    });
+    check(response, {
+      'return after rent compensation attempt status 400': (res) => res.status === 400,
+      'return after rent compensation attempt message': (res) => responseMessage(res) === '대여 중인 도서가 아닙니다.',
+    });
+    return { accepted: false, compensatedReturnAttempt: true };
+  }
+
+  check(response, {
+    'return item status 202': (res) => res.status === 202,
+  });
+
+  if (response.status !== 202) {
+    fail(`return item failed. expected=202 actual=${response.status} body=${response.body}`);
+  }
+
+  return { accepted: true, compensatedReturnAttempt: false };
+}
+
+function isReturnAfterRentCompensationAttempt(response) {
+  return response.status === 400 && responseMessage(response) === '대여 중인 도서가 아닙니다.';
+}
+
+function responseMessage(response) {
+  try {
+    return response.json('message');
+  } catch (error) {
+    return '';
+  }
+}
+
+function eventually(name, durationMetric, assertion) {
+  const startedAt = Date.now();
   const deadline = Date.now() + ASYNC_TIMEOUT_SECONDS * 1000;
 
   while (Date.now() < deadline) {
     if (safeAssert(assertion)) {
+      durationMetric.add(Date.now() - startedAt, { outcome: 'success' });
       eventualConsistencySuccess.add(true);
       check(true, { [`${name} eventually`]: (value) => value });
-      return;
+      return true;
     }
     sleep(POLL_INTERVAL_SECONDS);
   }
 
+  durationMetric.add(Date.now() - startedAt, { outcome: 'timeout' });
   eventualConsistencySuccess.add(false);
   check(false, { [`${name} eventually`]: (value) => value });
+  return false;
 }
 
 function safeAssert(assertion) {

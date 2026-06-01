@@ -1,12 +1,11 @@
 package com.example.library.rental.adapter.out.persistence;
 
-import com.example.library.rental.adapter.out.persistence.entity.CompensationRecordJpaEntity;
 import com.example.library.rental.adapter.out.persistence.repository.CompensationRecordJpaRepository;
 import com.example.library.rental.application.port.out.CompensationIdempotencyPort;
 import com.example.library.rental.domain.model.saga.RentalCompensationType;
 import lombok.RequiredArgsConstructor;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * correlationId와 보상 타입 기준의 보상 실행 이력을 저장하는 outbound persistence adapter입니다.
@@ -19,15 +18,10 @@ public class CompensationRecordPersistenceAdapter implements CompensationIdempot
     private final CompensationRecordJpaRepository repository;
 
     @Override
+    @Transactional
     public boolean markCompensated(String correlationId, RentalCompensationType compensationType) {
         validate(correlationId, compensationType);
-        try {
-            // 보상 실행 가능 여부를 즉시 알아야 하므로 save 대신 flush까지 실행합니다.
-            repository.saveAndFlush(new CompensationRecordJpaEntity(correlationId, compensationType.name()));
-            return true;
-        } catch (DataIntegrityViolationException ex) {
-            return false;
-        }
+        return repository.insertIgnore(correlationId, compensationType.name()) == 1;
     }
 
     private void validate(String correlationId, RentalCompensationType compensationType) {

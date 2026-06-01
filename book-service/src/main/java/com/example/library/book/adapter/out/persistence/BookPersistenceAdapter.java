@@ -54,4 +54,17 @@ public class BookPersistenceAdapter implements LoadBookPort, SaveBookPort {
             .map(mapper::toDomain)
             .orElseThrow(() -> new NoSuchElementException("도서를 찾을 수 없습니다: " + bookNo));
     }
+
+    /**
+     * 상태 변경 중 같은 도서가 동시에 갱신되지 않도록 row lock을 잡고 조회합니다.
+     *
+     * @param bookNo 상태를 변경할 도서 번호입니다.
+     * @return 도서 번호에 해당하는 도서 도메인 모델을 반환합니다.
+     */
+    @Override
+    public Book loadBookForUpdate(long bookNo) {
+        return repository.findByIdForUpdate(bookNo)
+            .map(mapper::toDomain)
+            .orElseThrow(() -> new NoSuchElementException("도서를 찾을 수 없습니다: " + bookNo));
+    }
 }

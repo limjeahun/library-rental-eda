@@ -1,6 +1,7 @@
 package com.example.library.book.domain.model;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.example.library.book.domain.event.BookDomainEvent;
 import com.example.library.book.domain.event.BookMadeAvailableDomainEvent;
@@ -44,6 +45,18 @@ class BookTest {
         assertThat(event.occurredAt()).isNotNull();
         assertThat(event.bookNo()).isEqualTo(1L);
         assertThat(event.title()).isEqualTo("도서");
+        assertThat(book.pullDomainEvents()).isEmpty();
+    }
+
+    @Test
+    void makeUnAvailableFailsWhenAlreadyUnavailable() {
+        Book book = book(BookStatus.UNAVAILABLE);
+
+        assertThatThrownBy(book::makeUnAvailable)
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessage("이미 대여 중인 도서입니다.");
+
+        assertThat(book.bookStatus()).isEqualTo(BookStatus.UNAVAILABLE);
         assertThat(book.pullDomainEvents()).isEmpty();
     }
 
