@@ -18,9 +18,9 @@ public record ClearOverdueRequest(
     @PositiveOrZero long point
 ) {
     /**
-     * 요청의 회원/포인트 정보를 연체 해제 command로 변환.
+     * 요청의 회원/포인트 정보를 연체 해제 command 로 변환.
      *
-     * @return 요청 회원과 포인트 정보를 담은 application command를 반환.
+     * @return 요청 회원과 포인트 정보를 담은 application command 를 반환.
      */
     public ClearOverdueCommand toCommand() {
         return new ClearOverdueCommand(userId, userNm, point);

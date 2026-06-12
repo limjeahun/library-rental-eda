@@ -317,20 +317,6 @@ public class RentalCard {
     }
 
     /**
-     * 반납 목록에서 대상 도서를 찾고, 없으면 도메인 예외를 발생시킵니다.
-     *
-     * @param item 찾을 도서를 식별하는 snapshot.
-     * @return aggregate 내부에 저장된 반납 항목.
-     */
-    private ReturnItem requireReturnItem(RentalItem item) {
-        ReturnItem returnItem = findReturnItem(item);
-        if (returnItem == null) {
-            throw new IllegalArgumentException("반납 완료된 도서가 아닙니다.");
-        }
-        return returnItem;
-    }
-
-    /**
      * 상태 변경과 이벤트 발행의 기준이 되는 내부 반납 항목을 찾습니다.
      *
      * @param item 찾을 도서를 식별하는 snapshot.

@@ -15,6 +15,15 @@ import java.util.List;
  * @param point 회원 보유 포인트.
  */
 public record MemberResponse(Long memberNo, String id, String name, String email, List<UserRole> authorities, long point) {
+    public MemberResponse {
+        authorities = List.copyOf(authorities);
+    }
+
+    @Override
+    public List<UserRole> authorities() {
+        return List.copyOf(authorities);
+    }
+
     /**
      * application 결과를 HTTP 응답 형태로 옮깁니다.
      *

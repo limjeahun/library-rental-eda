@@ -16,6 +16,21 @@ public record RentalCardResult(
     List<RentItemResult> rentItems,
     List<ReturnItemResult> returnItems
 ) {
+    public RentalCardResult {
+        rentItems = List.copyOf(rentItems);
+        returnItems = List.copyOf(returnItems);
+    }
+
+    @Override
+    public List<RentItemResult> rentItems() {
+        return List.copyOf(rentItems);
+    }
+
+    @Override
+    public List<ReturnItemResult> returnItems() {
+        return List.copyOf(returnItems);
+    }
+
     public static RentalCardResult from(RentalCard rentalCard) {
         return new RentalCardResult(
             rentalCard.rentalCardNo(),

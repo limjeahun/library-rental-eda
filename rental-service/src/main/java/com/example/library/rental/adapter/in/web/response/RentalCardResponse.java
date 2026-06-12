@@ -24,6 +24,21 @@ public record RentalCardResponse(
     List<RentItemResponse> rentItems,
     List<ReturnItemResponse> returnItems
 ) {
+    public RentalCardResponse {
+        rentItems = List.copyOf(rentItems);
+        returnItems = List.copyOf(returnItems);
+    }
+
+    @Override
+    public List<RentItemResponse> rentItems() {
+        return List.copyOf(rentItems);
+    }
+
+    @Override
+    public List<ReturnItemResponse> returnItems() {
+        return List.copyOf(returnItems);
+    }
+
     /**
      * application 결과를 HTTP 응답 형태로 옮깁니다.
      *

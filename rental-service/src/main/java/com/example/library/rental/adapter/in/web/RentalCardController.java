@@ -50,7 +50,9 @@ public class RentalCardController {
     @PostMapping
     public ResponseEntity<BaseResponse<RentalCardResponse>> createRentalCard(@Valid @RequestBody UserRequest request) {
         return BaseResponse.ok(
-                RentalCardResponse.from(createRentalCardUseCase.createRentalCard(request.toCommand()))
+                RentalCardResponse.from(
+                        createRentalCardUseCase.createRentalCard(request.toCommand())
+                )
         ).toResponseEntity();
     }
 

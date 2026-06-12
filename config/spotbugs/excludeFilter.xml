@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter>
+    <Match>
+        <Class name="~com\.example\.library\.common\.event\.schema\..*"/>
+    </Match>
+    <Match>
+        <Class name="~.*\.Q[A-Za-z0-9_]*"/>
+    </Match>
+    <Match>
+        <Class name="~.*MapperImpl"/>
+    </Match>
+    <Match>
+        <Class name="~.*Application"/>
+    </Match>
+    <Match>
+        <Bug pattern="URF_UNREAD_FIELD"/>
+        <Class name="~.*\.adapter\.out\.persistence\.(document|entity)\..*"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="~.*\.config\.KafkaConfig"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="~.*\.adapter\.out\.messaging\..*KafkaEventProducer"/>
+    </Match>
+</FindBugsFilter>

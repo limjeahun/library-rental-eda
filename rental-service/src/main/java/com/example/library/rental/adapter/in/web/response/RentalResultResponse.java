@@ -26,6 +26,21 @@ public record RentalResultResponse(
         List<RentItemResponse> rentItems,
         List<ReturnItemResponse> returnItems
 ) {
+    public RentalResultResponse {
+        rentItems = List.copyOf(rentItems);
+        returnItems = List.copyOf(returnItems);
+    }
+
+    @Override
+    public List<RentItemResponse> rentItems() {
+        return List.copyOf(rentItems);
+    }
+
+    @Override
+    public List<ReturnItemResponse> returnItems() {
+        return List.copyOf(returnItems);
+    }
+
     /**
      * 도서 대여 요청 접수 응답을 만듭니다.
      *

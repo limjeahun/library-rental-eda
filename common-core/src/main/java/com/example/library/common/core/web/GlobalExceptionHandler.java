@@ -103,7 +103,8 @@ public class GlobalExceptionHandler {
         MethodArgumentTypeMismatchException ex,
         HttpServletRequest request
     ) {
-        String requiredType = ex.getRequiredType() == null ? "요청 타입" : ex.getRequiredType().getSimpleName();
+        Class<?> requiredTypeClass = ex.getRequiredType();
+        String requiredType = requiredTypeClass == null ? "요청 타입" : requiredTypeClass.getSimpleName();
         return build(
             ErrorCode.TYPE_MISMATCH,
             ex.getName() + " 값의 타입이 올바르지 않습니다. 기대 타입: " + requiredType,

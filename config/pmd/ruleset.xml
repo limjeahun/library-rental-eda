@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ruleset name="Library Rental EDA PMD Rules"
+         xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.github.io/pmd-7.0.0/ruleset_2_0_0.xsd">
+    <description>
+        PMD rules for production Java code in the library-rental-eda services.
+    </description>
+
+    <rule ref="category/java/errorprone.xml">
+        <exclude name="AvoidDuplicateLiterals"/>
+        <exclude name="AvoidFieldNameMatchingMethodName"/>
+    </rule>
+    <rule ref="category/java/bestpractices.xml">
+        <exclude name="AvoidReassigningParameters"/>
+        <exclude name="GuardLogStatement"/>
+        <exclude name="ImplicitFunctionalInterface"/>
+    </rule>
+</ruleset>

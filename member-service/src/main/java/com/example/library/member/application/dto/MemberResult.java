@@ -15,6 +15,15 @@ import java.util.List;
  * @param point 회원 보유 포인트.
  */
 public record MemberResult(Long memberNo, String id, String name, String email, List<UserRole> authorities, long point) {
+    public MemberResult {
+        authorities = List.copyOf(authorities);
+    }
+
+    @Override
+    public List<UserRole> authorities() {
+        return List.copyOf(authorities);
+    }
+
     /**
      * 회원 도메인 모델을 application 결과 DTO로 변환합니다.
      *
