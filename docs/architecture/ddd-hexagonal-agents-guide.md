@@ -144,6 +144,17 @@ Spring annotations such as `@Service` and `@Transactional` may be used in applic
 - Avoid class-level constants in application services for domain policy values. Move policy to domain.
 - Prefer small behavior methods with domain names over procedural methods with technical names.
 
+## Comment Policy
+
+- Comments must explain business context, design intent, invariant rationale, or boundary decisions that code cannot express alone.
+- Comments must not explain obvious code operations.
+- Do not use comments to compensate for vague names. Rename classes, methods, variables, and commands first.
+- Public aggregate behavior, value objects, policies, ports, and non-trivial mappers may use concise Javadoc when it documents business meaning or boundary contracts.
+- Prefer a domain-language method name over an inline comment.
+- Remove dead code instead of commenting it out.
+- Temporary comments such as `TODO`, `FIXME`, or `HACK` must include an owner or issue reference when the project uses issue tracking; otherwise avoid them.
+- Do not write comments that repeat method names, parameter names, or getter behavior.
+
 ## Code Smells
 
 - Web Request creates domain VO directly.
@@ -156,6 +167,17 @@ Spring annotations such as `@Service` and `@Transactional` may be used in applic
 - Repository `Optional` leaks to controller response design.
 - Method mixes high-level use case flow with low-level field mapping.
 - Names are technical but not business-readable, such as `process`, `handleData`, `updateStatus`, `flag`.
+
+## Anti-Pattern Review Rules
+
+- A code smell is a symptom. Find the responsibility leak behind it before fixing names mechanically.
+- Structural anti-patterns usually move business decisions away from the domain.
+- Linguistic anti-patterns usually hide the business meaning behind technical verbs or generic nouns.
+- Do not fix a domain-language problem with comments. Rename the code so the comment becomes unnecessary.
+- If a method name needs "and" to explain it, it probably has more than one responsibility.
+- If a service method reads like field manipulation, move the behavior into the aggregate.
+- If an adapter method reads like business policy, move the decision into application/domain.
+- If a mapper method needs an `if` for a business rule, the mapper is doing more than mapping.
 
 ## Validation
 
@@ -1404,6 +1426,899 @@ public RentalCardResult rentItem(RentItemCommand command) {
 }
 ```
 
+## 코드 스멜을 보는 관점
+
+코드 스멜은 단순 취향 문제가 아니다. 대부분의 스멜은 다음 셋 중 하나가 깨졌다는 신호다.
+
+| 깨진 기준 | 겉으로 보이는 스멜 | 근본 문제 |
+| --- | --- | --- |
+| 책임의 위치 | Controller가 분기하고 Service가 정책 상수를 가진다. | 비즈니스 판단이 도메인 밖으로 새어 나갔다. |
+| 경계의 언어 | Request가 Domain VO를 만들고 Domain이 Response를 만든다. | 계층별 모델이 분리되지 않았다. |
+| 도메인 언어 | `process`, `updateData`, `setStatus`가 늘어난다. | 코드가 업무 행위 대신 기술 조작을 말한다. |
+
+리팩터링은 “코드를 예쁘게 만드는 일”이 아니라, 잘못된 책임과 언어를 제자리로 돌려놓는 일이다.
+
+## 구조적 안티패턴 1: Transaction Script Service
+
+Application Service가 모든 비즈니스 판단과 상태 변경을 직접 수행하면 도메인 모델은 데이터 덩어리가 된다.
+
+나쁜 예:
+
+```java
+@Service
+@Transactional
+public class RentalCardService {
+    private static final int MAX_RENTAL_COUNT = 5;
+
+    public RentalCardResult rentItem(RentItemCommand command) {
+        RentalCard rentalCard = loadRentalCardPort.loadRentalCard(command.userId())
+            .orElseGet(() -> RentalCard.createRentalCard(
+                new RentalMember(command.userId(), command.userName())
+            ));
+
+        if (rentalCard.rentStatus() == RentStatus.RENT_UNAVAILABLE) {
+            throw new IllegalArgumentException("대여 정지 상태에서는 도서를 대여할 수 없습니다.");
+        }
+        if (rentalCard.getRentItemList().size() >= MAX_RENTAL_COUNT) {
+            throw new IllegalArgumentException("대여 한도를 초과했습니다.");
+        }
+
+        rentalCard.getRentItemList().add(
+            RentItem.createRentalItem(new RentalItem(command.itemNo(), command.itemTitle()))
+        );
+
+        return RentalCardResult.from(saveRentalCardPort.save(rentalCard));
+    }
+}
+```
+
+문제:
+
+- 대여 가능 여부, 대여 한도, 대여 항목 추가가 service에 있다.
+- aggregate가 자신의 불변식을 보호하지 못한다.
+- `MAX_RENTAL_COUNT`가 도메인 정책인데 application service 상수로 존재한다.
+- 컬렉션을 외부에서 직접 수정한다.
+
+좋은 예:
+
+```java
+@Service
+@Transactional
+@RequiredArgsConstructor
+public class RentalCardService implements RentItemUseCase {
+    private final LoadRentalCardPort loadRentalCardPort;
+    private final SaveRentalCardPort saveRentalCardPort;
+
+    @Override
+    public RentalCardResult rentItem(RentItemCommand command) {
+        RentalMember member = rentalMember(command);
+        RentalItem item = rentalItem(command);
+
+        RentalCard rentalCard = loadOrCreateRentalCard(member);
+        rentalCard.rentItem(item);
+
+        return RentalCardResult.from(saveRentalCardPort.save(rentalCard));
+    }
+
+    private RentalCard loadOrCreateRentalCard(RentalMember member) {
+        return loadRentalCardPort.loadRentalCard(member.id())
+            .orElseGet(() -> RentalCard.createRentalCard(member));
+    }
+
+    private RentalMember rentalMember(RentItemCommand command) {
+        return new RentalMember(command.userId(), command.userName());
+    }
+
+    private RentalItem rentalItem(RentItemCommand command) {
+        return new RentalItem(command.itemNo(), command.itemTitle());
+    }
+}
+```
+
+도메인 규칙은 aggregate로 이동한다.
+
+```java
+public void rentItem(RentalItem item) {
+    if (rentStatus == RentStatus.RENT_UNAVAILABLE) {
+        throw new IllegalArgumentException("대여 정지 상태에서는 도서를 대여할 수 없습니다.");
+    }
+    if (!RentalLimitPolicy.STANDARD.canRent(rentItemList.size())) {
+        throw new IllegalArgumentException(
+            "대여 중인 도서는 최대 " + RentalLimitPolicy.STANDARD.maxRentalCount() + "권까지 가능합니다."
+        );
+    }
+    if (findRentItem(item) != null) {
+        throw new IllegalArgumentException("이미 대여 중인 도서입니다.");
+    }
+
+    rentItemList.add(RentItem.createRentalItem(item));
+}
+```
+
+## 구조적 안티패턴 2: God Service
+
+하나의 service가 생성, 조회, 변환, 검증, 상태 변경, 응답 조립까지 모두 처리하면 변경 이유가 너무 많아진다.
+
+나쁜 예:
+
+```java
+@Service
+public class RentalService {
+    public RentalResultResponse rent(RentItemRequest request) {
+        RentalMember member = request.toRentalMember();
+        RentalItem item = request.toRentalItem();
+        RentalCard card = repository.findByMemberId(member.id())
+            .map(mapper::toDomain)
+            .orElse(RentalCard.createRentalCard(member));
+
+        card.rentItem(item);
+
+        RentalCardJpaEntity entity = mapper.toJpaEntity(card);
+        RentalCard saved = mapper.toDomain(repository.save(entity));
+
+        return RentalResultResponse.rentAccepted(RentalCardResult.from(saved));
+    }
+}
+```
+
+문제:
+
+- Request DTO, repository, mapper, response DTO가 한 service에 모두 들어왔다.
+- inbound adapter, application, outbound adapter 책임이 섞였다.
+- 테스트가 어려워지고 변경 이유가 많아진다.
+
+좋은 예:
+
+```java
+@RestController
+@RequiredArgsConstructor
+public class RentalCardController {
+    private final RentItemUseCase rentItemUseCase;
+
+    @PostMapping("/rent")
+    public ResponseEntity<BaseResponse<RentalResultResponse>> rent(
+        @Valid @RequestBody RentItemRequest request
+    ) {
+        return BaseResponse.accepted(
+            RentalResultResponse.rentAccepted(rentItemUseCase.rentItem(request.toCommand()))
+        ).toResponseEntity();
+    }
+}
+```
+
+```java
+@Service
+@Transactional
+@RequiredArgsConstructor
+public class RentalCardService implements RentItemUseCase {
+    private final LoadRentalCardPort loadRentalCardPort;
+    private final SaveRentalCardPort saveRentalCardPort;
+
+    @Override
+    public RentalCardResult rentItem(RentItemCommand command) {
+        RentalMember member = new RentalMember(command.userId(), command.userName());
+        RentalItem item = new RentalItem(command.itemNo(), command.itemTitle());
+
+        RentalCard rentalCard = loadRentalCardPort.loadRentalCard(member.id())
+            .orElseGet(() -> RentalCard.createRentalCard(member));
+        rentalCard.rentItem(item);
+
+        return RentalCardResult.from(saveRentalCardPort.save(rentalCard));
+    }
+}
+```
+
+```java
+@Repository
+@RequiredArgsConstructor
+public class RentalCardPersistenceAdapter implements LoadRentalCardPort, SaveRentalCardPort {
+    private final RentalCardJpaRepository repository;
+    private final RentalCardPersistenceMapper mapper;
+
+    @Override
+    public Optional<RentalCard> loadRentalCard(String userId) {
+        return repository.findByMemberId(userId).map(mapper::toDomain);
+    }
+
+    @Override
+    public RentalCard save(RentalCard rentalCard) {
+        return mapper.toDomain(repository.save(mapper.toJpaEntity(rentalCard)));
+    }
+}
+```
+
+## 계층 경계 안티패턴 1: DTO 터널링
+
+DTO 터널링은 한 계층의 DTO가 다른 계층을 관통해서 계속 전달되는 현상이다.
+
+나쁜 예:
+
+```java
+@RestController
+public class RentalCardController {
+    private final RentalCardService rentalCardService;
+
+    @PostMapping("/rent")
+    public RentalResultResponse rent(@RequestBody RentItemRequest request) {
+        return rentalCardService.rent(request);
+    }
+}
+```
+
+```java
+@Service
+public class RentalCardService {
+    public RentalResultResponse rent(RentItemRequest request) {
+        RentalItem item = new RentalItem(request.itemNo(), request.itemTitle());
+        RentalCard rentalCard = ...
+        rentalCard.rentItem(item);
+        return RentalResultResponse.rentAccepted(...);
+    }
+}
+```
+
+문제:
+
+- Application Service가 Web Request와 Web Response를 안다.
+- HTTP 입력 형식 변경이 use case 변경으로 번진다.
+- 테스트가 Web DTO에 묶인다.
+
+좋은 예:
+
+```java
+public record RentItemRequest(
+    Long itemNo,
+    String itemTitle,
+    String userId,
+    String userName
+) {
+    public RentItemCommand toCommand() {
+        return new RentItemCommand(userId, userName, itemNo, itemTitle);
+    }
+}
+```
+
+```java
+public interface RentItemUseCase {
+    RentalCardResult rentItem(RentItemCommand command);
+}
+```
+
+```java
+public record RentalResultResponse(...) {
+    public static RentalResultResponse rentAccepted(RentalCardResult rentalCard) {
+        return from("도서 대여 요청을 접수했습니다.", rentalCard);
+    }
+}
+```
+
+## 계층 경계 안티패턴 2: Mapper가 판단한다
+
+Mapper는 판단자가 아니라 번역기다. Mapper가 도메인 규칙을 판단하면 저장소 변환과 비즈니스 규칙이 결합된다.
+
+나쁜 예:
+
+```java
+@Component
+public class RentalCardPersistenceMapper {
+    public RentalCard toDomain(RentalCardJpaEntity entity) {
+        if (entity.getLateFeePoint() > 0 && entity.getRentItems().isEmpty()) {
+            entity.setRentStatus(RentStatus.RENT_AVAILABLE);
+        }
+
+        return RentalCard.reconstitute(
+            entity.getRentalCardNo(),
+            new RentalMember(entity.getMemberId(), entity.getMemberName()),
+            entity.getRentStatus(),
+            new LateFee(entity.getLateFeePoint()),
+            toRentItems(entity),
+            toReturnItems(entity)
+        );
+    }
+}
+```
+
+좋은 예:
+
+```java
+@Component
+public class RentalCardPersistenceMapper {
+    public RentalCard toDomain(RentalCardJpaEntity entity) {
+        return RentalCard.reconstitute(
+            entity.getRentalCardNo(),
+            new RentalMember(entity.getMemberId(), entity.getMemberName()),
+            entity.getRentStatus(),
+            new LateFee(entity.getLateFeePoint()),
+            toRentItems(entity),
+            toReturnItems(entity)
+        );
+    }
+}
+```
+
+상태를 바꿔야 하는 업무 행위는 aggregate method로 표현한다.
+
+```java
+public long makeAvailableRental(long point) {
+    if (!rentItemList.isEmpty()) {
+        throw new IllegalArgumentException("모든 도서를 반납해야 정지해제할 수 있습니다.");
+    }
+    if (lateFee.point() != point) {
+        throw new IllegalArgumentException("입력 포인트가 현재 연체료와 일치하지 않습니다.");
+    }
+
+    lateFee = lateFee.removePoint(point);
+    if (lateFee.point() == 0) {
+        rentStatus = RentStatus.RENT_AVAILABLE;
+    }
+    return point;
+}
+```
+
+## 도메인 모델 안티패턴 1: Setter Driven Domain
+
+Setter 중심 모델은 도메인 행위를 없애고 상태 조작만 남긴다.
+
+나쁜 예:
+
+```java
+public class Book {
+    private BookStatus bookStatus;
+
+    public void setBookStatus(BookStatus bookStatus) {
+        this.bookStatus = bookStatus;
+    }
+}
+```
+
+```java
+book.setBookStatus(BookStatus.UNAVAILABLE);
+```
+
+좋은 예:
+
+```java
+public class Book {
+    private BookStatus bookStatus;
+
+    public Book makeUnavailable() {
+        if (bookStatus == BookStatus.UNAVAILABLE) {
+            throw new IllegalStateException("이미 대여 중인 도서입니다.");
+        }
+        this.bookStatus = BookStatus.UNAVAILABLE;
+        return this;
+    }
+
+    public Book makeAvailable() {
+        this.bookStatus = BookStatus.AVAILABLE;
+        return this;
+    }
+}
+```
+
+```java
+book.makeUnavailable();
+```
+
+`setBookStatus`는 어떤 이유로 상태가 바뀌는지 말하지 않는다. `makeUnavailable`은 도서가 대여 불가능 상태가 되는 업무 행위를 말한다.
+
+## 도메인 모델 안티패턴 2: 생성과 복원의 혼합
+
+신규 생성과 저장소 복원을 하나의 public constructor로 처리하면 잘못된 상태를 쉽게 만들 수 있다.
+
+나쁜 예:
+
+```java
+public class Member {
+    public Member(
+        Long memberNo,
+        MemberIdentity idName,
+        PassWord password,
+        Email email,
+        List<Authority> authorities,
+        Point point
+    ) {
+        this.memberNo = memberNo;
+        this.idName = idName;
+        this.password = password;
+        this.email = email;
+        this.authorities = authorities;
+        this.point = point;
+    }
+}
+```
+
+이 생성자는 신규 회원인데 `memberNo`가 있거나, 권한이 비어 있거나, 초기 포인트가 임의 값인 객체를 만들 수 있다.
+
+좋은 예:
+
+```java
+public class Member {
+    private Member(
+        Long memberNo,
+        MemberIdentity idName,
+        PassWord password,
+        Email email,
+        List<Authority> authorities,
+        Point point
+    ) {
+        this.memberNo = memberNo;
+        this.idName = idName;
+        this.password = password;
+        this.email = email;
+        this.authorities = new ArrayList<>(authorities);
+        this.point = point;
+    }
+
+    public static Member registerMember(MemberIdentity idName, PassWord password, Email email) {
+        Member member = new Member(null, idName, password, email, new ArrayList<>(), new Point(0));
+        member.addAuthority(Authority.create(UserRole.USER));
+        return member;
+    }
+
+    public static Member reconstitute(
+        Long memberNo,
+        MemberIdentity idName,
+        PassWord password,
+        Email email,
+        List<Authority> authorities,
+        Point point
+    ) {
+        return new Member(memberNo, idName, password, email, authorities, point);
+    }
+}
+```
+
+`registerMember`와 `reconstitute`는 같은 객체를 만들지만 의도가 다르다. 의도가 다르면 메서드도 달라야 한다.
+
+## 언어적 안티패턴 1: Generic Verb
+
+`process`, `handle`, `execute`, `update`, `manage`는 대부분 도메인 언어를 숨긴다. 이런 이름은 “무엇을 하는지”가 아니라 “코드가 뭔가 한다”는 사실만 말한다.
+
+나쁜 예:
+
+```java
+public interface RentalUseCase {
+    RentalCardResult process(RentalCommand command);
+}
+```
+
+```java
+public class RentalCardService implements RentalUseCase {
+    public RentalCardResult process(RentalCommand command) {
+        if (command.type().equals("RENT")) {
+            ...
+        }
+        if (command.type().equals("RETURN")) {
+            ...
+        }
+        return ...
+    }
+}
+```
+
+좋은 예:
+
+```java
+public interface RentItemUseCase {
+    RentalCardResult rentItem(RentItemCommand command);
+}
+
+public interface ReturnItemUseCase {
+    RentalCardResult returnItem(ReturnItemCommand command);
+}
+```
+
+```java
+public class RentalCardService implements RentItemUseCase, ReturnItemUseCase {
+    @Override
+    public RentalCardResult rentItem(RentItemCommand command) {
+        ...
+    }
+
+    @Override
+    public RentalCardResult returnItem(ReturnItemCommand command) {
+        ...
+    }
+}
+```
+
+좋은 이름은 if/switch를 줄인다. 이름이 갈라지면 유스케이스도 갈라진다.
+
+## 언어적 안티패턴 2: Data Suffix
+
+`Info`, `Data`, `Dto`, `Object`, `Manager` 같은 이름은 도메인 의미를 흐리게 만든다. DTO 접미사는 계층 모델에서 필요할 수 있지만, 도메인 모델에서는 피해야 한다.
+
+나쁜 예:
+
+```java
+public record UserInfo(String id, String name) {
+}
+
+public record BookData(Long no, String title) {
+}
+```
+
+좋은 예:
+
+```java
+public record RentalMember(String id, String name) {
+}
+
+public record RentalItem(Long no, String title) {
+}
+```
+
+`RentalMember`는 대여 문맥에서 필요한 회원 snapshot이다. `UserInfo`는 어느 문맥의 어떤 정보인지 말하지 않는다.
+
+## 언어적 안티패턴 3: Boolean Flag Method
+
+boolean flag는 호출부의 의미를 숨긴다.
+
+나쁜 예:
+
+```java
+public RentalCardResult changeRentalStatus(ChangeRentalStatusCommand command, boolean available) {
+    RentalCard rentalCard = loadRequiredRentalCard(command.userId());
+    if (available) {
+        rentalCard.makeAvailableRental(command.point());
+    } else {
+        rentalCard.overdueItem(new RentalItem(command.itemNo(), command.itemTitle()));
+    }
+    return RentalCardResult.from(saveRentalCardPort.save(rentalCard));
+}
+```
+
+호출부만 보면 의미를 알기 어렵다.
+
+```java
+changeRentalStatus(command, true);
+changeRentalStatus(command, false);
+```
+
+좋은 예:
+
+```java
+public RentalCardResult clearOverdue(ClearOverdueCommand command) {
+    RentalCard rentalCard = loadRequiredRentalCard(command.userId());
+    rentalCard.makeAvailableRental(command.point());
+    return RentalCardResult.from(saveRentalCardPort.save(rentalCard));
+}
+
+public RentalCardResult overdueItem(OverdueItemCommand command) {
+    RentalCard rentalCard = loadRequiredRentalCard(command.userId());
+    rentalCard.overdueItem(new RentalItem(command.itemNo(), command.itemTitle()));
+    return RentalCardResult.from(saveRentalCardPort.save(rentalCard));
+}
+```
+
+서로 다른 업무 행위는 서로 다른 command와 method로 분리한다.
+
+## 언어적 안티패턴 4: Status Update Language
+
+`updateStatus`는 상태 변경 이유를 지운다. DDD에서는 상태 변경 자체보다 “왜 바뀌는가”가 중요하다.
+
+나쁜 예:
+
+```java
+public void updateStatus(BookStatus status) {
+    this.bookStatus = status;
+}
+```
+
+좋은 예:
+
+```java
+public Book makeAvailable() {
+    this.bookStatus = BookStatus.AVAILABLE;
+    return this;
+}
+
+public Book makeUnavailable() {
+    if (bookStatus == BookStatus.UNAVAILABLE) {
+        throw new IllegalStateException("이미 대여 중인 도서입니다.");
+    }
+    this.bookStatus = BookStatus.UNAVAILABLE;
+    return this;
+}
+```
+
+상태 이름은 enum이 표현하고, 상태 변경 이유는 method가 표현한다.
+
+## 언어적 안티패턴 5: Technical Name in Domain
+
+도메인에 기술 이름이 들어오면 도메인 언어가 밀려난다.
+
+나쁜 예:
+
+```java
+public class RentalCard {
+    private String userPk;
+    private String rowStatus;
+    private List<RentItemJpaEmbeddable> itemEntities;
+}
+```
+
+좋은 예:
+
+```java
+public class RentalCard {
+    private final RentalMember member;
+    private RentStatus rentStatus;
+    private final List<RentItem> rentItemList;
+}
+```
+
+`userPk`, `rowStatus`, `Entity`는 저장 기술의 언어다. 도메인은 `member`, `rentStatus`, `rentItemList`처럼 업무 언어로 말해야 한다.
+
+## 안티패턴 리뷰 질문
+
+리뷰할 때 다음 질문을 순서대로 던진다.
+
+1. 이 코드는 도메인 전문가가 읽어도 업무 행위로 이해할 수 있는가?
+2. 이 이름은 기술 조작이 아니라 비즈니스 의도를 드러내는가?
+3. 이 책임은 현재 계층에 있어야 하는가?
+4. 이 로직이 domain 밖에 있다면, domain 밖에 있어야 하는 이유가 명확한가?
+5. 이 DTO가 자기 계층 밖으로 새어 나가고 있지 않은가?
+6. 이 mapper가 변환 말고 판단을 하고 있지 않은가?
+7. 이 enum은 유한하고 안정적인 도메인 언어인가, 아니면 운영 데이터인가?
+8. 이 method는 하나의 추상화 수준으로 읽히는가?
+9. 이 주석은 코드 이름을 잘 지으면 사라질 수 있는가?
+10. 이 변경을 테스트하면 도메인 규칙 테스트로 표현되는가, 프레임워크 테스트로만 표현되는가?
+
+---
+
+# 주석 정책
+
+주석은 코드를 대신 설명하는 도구가 아니다. DDD 코드에서 가장 좋은 문서는 도메인 언어로 작성된 클래스명, 메서드명, 값 객체명, 정책명이다. 주석은 코드 이름과 구조만으로는 충분히 드러나지 않는 비즈니스 맥락, 설계 의도, 불변식의 이유, 계층 경계의 계약을 보완할 때만 사용한다.
+
+## 1. 주석보다 이름을 먼저 고친다
+
+나쁜 예:
+
+```java
+// 도서를 대여한다.
+public RentalCardResult process(RentItemCommand command) {
+    ...
+}
+```
+
+좋은 예:
+
+```java
+public RentalCardResult rentItem(RentItemCommand command) {
+    ...
+}
+```
+
+주석이 메서드명을 번역하고 있다면 주석이 필요한 것이 아니라 메서드명이 잘못된 것이다.
+
+## 2. 뻔한 구현 설명은 쓰지 않는다
+
+나쁜 예:
+
+```java
+public List<RentItem> getRentItemList() {
+    // rentItemList를 복사해서 반환한다.
+    return List.copyOf(rentItemList);
+}
+```
+
+좋은 예:
+
+```java
+public List<RentItem> getRentItemList() {
+    return List.copyOf(rentItemList);
+}
+```
+
+`List.copyOf(...)`는 이미 구현 의도를 충분히 드러낸다. 이런 주석은 유지보수 비용만 늘린다.
+
+## 3. 불변식의 이유는 주석으로 남길 수 있다
+
+코드가 “무엇을 하는지”는 이름과 구조가 말해야 한다. 하지만 “왜 이 제약이 필요한지”는 도메인 맥락이 필요할 수 있다.
+
+좋은 예:
+
+```java
+public long makeAvailableRental(long point) {
+    if (!rentItemList.isEmpty()) {
+        throw new IllegalArgumentException("모든 도서를 반납해야 정지해제할 수 있습니다.");
+    }
+    if (lateFee.point() != point) {
+        throw new IllegalArgumentException("입력 포인트가 현재 연체료와 일치하지 않습니다.");
+    }
+
+    lateFee = lateFee.removePoint(point);
+    if (lateFee.point() == 0) {
+        rentStatus = RentStatus.RENT_AVAILABLE;
+    }
+    return point;
+}
+```
+
+이 경우 코드와 예외 메시지만으로 규칙이 충분히 드러난다. 별도 주석이 없어도 된다.
+
+도메인 맥락이 더 필요한 경우에는 짧게 이유를 남긴다.
+
+```java
+public long makeAvailableRental(long point) {
+    // 연체 해제는 남은 대여 도서가 없을 때만 가능하다. 대여 중인 도서가 있으면 즉시 재연체 상태가 될 수 있다.
+    if (!rentItemList.isEmpty()) {
+        throw new IllegalArgumentException("모든 도서를 반납해야 정지해제할 수 있습니다.");
+    }
+    ...
+}
+```
+
+이 주석은 `if` 문을 설명하지 않는다. 왜 이 규칙이 존재하는지 설명한다.
+
+## 4. Aggregate behavior에는 비즈니스 계약 Javadoc을 허용한다
+
+Aggregate의 public behavior는 외부에서 호출하는 도메인 계약이다. Javadoc은 구현 설명이 아니라 비즈니스 계약을 기록해야 한다.
+
+좋은 예:
+
+```java
+/**
+ * 도서를 대여 목록에 추가합니다.
+ *
+ * <p>대여 정지 상태, 대여 한도 초과, 같은 도서의 중복 대여는 허용하지 않습니다.
+ *
+ * @param item 대여할 도서 snapshot.
+ */
+public void rentItem(RentalItem item) {
+    if (rentStatus == RentStatus.RENT_UNAVAILABLE) {
+        throw new IllegalArgumentException("대여 정지 상태에서는 도서를 대여할 수 없습니다.");
+    }
+    if (!RentalLimitPolicy.STANDARD.canRent(rentItemList.size())) {
+        throw new IllegalArgumentException(
+            "대여 중인 도서는 최대 " + RentalLimitPolicy.STANDARD.maxRentalCount() + "권까지 가능합니다."
+        );
+    }
+    if (findRentItem(item) != null) {
+        throw new IllegalArgumentException("이미 대여 중인 도서입니다.");
+    }
+
+    rentItemList.add(RentItem.createRentalItem(item));
+}
+```
+
+나쁜 예:
+
+```java
+/**
+ * rentItemList에 item을 add 한다.
+ */
+public void rentItem(RentalItem item) {
+    rentItemList.add(RentItem.createRentalItem(item));
+}
+```
+
+Javadoc은 구현 줄거리가 아니라 외부 호출자가 알아야 하는 도메인 계약을 적는다.
+
+## 5. Port에는 boundary contract를 남긴다
+
+Port는 application과 adapter가 만나는 계약이다. 무엇을 반환하고, absence를 어떻게 표현하는지 정도는 주석으로 남길 수 있다.
+
+좋은 예:
+
+```java
+/**
+ * 회원 ID로 대여카드 도메인 모델을 조회합니다.
+ */
+public interface LoadRentalCardPort {
+    /**
+     * @param userId 대여카드 소유자를 식별하는 회원 ID.
+     * @return 회원 ID에 해당하는 대여카드. 저장소에 없으면 {@link Optional#empty()}.
+     */
+    Optional<RentalCard> loadRentalCard(String userId);
+}
+```
+
+이 주석은 중요한 경계 계약을 설명한다. Adapter는 absence를 `Optional.empty()`로 표현하고, Service가 유스케이스 의미에 따라 생성 또는 예외를 결정한다.
+
+## 6. Mapper 주석은 변환 경계만 설명한다
+
+Mapper는 번역기다. 주석도 번역 경계를 설명해야지 비즈니스 판단을 설명하면 안 된다.
+
+좋은 예:
+
+```java
+/**
+ * JPA 엔티티 그래프를 대여카드 도메인 모델로 복원합니다.
+ *
+ * <p>저장소 복원이므로 신규 생성 factory가 아니라 {@code reconstitute(...)}를 사용합니다.
+ */
+public RentalCard toDomain(RentalCardJpaEntity entity) {
+    return RentalCard.reconstitute(
+        entity.getRentalCardNo(),
+        new RentalMember(entity.getMemberId(), entity.getMemberName()),
+        entity.getRentStatus(),
+        new LateFee(entity.getLateFeePoint()),
+        entity.getRentItems().stream().map(this::toRentItemDomain).toList(),
+        entity.getReturnItems().stream().map(this::toReturnItemDomain).toList()
+    );
+}
+```
+
+나쁜 예:
+
+```java
+/**
+ * 연체료가 있으면 대여 정지 상태로 바꾼다.
+ */
+public RentalCard toDomain(RentalCardJpaEntity entity) {
+    if (entity.getLateFeePoint() > 0) {
+        entity.setRentStatus(RentStatus.RENT_UNAVAILABLE);
+    }
+    ...
+}
+```
+
+이 주석은 mapper가 비즈니스 판단을 하고 있다는 경고다. 판단은 aggregate나 application service로 이동해야 한다.
+
+## 7. TODO, FIXME, HACK 정책
+
+임시 주석은 기술 부채를 숨기기 쉽다. 남긴다면 추적 가능해야 한다.
+
+피해야 할 예:
+
+```java
+// TODO 나중에 수정
+private RentalCard load(String userId) {
+    ...
+}
+```
+
+허용 가능한 예:
+
+```java
+// TODO ISSUE-123: 회원 탈퇴 정책 확정 후 탈퇴 회원 대여카드 조회 규칙을 분리한다.
+private RentalCard load(String userId) {
+    ...
+}
+```
+
+프로젝트가 이슈 트래커를 쓰지 않는다면 TODO를 남기는 대신 작은 리팩터링으로 즉시 정리하거나, 문서의 잔여 리스크에 기록한다.
+
+## 8. 주석 처리된 죽은 코드는 남기지 않는다
+
+나쁜 예:
+
+```java
+public Book makeUnavailable() {
+    // this.bookStatus = BookStatus.RENTED;
+    this.bookStatus = BookStatus.UNAVAILABLE;
+    return this;
+}
+```
+
+좋은 예:
+
+```java
+public Book makeUnavailable() {
+    this.bookStatus = BookStatus.UNAVAILABLE;
+    return this;
+}
+```
+
+이력은 Git이 담당한다. 소스 파일은 현재 설계만 담아야 한다.
+
+## 9. 주석 리뷰 기준
+
+주석을 추가하기 전에 다음 질문을 던진다.
+
+1. 이 주석은 코드가 “무엇을 하는지”를 반복하는가?
+2. 이름을 바꾸면 이 주석이 사라질 수 있는가?
+3. 이 주석은 비즈니스 이유, 불변식의 근거, 계층 경계 계약을 설명하는가?
+4. 이 주석이 오래되어도 컴파일러나 테스트가 깨지지 않는 종류의 정보인가?
+5. TODO라면 추적 가능한 이슈나 만료 조건이 있는가?
+6. 주석이 실제 코드와 달라질 가능성이 높은가?
+7. 주석 대신 테스트 이름으로 더 정확히 표현할 수 있는가?
+
+정책의 결론은 단순하다. 코드는 도메인 언어로 읽히게 만들고, 주석은 코드가 담기 어려운 맥락만 짧고 정확하게 남긴다.
+
 ---
 
 # Architecture Test 예시
@@ -1527,6 +2442,25 @@ class HexagonalArchitectureTest {
 - [ ] Entity -> Domain 변환이 `reconstitute(...)`를 사용하는가?
 - [ ] Domain -> Entity 변환이 명시적 accessor를 사용하는가?
 
+## Code Smell / Anti-pattern
+
+- [ ] `process`, `handle`, `updateData`, `updateStatus` 같은 generic verb가 도메인 행위를 숨기지 않는가?
+- [ ] `Info`, `Data`, `Object`, `Manager` 같은 이름이 도메인 의미를 흐리지 않는가?
+- [ ] boolean flag로 서로 다른 업무 행위를 한 메서드에 합치지 않았는가?
+- [ ] service가 transaction script처럼 모든 검증과 상태 변경을 직접 처리하지 않는가?
+- [ ] 하나의 service가 request, repository, mapper, response를 모두 아는 God Service가 되지 않았는가?
+- [ ] Web DTO가 application/domain 내부로 터널링되지 않는가?
+- [ ] Mapper가 판단하지 않고 번역만 하는가?
+- [ ] 주석으로 설명해야만 이해되는 이름을 도메인 언어로 고칠 수 없는가?
+
+## Comment
+
+- [ ] 주석이 obvious implementation을 반복하지 않는가?
+- [ ] 주석이 이름 부족을 보완하는 용도로 쓰이지 않았는가?
+- [ ] Javadoc이 구현 설명이 아니라 도메인 계약, 불변식, boundary contract를 설명하는가?
+- [ ] TODO/FIXME/HACK가 추적 가능한 이슈나 제거 조건 없이 남아 있지 않은가?
+- [ ] 주석 처리된 죽은 코드가 남아 있지 않은가?
+
 ---
 
 # AI에게 요청할 때 쓰는 짧은 프롬프트
@@ -1550,6 +2484,7 @@ class HexagonalArchitectureTest {
 - Adapter는 Optional을 반환할 수 있지만, Service가 use case 의미에 따라 예외 또는 생성 정책을 결정한다.
 - Early return과 guard clause로 흐름을 단순화하라.
 - 한 메서드 안에서 추상화 수준을 섞지 말고, private helper 이름도 도메인 의도를 드러내게 작성하라.
+- 주석은 코드가 표현하지 못하는 비즈니스 맥락, 불변식의 이유, boundary contract만 설명하게 하라. 이름 부족을 주석으로 때우지 말고 이름을 고쳐라.
 
 구현 후 관련 architecture test, domain unit test, application service test를 실행하고 결과를 보고하라.
 ```
